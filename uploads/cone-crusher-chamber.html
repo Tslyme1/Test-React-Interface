@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Геометрия камеры дробления конусной дробилки</title>
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --paper:#fffefb;
+    --ink:#111111;
+    --ink-2:#4a4a4a;
+    --hair:#c9c6bd;
+    --accent:#c8371f;
+    --accent-bg:#fdeee9;
+    --z1:#eef2f6;
+    --z2:#e4eaf1;
+    --z3:#d9e2ec;
+    --ui: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --tech: "Iowan Old Style", "Georgia", "Times New Roman", serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--ui);
+    font-size:13px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .head{
+    padding:18px 22px 12px;
+    border-bottom:1px solid var(--hair);
+    background:var(--paper);
+  }
+  .head h1{
+    margin:0;
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:.01em;
+  }
+  .head p{
+    margin:5px 0 0;
+    font-size:12px;
+    color:var(--ink-2);
+    max-width:900px;
+  }
+
+  /* ── раскладка: строго в строку, без переноса ───────────── */
+  .wrap{
+    display:flex;
+    flex-wrap:nowrap;
+    align-items:flex-start;
+    overflow-x:auto;
+    gap:0;
+  }
+  .col-diagram{flex:0 0 auto; padding:16px 20px 40px; }
+  .col-panel{
+    flex:0 0 372px;
+    align-self:stretch;
+    border-left:1px solid var(--hair);
+    background:var(--paper);
+    padding:16px 18px 40px;
+    position:sticky;
+    right:0;
+  }
+
+  /* ── схема ─────────────────────────────────────────────── */
+  .stage{position:relative; background:var(--paper); border:1px solid var(--hair);}
+  svg#scheme{display:block; width:1180px; height:840px;}
+  .tip{
+    position:absolute;
+    pointer-events:none;
+    background:#1b1b1b;
+    color:#fff;
+    font-size:11.5px;
+    line-height:1.35;
+    padding:6px 9px;
+    border-radius:3px;
+    white-space:nowrap;
+    opacity:0;
+    transform:translate(-50%,-140%);
+    transition:opacity .08s;
+    z-index:5;
+  }
+  .tip.show{opacity:1}
+  .tip b{font-weight:600}
+
+  /* ── стили элементов чертежа ───────────────────────────── */
+  #scheme text{font-family:var(--ui); fill:var(--ink);}
+  .t-desc{font-size:13.5px}
+  .t-tech{font-family:var(--tech); font-style:italic; font-size:13px}
+  .t-num{font-size:11.5px}
+  .t-small{font-size:10px}
+  .sub{font-size:9.5px; font-style:normal}
+  .subi{font-size:9.5px; font-style:italic}
+
+  .line{fill:none; stroke:var(--ink); stroke-width:1; vector-effect:non-scaling-stroke}
+  .thin{stroke-width:.7}
+  .hair{stroke:var(--hair); stroke-width:.7; fill:none; vector-effect:non-scaling-stroke}
+  .chain{fill:none; stroke:var(--ink); stroke-width:1.4; vector-effect:non-scaling-stroke; stroke-linejoin:round}
+  .axis{stroke:var(--ink); stroke-width:.8; fill:none; vector-effect:non-scaling-stroke}
+  .axis-cone{stroke-dasharray:16 4 2 4}
+  .lvl{stroke:var(--ink); stroke-width:.6; stroke-dasharray:9 5; fill:none; vector-effect:non-scaling-stroke}
+  .ray{stroke:var(--ink); stroke-width:.7; fill:none; vector-effect:non-scaling-stroke}
+  .arc{stroke:var(--ink); stroke-width:1; fill:none; vector-effect:non-scaling-stroke}
+  .gap{stroke:var(--ink); stroke-width:.9; fill:none; vector-effect:non-scaling-stroke}
+  .dim{stroke:var(--ink); stroke-width:.7; fill:none; vector-effect:non-scaling-stroke}
+  .pt{fill:var(--paper); stroke:var(--ink); stroke-width:1; vector-effect:non-scaling-stroke}
+  .ptc{fill:var(--ink)}
+  .dashcont{stroke:var(--ink); stroke-width:.7; stroke-dasharray:5 4; fill:none; vector-effect:non-scaling-stroke}
+  .hit{fill:none; stroke:transparent; stroke-width:11; cursor:crosshair}
+  .hitfill{fill:transparent; stroke:none; cursor:crosshair}
+
+  /* подсветка */
+  #scheme.hl .el:not(.on){opacity:.14}
+  .el.on{stroke:var(--accent)}
+  text.el.on{fill:var(--accent); stroke:none}
+  .chain.el.on{stroke-width:2.2}
+  .ray.el.on{stroke-width:1.6}
+  .arc.el.on{stroke-width:2}
+  .pt.el.on{stroke-width:1.8; fill:var(--accent-bg)}
+  .gap.el.on{stroke-width:1.8}
+  .zone.el.on{stroke:none; fill:var(--accent-bg)}
+
+  /* ── панель ────────────────────────────────────────────── */
+  .sec{margin-bottom:18px}
+  .sec > h2{
+    margin:0 0 9px;
+    font-size:10.5px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    font-weight:600;
+    color:var(--ink-2);
+    padding-bottom:5px;
+    border-bottom:1px solid var(--hair);
+  }
+  .row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:5px 6px;
+    margin:0 -6px 2px;
+    border:1px solid transparent;
+    border-radius:3px;
+  }
+  .row.one{grid-template-columns:1fr 1fr}
+  .row.row-on{background:var(--accent-bg); border-color:var(--accent)}
+  .fld{display:flex; flex-direction:column; gap:3px}
+  .fld label{font-size:10.5px; color:var(--ink-2); letter-spacing:.01em}
+  .fld label i{font-family:var(--tech)}
+  .fld input[type=number]{
+    font-family:var(--ui);
+    font-size:12.5px;
+    padding:5px 7px;
+    border:1px solid var(--hair);
+    border-radius:2px;
+    background:var(--paper);
+    color:var(--ink);
+    width:100%;
+  }
+  .fld input:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent}
+  .modes label, .layers label{
+    display:flex; align-items:flex-start; gap:7px;
+    padding:4px 0; font-size:12px; cursor:pointer;
+  }
+  .modes label span small{display:block; color:var(--ink-2); font-size:10.5px; margin-top:1px}
+  input[type=checkbox],input[type=radio]{margin:2px 0 0; accent-color:var(--accent)}
+  .calc{width:100%; border-collapse:collapse; font-size:11.5px}
+  .calc td{padding:3px 0; border-bottom:1px dotted var(--hair)}
+  .calc td:first-child{color:var(--ink-2)}
+  .calc td:last-child{text-align:right; font-variant-numeric:tabular-nums}
+  .calc td i{font-family:var(--tech)}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:0 16px}
+
+  /* ── легенда и примечания ──────────────────────────────── */
+  .under{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:16px; width:1180px}
+  .card{background:var(--paper); border:1px solid var(--hair); padding:14px 16px}
+  .card h3{margin:0 0 10px; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; font-weight:600; color:var(--ink-2)}
+  .card table{width:100%; border-collapse:collapse; font-size:12px}
+  .card td{padding:3px 0; vertical-align:top; border-bottom:1px dotted var(--hair)}
+  .card td:first-child{width:70px; font-family:var(--tech); font-style:italic}
+  .card ol{margin:0; padding-left:17px; font-size:12px; line-height:1.55}
+  .card ol li{margin-bottom:5px}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1>Геометрия камеры дробления конусной дробилки</h1>
+  <p>Профили брони чаши и брони конуса строятся от точки подвеса: первая точка каждой цепочки задаётся якорем (α, r),
+     каждая следующая — поворотом на угол β относительно луча «точка подвеса → предыдущая точка». Для конуса
+     действующий угол в узле равен β − θ.</p>
+</div>
+
+<div class="wrap">
+  <div class="col-diagram">
+    <div class="stage">
+      <svg id="scheme" viewBox="0 0 1180 840" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+
+    <div class="under">
+      <div class="card">
+        <h3>Обозначения</h3>
+        <table>
+          <tr><td>l..</td><td>длина сегмента брони чаши между соседними точками (40–41, 41–42, 42–4i, 4i–3)</td></tr>
+          <tr><td>L..</td><td>длина сегмента брони конуса (10–11, 11–12, 12–1i, 1i–2)</td></tr>
+          <tr><td>β..</td><td>угол в узле между лучом на точку подвеса и следующим сегментом профиля</td></tr>
+          <tr><td>θ</td><td>угол качания (гирации) конуса; действующий угол узла конуса — β − θ</td></tr>
+          <tr><td>S..</td><td>зазор камеры — расстояние между соответственной парой точек чаши и конуса</td></tr>
+          <tr><td>S<sub>0</sub></td><td>выходная щель: зазор в зоне калибровки между точками 3 и 2</td></tr>
+          <tr><td>r..</td><td>радиус — расстояние от точки подвеса до соответствующей точки профиля</td></tr>
+          <tr><td>α..</td><td>угол луча от оси дробилки до точки профиля</td></tr>
+          <tr><td>h</td><td>высота: вертикальное расстояние от точки подвеса до нижней точки конуса (2)</td></tr>
+          <tr><td>D / 2</td><td>горизонтальное расстояние от оси дробилки до нижней точки конуса (2)</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Примечания</h3>
+        <ol>
+          <li>Линейные размеры — в миллиметрах, угловые — в градусах. Единицы условны: масштаб чертежа подбирается
+              автоматически по габаритам построения, поэтому ввод в любых согласованных единицах даёт ту же картинку.</li>
+          <li>Числовые значения полей — демонстрационные, подобранные под пропорции исходной схемы. Это не паспортные
+              данные конкретной машины; для расчёта конкретной дробилки поля заполняются из её методики.</li>
+          <li>Индекс i означает промежуточный (i-й) узел профиля: 4i — на броне чаши, 1i — на броне конуса. Между
+              явно заданными узлами реальный профиль может содержать произвольное число таких точек; здесь показана
+              одна обобщающая.</li>
+          <li>Знак поворота на угол β не задан однозначно без исходной методики построения, поэтому направление
+              переключается флажком «Инвертировать направление β».</li>
+          <li>Углы β<sub>3</sub> и β<sub>2</sub> — терминальные, продолжения профиля за ними нет; штриховой отрезок
+              за точками 3 и 2 показан только для наглядности направления.</li>
+          <li>Зазоры S измеряются между соответственными парами точек (40–10, 41–11, 42–12, 4i–1i, 3–2) и
+              характеризуют сужение камеры от зоны входа к зоне калибровки.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-panel">
+    <div class="sec">
+      <h2>Режим отображения</h2>
+      <div class="modes" id="modes">
+        <label><input type="radio" name="mode" value="normal" checked>
+          <span>Обычный<small>Готовый профиль: заливка зон, размеры, описательные подписи</small></span></label>
+        <label><input type="radio" name="mode" value="build">
+          <span>Линии построения<small>Лучи, дуги углов β, зазоры S и подписи радиусов</small></span></label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h2>Слои</h2>
+      <div class="layers" id="layers">
+        <label><input type="checkbox" id="ly-zones"> <span>Заливка зон</span></label>
+        <label><input type="checkbox" id="ly-rays"> <span>Лучи из точки подвеса и подписи r</span></label>
+        <label><input type="checkbox" id="ly-arcs"> <span>Углы β (дуги)</span></label>
+        <label><input type="checkbox" id="ly-gaps"> <span>Зазоры S</span></label>
+        <label><input type="checkbox" id="ly-dims"> <span>Размеры D/2 и h</span></label>
+      </div>
+    </div>
+
+    <div id="fields"></div>
+
+    <div class="sec">
+      <h2>Вычисляемые значения</h2>
+      <table class="calc" id="calc-main"></table>
+      <div class="two-col" style="margin-top:10px">
+        <table class="calc" id="calc-r1"></table>
+        <table class="calc" id="calc-r2"></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ═══════════════ 1. ДАННЫЕ ═══════════════ */
+
+const st = {
+  // броня чаши: 40-41-42-4i-3
+  a40:84.5, r40:1300,
+  b40:100,   l11:480,
+  b41:143.5, l12:368,
+  b42:138,   l1i:347,
+  b4i:157,   l2:535,
+  b3:150,
+  // броня конуса: 10-11-12-1i-2
+  a10:58, r10:820,
+  b10:163, L10:460,
+  b11:171, L11:350,
+  b12:161, L12:380,
+  b1i:167, L1i:520,
+  b2:165,
+  // общее
+  theta:2,
+  invert:false
+};
+
+const GROUPS = [
+  { title:'Броня чаши — неподвижный профиль 40·41·42·4i·3', rows:[
+    { key:'a40', f:[['a40','<i>α</i><sub>40</sub> — угол от оси, град'],['r40','<i>r</i><sub>40</sub> — длина луча, мм']] },
+    { key:'n40', f:[['b40','<i>β</i><sub>40</sub>, град'],['l11','<i>l</i><sub>11</sub> — 40→41, мм']] },
+    { key:'n41', f:[['b41','<i>β</i><sub>41</sub>, град'],['l12','<i>l</i><sub>12</sub> — 41→42, мм']] },
+    { key:'n42', f:[['b42','<i>β</i><sub>42</sub>, град'],['l1i','<i>l</i><sub>1i</sub> — 42→4i, мм']] },
+    { key:'n4i', f:[['b4i','<i>β</i><sub>4i</sub>, град'],['l2','<i>l</i><sub>2</sub> — 4i→3, калибровка, мм']] },
+    { key:'t3',  f:[['b3','<i>β</i><sub>3</sub> — терминальный, град']] }
+  ]},
+  { title:'Броня конуса — гирационный профиль 10·11·12·1i·2', rows:[
+    { key:'a10', f:[['a10','<i>α</i><sub>10</sub> — угол от оси, град'],['r10','<i>r</i><sub>10</sub> — длина луча, мм']] },
+    { key:'n10', f:[['b10','<i>β</i><sub>10</sub>, град'],['L10','<i>L</i> 10→11, мм']] },
+    { key:'n11', f:[['b11','<i>β</i><sub>11</sub>, град'],['L11','<i>L</i> 11→12, мм']] },
+    { key:'n12', f:[['b12','<i>β</i><sub>12</sub>, град'],['L12','<i>L</i> 12→1i, мм']] },
+    { key:'n1i', f:[['b1i','<i>β</i><sub>1i</sub>, град'],['L1i','<i>L</i> 1i→2, мм']] },
+    { key:'t2',  f:[['b2','<i>β</i><sub>2</sub> — терминальный, град']] }
+  ]},
+  { title:'Качание конуса', rows:[
+    { key:'theta', f:[['theta','<i>θ</i> — угол качания, град']] }
+  ]}
+];
+
+/* ═══════════════ 2. ГЕОМЕТРИЯ ═══════════════ */
+
+const D2R = Math.PI/180;
+// направление под углом phi от оси дробилки (вниз), положительный отсчёт — влево
+function dir(phi){ return { x:-Math.sin(phi*D2R), y:Math.cos(phi*D2R) }; }
+function phiOf(p){ return Math.atan2(-p.x, p.y)/D2R; }        // угол луча подвес→p
+function norm(d){ while(d<=-180) d+=360; while(d>180) d-=360; return d; }
+
+function buildChain(alpha, r, nodes, th, sgn){
+  const d0 = dir(alpha);
+  let p = { x:d0.x*r, y:d0.y*r };
+  const pts = [p], info = [];
+  for(const n of nodes){
+    const phiRay = phiOf(p);
+    const eff = n.b - th;
+    const phiSeg = phiRay - sgn*(180 - eff);
+    const d = dir(phiSeg);
+    const q = { x:p.x + d.x*n.L, y:p.y + d.y*n.L };
+    info.push({ phiRay, phiSeg, eff, beta:n.b, len:n.L });
+    pts.push(q); p = q;
+  }
+  // терминальный узел (без сегмента)
+  const phiRay = phiOf(p), effT = nodes.term - th;
+  info.push({ phiRay, phiSeg: phiRay - sgn*(180-effT), eff:effT, beta:nodes.term, len:0, terminal:true });
+  return { pts, info };
+}
+
+function geometry(){
+  const sgn = st.invert ? -1 : 1;
+  const bowlNodes = [
+    {b:st.b40,L:st.l11},{b:st.b41,L:st.l12},{b:st.b42,L:st.l1i},{b:st.b4i,L:st.l2}
+  ]; bowlNodes.term = st.b3;
+  const coneNodes = [
+    {b:st.b10,L:st.L10},{b:st.b11,L:st.L11},{b:st.b12,L:st.L12},{b:st.b1i,L:st.L1i}
+  ]; coneNodes.term = st.b2;
+
+  const bowl = buildChain(st.a40, st.r40, bowlNodes, 0, sgn);
+  const cone = buildChain(st.a10, st.r10, coneNodes, st.theta, sgn);
+  return { bowl, cone, sgn };
+}
+
+/* масштаб — отдельным шагом: bbox → фиксированный viewBox */
+const VB = { w:1180, h:840 };
+const AREA = { x:262, y:78, w:640, h:690 };   // рабочая область построения
+
+function makeTransform(pts){
+  let minX=0,maxX=0,minY=0,maxY=0;           // подвес (0,0) участвует в bbox
+  for(const p of pts){
+    if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x;
+    if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y;
+  }
+  const bw = Math.max(maxX-minX, 1e-6), bh = Math.max(maxY-minY, 1e-6);
+  const k = Math.min(AREA.w/bw, AREA.h/bh);
+  const ox = AREA.x + (AREA.w - bw*k)/2 - minX*k;
+  const oy = AREA.y + (AREA.h - bh*k)/2 - minY*k;
+  return {
+    k, ox, oy,
+    X:(x)=> ox + x*k,
+    Y:(y)=> oy + y*k,
+    P:(p)=> ({ x:ox + p.x*k, y:oy + p.y*k })
+  };
+}
+
+/* ═══════════════ 3. ПОСТРОЕНИЕ SVG ═══════════════ */
+
+const svg = document.getElementById('scheme');
+const tipEl = document.getElementById('tip');
+
+const NAMES_B = ['40','41','42','4i','3'];
+const NAMES_C = ['10','11','12','1i','2'];
+const KEYS_B  = ['n40','n41','n42','n4i','t3'];
+const KEYS_C  = ['n10','n11','n12','n1i','t2'];
+const LLAB    = ['l₁₁','l₁₂','l₁ᵢ','l₂'];
+const SLAB    = ['S₁₁','S₁₂','Sᵢ₂','S₁ᵢ','S₀'];
+
+const layers = { zones:true, rays:false, arcs:false, gaps:false, dims:true };
+let mode = 'normal';
+
+function A(o){ return Object.entries(o).filter(([,v])=>v!==null&&v!==undefined&&v!=='')
+  .map(([k,v])=>`${k}="${String(v).replace(/"/g,'&quot;')}"`).join(' '); }
+function n(v){ return Math.round(v*100)/100; }
+function fmt(v,d){ return (Math.round(v*(d?10:1))/(d?10:1)).toLocaleString('ru-RU'); }
+
+/* дуга из угла a0 в угол a1 (в конвенции phi) вокруг центра c радиусом R */
+function arcPts(c,R,a0,a1){
+  const d = norm(a1-a0), steps = Math.max(8, Math.round(Math.abs(d)/4));
+  let s='';
+  for(let i=0;i<=steps;i++){
+    const a=a0+d*i/steps, v=dir(a);
+    s += (i?' L':'M') + n(c.x+v.x*R) + ' ' + n(c.y+v.y*R);
+  }
+  return s;
+}
+function polar(c,R,a){ const v=dir(a); return {x:c.x+v.x*R, y:c.y+v.y*R}; }
+
+/* пересечение горизонтали y с ломаной */
+function xAtY(pts, y){
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    if((a.y-y)*(b.y-y)<=0 && a.y!==b.y){
+      const t=(y-a.y)/(b.y-a.y);
+      return a.x + t*(b.x-a.x);
+    }
+  }
+  return null;
+}
+
+function bracket(x, y1, y2, out){
+  const m=(y1+y2)/2, e=out; // e = насколько «усики» уходят вправо (к чертежу)
+  return `M${n(x+e)} ${n(y1)} L${n(x)} ${n(y1+7)} L${n(x)} ${n(m-7)} L${n(x-6)} ${n(m)} `+
+         `L${n(x)} ${n(m+7)} L${n(x)} ${n(y2-7)} L${n(x+e)} ${n(y2)}`;
+}
+
+function render(){
+  const G = geometry();
+  const T = makeTransform([...G.bowl.pts, ...G.cone.pts]);
+  const B = G.bowl.pts.map(T.P), C = G.cone.pts.map(T.P);
+  const apex = { x:T.X(0), y:T.Y(0) };
+  const bot = AREA.y + AREA.h + 30, top = AREA.y - 24;
+
+  const showMid = (mode !== 'build');           // серединные сегменты брони чаши
+  const showDesc = (mode !== 'build');          // описательные подписи
+  const showTech = (mode === 'build');          // технические подписи (r..)
+
+  const out = [];   // видимые элементы
+  const hits = [];  // прозрачные зоны захвата
+
+  const put = s => out.push(s);
+  const hit = s => hits.push(s);
+
+  /* ── 3.1 Заливка зон ── */
+  if(layers.zones){
+    const zones = [
+      { key:'n40', poly:[B[0],B[1],C[1],C[0]],           fill:'var(--z1)', tip:'Зона входа — участок 40–41 / 10–11' },
+      { key:'n41', poly:[B[1],B[2],B[3],C[3],C[2],C[1]], fill:'var(--z2)', tip:'Зоны дробления — участок 41–42–4i / 11–12–1i' },
+      { key:'n4i', poly:[B[3],B[4],C[4],C[3]],           fill:'var(--z3)', tip:'Зона калибровки — участок 4i–3 / 1i–2' }
+    ];
+    zones.forEach(z=>{
+      const d = z.poly.map((p,j)=>(j?'L':'M')+n(p.x)+' '+n(p.y)).join(' ')+' Z';
+      put(`<path class="el zone" d="${d}" fill="${z.fill}" data-key="${z.key}"/>`);
+      hit(`<path class="hitfill" d="${d}" data-key="${z.key}" data-tip="${z.tip}"/>`);
+    });
+  }
+
+  /* ── 3.2 Оси ── */
+  put(`<line class="el axis" x1="${n(apex.x)}" y1="${n(top)}" x2="${n(apex.x)}" y2="${n(bot)}" data-key="axis"/>`);
+  const coneEnd = polar(apex, bot-apex.y+40, st.theta);
+  put(`<line class="el axis axis-cone" x1="${n(apex.x)}" y1="${n(top)}" x2="${n(coneEnd.x)}" y2="${n(coneEnd.y)}" data-key="theta"/>`);
+  {
+    const R = (bot-apex.y)*0.86;
+    put(`<path class="el arc" d="${arcPts(apex,R,0,st.theta)}" data-key="theta"/>`);
+    const lp = polar(apex, R+16, st.theta/2);
+    put(`<text class="el t-tech" x="${n(lp.x-4)}" y="${n(lp.y+4)}" text-anchor="end" data-key="theta">θ</text>`);
+    hit(`<path class="hit" d="${arcPts(apex,R,0,st.theta)}" data-key="theta" data-tip="θ — угол качания конуса: ${fmt(st.theta,1)}°"/>`);
+  }
+
+  /* ── 3.3 Лучи из точки подвеса ── */
+  if(layers.rays){
+    const rays = [];
+    B.forEach((p,i)=> rays.push({p, key:i===0?'a40':KEYS_B[i-1], name:'r'+NAMES_B[i], raw:G.bowl.pts[i]}));
+    C.forEach((p,i)=> rays.push({p, key:i===0?'a10':KEYS_C[i-1], name:'r'+NAMES_C[i], raw:G.cone.pts[i]}));
+    rays.forEach(r=>{
+      const g = `x1="${n(apex.x)}" y1="${n(apex.y)}" x2="${n(r.p.x)}" y2="${n(r.p.y)}"`;
+      put(`<line class="el ray" ${g} data-key="${r.key}"/>`);
+      const R = Math.hypot(r.raw.x, r.raw.y);
+      hit(`<line class="hit" ${g} data-key="${r.key}" data-tip="${r.name} = ${fmt(R,0)} мм, α = ${fmt(phiOf(r.raw),1)}°"/>`);
+    });
+    // подписи радиусов — двумя выносками, как на исходном чертеже
+    const packs = [
+      { list:B, raw:G.bowl.pts, names:NAMES_B, keys:['a40',...KEYS_B.slice(0,4)], anchor:{x:apex.x-286, y:apex.y-46} },
+      { list:C, raw:G.cone.pts, names:NAMES_C, keys:['a10',...KEYS_C.slice(0,4)], anchor:{x:apex.x-158, y:apex.y+206} }
+    ];
+    packs.forEach(pk=>{
+      pk.names.forEach((nm,i)=>{
+        const lx = pk.anchor.x + i*36, ly = pk.anchor.y;
+        const mid={ x:apex.x+(pk.list[i].x-apex.x)*0.34, y:apex.y+(pk.list[i].y-apex.y)*0.34 };
+        put(`<line class="el ray" x1="${n(lx+11)}" y1="${n(ly+5)}" x2="${n(mid.x)}" y2="${n(mid.y)}" data-key="${pk.keys[i]}"/>`);
+        put(`<text class="el t-tech" x="${n(lx)}" y="${n(ly)}" data-key="${pk.keys[i]}">r<tspan class="sub" dy="3">${nm}</tspan>${i<4?'<tspan dy="-3">,</tspan>':''}</text>`);
+        const R = Math.hypot(pk.raw[i].x, pk.raw[i].y);
+        hit(`<rect class="hitfill" x="${n(lx-3)}" y="${n(ly-13)}" width="34" height="19" data-key="${pk.keys[i]}" data-tip="r${nm} = ${fmt(R,0)} мм"/>`);
+      });
+    });
+  }
+
+  /* ── 3.4 Зазоры S ── */
+  if(layers.gaps){
+    for(let i=0;i<5;i++){
+      const a=B[i], b=C[i];
+      const raw = Math.hypot(G.bowl.pts[i].x-G.cone.pts[i].x, G.bowl.pts[i].y-G.cone.pts[i].y);
+      const g=`x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"`;
+      put(`<line class="el gap" ${g} data-key="gap${i}"/>`);
+      const m={x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+      put(`<text class="el t-tech" x="${n(m.x)}" y="${n(m.y-6)}" text-anchor="middle" data-key="gap${i}">${SLAB[i]}</text>`);
+      hit(`<line class="hit" ${g} data-key="gap${i}" data-tip="${SLAB[i]} — зазор ${NAMES_B[i]}–${NAMES_C[i]}: ${fmt(raw,0)} мм"/>`);
+    }
+  }
+
+  /* ── 3.5 Цепочки профилей ── */
+  function drawChain(P, raw, keys, names, labels, isCone, chainKey){
+    for(let i=0;i<P.length-1;i++){
+      if(isCone===false && !showMid && (i===1||i===2)) continue;
+      const g=`x1="${n(P[i].x)}" y1="${n(P[i].y)}" x2="${n(P[i+1].x)}" y2="${n(P[i+1].y)}"`;
+      put(`<line class="el chain" ${g} data-key="${keys[i]}"/>`);
+      const len = Math.hypot(raw[i].x-raw[i+1].x, raw[i].y-raw[i+1].y);
+      hit(`<line class="hit" ${g} data-key="${keys[i]}" data-tip="Сегмент ${names[i]}→${names[i+1]} = ${fmt(len,0)} мм"/>`);
+      if(labels){
+        const dx=P[i+1].x-P[i].x, dy=P[i+1].y-P[i].y, L=Math.hypot(dx,dy)||1;
+        const nx=dy/L, ny=-dx/L, off=isCone?-19:24;
+        const m={x:(P[i].x+P[i+1].x)/2 - nx*off, y:(P[i].y+P[i+1].y)/2 - ny*off};
+        put(`<text class="el t-tech" x="${n(m.x)}" y="${n(m.y)}" text-anchor="middle" dominant-baseline="middle" data-key="${keys[i]}">${labels[i]}</text>`);
+      }
+    }
+  }
+  drawChain(B, G.bowl.pts, KEYS_B, NAMES_B, LLAB, false, 'bowl');
+  drawChain(C, G.cone.pts, KEYS_C, NAMES_C, null, true, 'cone');
+
+  /* ── 3.6 Дуги углов β ── */
+  if(layers.arcs){
+    function drawArcs(P, info, keys, names, isCone){
+      info.forEach((nf,i)=>{
+        const c=P[i], R=34;
+        const a0=nf.phiRay+180, a1=nf.phiSeg;
+        const d=arcPts(c,R,a0,a1);
+        put(`<path class="el arc" d="${d}" data-key="${keys[i]}"/>`);
+        if(nf.terminal){
+          const v=dir(nf.phiSeg);
+          put(`<line class="el dashcont" x1="${n(c.x)}" y1="${n(c.y)}" x2="${n(c.x+v.x*62)}" y2="${n(c.y+v.y*62)}" data-key="${keys[i]}"/>`);
+        }
+        const mid=a0+norm(a1-a0)/2, lp=polar(c,R+18,mid);
+        const sub=names[i];
+        put(`<text class="el t-tech" x="${n(lp.x)}" y="${n(lp.y)}" text-anchor="middle" dominant-baseline="middle" data-key="${keys[i]}">β<tspan class="sub" dy="3">${sub}</tspan>${isCone?'<tspan dy="-3">−θ</tspan>':''}</text>`);
+        hit(`<path class="hit" d="${d}" data-key="${keys[i]}" data-tip="β${sub} = ${fmt(nf.beta,1)}°${isCone?` · действующий β−θ = ${fmt(nf.eff,1)}°`:''}"/>`);
+      });
+    }
+    drawArcs(B, G.bowl.info, KEYS_B, NAMES_B, false);
+    drawArcs(C, G.cone.info, KEYS_C, NAMES_C, true);
+  }
+
+  /* ── 3.7 Точки ── */
+  function drawPts(P, raw, keys, names, side){
+    P.forEach((p,i)=>{
+      const key = i===0 ? (side==='b'?'a40':'a10') : keys[i-1];
+      put(`<circle class="el pt" cx="${n(p.x)}" cy="${n(p.y)}" r="3.4" data-key="${key}"/>`);
+      put(`<circle class="el ptc" cx="${n(p.x)}" cy="${n(p.y)}" r="1.1" data-key="${key}"/>`);
+      const dx = side==='b' ? -11 : -10, dy = side==='b' ? 3 : 15;
+      put(`<text class="el t-num" x="${n(p.x+dx)}" y="${n(p.y+dy)}" text-anchor="end" data-key="${key}">${names[i]}</text>`);
+      const R=Math.hypot(raw[i].x,raw[i].y);
+      hit(`<circle class="hitfill" cx="${n(p.x)}" cy="${n(p.y)}" r="10" data-key="${key}" data-tip="Точка ${names[i]} · r = ${fmt(R,0)} мм · α = ${fmt(phiOf(raw[i]),1)}°"/>`);
+    });
+  }
+  drawPts(B, G.bowl.pts, KEYS_B, NAMES_B, 'b');
+  drawPts(C, G.cone.pts, KEYS_C, NAMES_C, 'c');
+
+  // точка подвеса
+  put(`<circle class="el pt" cx="${n(apex.x)}" cy="${n(apex.y)}" r="3.4" data-key="apex"/>`);
+  put(`<circle class="el ptc" cx="${n(apex.x)}" cy="${n(apex.y)}" r="1.1" data-key="apex"/>`);
+  hit(`<circle class="hitfill" cx="${n(apex.x)}" cy="${n(apex.y)}" r="11" data-key="apex" data-tip="Точка подвеса — начало отсчёта всех лучей"/>`);
+
+  // якорные углы α у подвеса
+  if(layers.arcs || layers.rays){
+    [['a40',st.a40,'40'],['a10',st.a10,'10']].forEach(([k,val,sub],i)=>{
+      const R=62+i*26, d=arcPts(apex,R,0,val);
+      put(`<path class="el arc" d="${d}" data-key="${k}"/>`);
+      const lp=polar(apex,R+15,val/2);
+      put(`<text class="el t-tech" x="${n(lp.x)}" y="${n(lp.y)}" text-anchor="middle" dominant-baseline="middle" data-key="${k}">α<tspan class="sub" dy="3">${sub}</tspan></text>`);
+      hit(`<path class="hit" d="${d}" data-key="${k}" data-tip="α${sub} = ${fmt(val,1)}° от оси дробилки"/>`);
+    });
+    const a2 = phiOf(G.cone.pts[4]);
+    const d2 = arcPts(apex,114,0,a2);
+    put(`<path class="el arc" d="${d2}" data-key="t2"/>`);
+    const lp2=polar(apex,130,a2/2);
+    put(`<text class="el t-tech" x="${n(lp2.x)}" y="${n(lp2.y)}" text-anchor="middle" dominant-baseline="middle" data-key="t2">α<tspan class="sub" dy="3">2</tspan></text>`);
+    hit(`<path class="hit" d="${d2}" data-key="t2" data-tip="α2 = ${fmt(a2,1)}° — угол на нижнюю точку конуса"/>`);
+  }
+
+  /* ── 3.8 Размеры D/2 и h ── */
+  if(layers.dims){
+    const p2=C[4];
+    // уровневые штриховые линии по точкам конуса
+    C.forEach((p,i)=> put(`<line class="el lvl" x1="${n(p.x)}" y1="${n(p.y)}" x2="${n(apex.x+24)}" y2="${n(p.y)}" data-key="${i===0?'a10':KEYS_C[i-1]}"/>`));
+    // h
+    const hx = apex.x - 74;
+    put(`<line class="el dim" x1="${n(hx)}" y1="${n(apex.y)}" x2="${n(hx)}" y2="${n(p2.y)}" marker-start="url(#ar)" marker-end="url(#ar)" data-key="dim-h"/>`);
+    put(`<line class="el dim thin" x1="${n(apex.x)}" y1="${n(apex.y)}" x2="${n(hx-8)}" y2="${n(apex.y)}" data-key="dim-h"/>`);
+    put(`<line class="el dim thin" x1="${n(p2.x)}" y1="${n(p2.y)}" x2="${n(hx-8)}" y2="${n(p2.y)}" data-key="dim-h"/>`);
+    put(`<text class="el t-tech" x="${n(hx-7)}" y="${n((apex.y+p2.y)/2)}" text-anchor="end" dominant-baseline="middle" data-key="dim-h">h</text>`);
+    const hRaw = G.cone.pts[4].y;
+    hit(`<line class="hit" x1="${n(hx)}" y1="${n(apex.y)}" x2="${n(hx)}" y2="${n(p2.y)}" data-key="dim-h" data-tip="h = ${fmt(hRaw,0)} мм"/>`);
+    // D/2
+    const dy = p2.y + 42;
+    put(`<line class="el dim" x1="${n(p2.x)}" y1="${n(dy)}" x2="${n(apex.x)}" y2="${n(dy)}" marker-start="url(#ar)" marker-end="url(#ar)" data-key="dim-d"/>`);
+    put(`<line class="el dim thin" x1="${n(p2.x)}" y1="${n(p2.y)}" x2="${n(p2.x)}" y2="${n(dy+8)}" data-key="dim-d"/>`);
+    put(`<text class="el t-tech" x="${n((p2.x+apex.x)/2)}" y="${n(dy-7)}" text-anchor="middle" data-key="dim-d">D / 2</text>`);
+    const dRaw = -G.cone.pts[4].x;
+    hit(`<line class="hit" x1="${n(p2.x)}" y1="${n(dy)}" x2="${n(apex.x)}" y2="${n(dy)}" data-key="dim-d" data-tip="D/2 = ${fmt(dRaw,0)} мм"/>`);
+  }
+
+  /* ── 3.9 Описательные подписи ── */
+  if(showDesc){
+    const LX = 214, BRX = 240, RX = 928;
+
+    // правая колонка — фиксированные уровни
+    const lv = (f)=> AREA.y + AREA.h*f;
+    const rights = [
+      { y:lv(0.30), x:apex.x,                     text:'Ось дробилки', key:'axis' },
+      { y:lv(0.56), x:apex.x + (lv(0.56)-apex.y)*Math.tan(st.theta*D2R)*-1, text:'Ось конуса', key:'theta' },
+      { y:lv(0.80), x:null,                        text:'Броня конуса', key:'cone' }
+    ];
+    rights.forEach(r=>{
+      let x = r.x;
+      if(r.text==='Броня конуса'){ x = xAtY(C, r.y); if(x===null) x = C[3].x; }
+      put(`<polyline class="el hair" points="${n(x)},${n(r.y)} ${n(RX-10)},${n(r.y)}" data-key="${r.key}"/>`);
+      put(`<line class="el line thin" x1="${n(RX-10)}" y1="${n(r.y)}" x2="${n(RX+118)}" y2="${n(r.y)}" data-key="${r.key}"/>`);
+      put(`<text class="el t-desc" x="${n(RX-6)}" y="${n(r.y-7)}" data-key="${r.key}">${r.text}</text>`);
+      hit(`<rect class="hitfill" x="${n(RX-8)}" y="${n(r.y-21)}" width="130" height="20" data-key="${r.key}" data-tip="${r.text}"/>`);
+    });
+
+    // точка подвеса
+    put(`<line class="el line thin" x1="${n(apex.x+6)}" y1="${n(apex.y)}" x2="${n(RX+118)}" y2="${n(apex.y)}" data-key="apex"/>`);
+    put(`<text class="el t-desc" x="${n(RX-6)}" y="${n(apex.y-7)}" data-key="apex">Точка подвеса</text>`);
+    hit(`<rect class="hitfill" x="${n(RX-8)}" y="${n(apex.y-21)}" width="140" height="20" data-key="apex" data-tip="Точка подвеса — начало отсчёта всех лучей"/>`);
+
+    // левая колонка: броня чаши + зоны
+    const bandY = Math.min(B[0].y, AREA.y+40) - 46;
+    const mid01 = { x:(B[0].x+B[1].x)/2, y:(B[0].y+B[1].y)/2 };
+    put(`<polyline class="el hair" points="${n(LX+8)},${n(bandY-4)} ${n(LX+118)},${n(bandY-4)} ${n(mid01.x-4)},${n(mid01.y-4)}" data-key="bowl"/>`);
+    put(`<text class="el t-desc" x="${n(LX)}" y="${n(bandY)}" text-anchor="end" data-key="bowl">Броня чаши</text>`);
+    hit(`<rect class="hitfill" x="${n(LX-96)}" y="${n(bandY-14)}" width="104" height="19" data-key="bowl" data-tip="Броня чаши — неподвижный профиль камеры"/>`);
+
+    const zones = [
+      { t:'Зона входа',      y1:B[0].y, y2:B[1].y, key:'n40' },
+      { t:'Зоны дробления',  y1:B[1].y, y2:B[3].y, key:'n41' },
+      { t:'Зона калибровки', y1:B[3].y, y2:B[4].y, key:'n4i' }
+    ];
+    zones.forEach(z=>{
+      put(`<path class="el line thin" d="${bracket(BRX, z.y1+3, z.y2-3, 9)}" data-key="${z.key}"/>`);
+      put(`<text class="el t-desc" x="${n(LX)}" y="${n((z.y1+z.y2)/2+4)}" text-anchor="end" data-key="${z.key}">${z.t}</text>`);
+      hit(`<rect class="hitfill" x="${n(LX-120)}" y="${n((z.y1+z.y2)/2-11)}" width="128" height="20" data-key="${z.key}" data-tip="${z.t}"/>`);
+    });
+  }
+
+  svg.innerHTML =
+    `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+       <path d="M0,1 L10,5 L0,9 z" fill="#111"/></marker></defs>` +
+    `<rect x="0" y="0" width="1180" height="840" fill="var(--paper)"/>` +
+    out.join('') + `<g id="hits">` + hits.join('') + `</g>`;
+
+  updateCalc(G);
+}
+
+/* ═══════════════ 4. ВЫЧИСЛЯЕМЫЕ ЗНАЧЕНИЯ ═══════════════ */
+function updateCalc(G){
+  const p2 = G.cone.pts[4];
+  const rows = [
+    ['<i>D</i> / 2', fmt(-p2.x,0)+' мм'],
+    ['<i>h</i>', fmt(p2.y,0)+' мм'],
+    ['<i>α</i><sub>2</sub>', fmt(phiOf(p2),1)+'°'],
+    ['<i>S</i><sub>0</sub> — выходная щель', fmt(Math.hypot(G.bowl.pts[4].x-p2.x, G.bowl.pts[4].y-p2.y),0)+' мм']
+  ];
+  document.getElementById('calc-main').innerHTML =
+    rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  const mk = (pts,names)=> pts.map((p,i)=>
+    `<tr><td><i>r</i><sub>${names[i]}</sub></td><td>${fmt(Math.hypot(p.x,p.y),0)}</td></tr>`).join('');
+  document.getElementById('calc-r1').innerHTML =
+    `<tr><td colspan="2" style="border:0;padding-top:0;color:#4a4a4a">Броня чаши, мм</td></tr>` + mk(G.bowl.pts, NAMES_B);
+  document.getElementById('calc-r2').innerHTML =
+    `<tr><td colspan="2" style="border:0;padding-top:0;color:#4a4a4a">Броня конуса, мм</td></tr>` + mk(G.cone.pts, NAMES_C);
+}
+
+/* ═══════════════ 5. ПАНЕЛЬ ═══════════════ */
+const fieldsHost = document.getElementById('fields');
+fieldsHost.innerHTML = GROUPS.map(g=>
+  `<div class="sec"><h2>${g.title}</h2>` +
+  g.rows.map(r=>
+    `<div class="row" data-key="${r.key}">` +
+    r.f.map(([id,lab])=>
+      `<div class="fld"><label for="f-${id}">${lab}</label>
+       <input type="number" step="0.1" id="f-${id}" data-id="${id}" value="${st[id]}"></div>`
+    ).join('') + `</div>`
+  ).join('') + `</div>`
+).join('') +
+`<div class="sec"><h2>Направление построения</h2>
+   <div class="layers"><label><input type="checkbox" id="f-invert"> <span>Инвертировать направление β</span></label></div>
+ </div>`;
+
+fieldsHost.addEventListener('input', e=>{
+  const t=e.target;
+  if(t.id==='f-invert'){ st.invert=t.checked; render(); return; }
+  const id=t.dataset.id; if(!id) return;
+  const v=parseFloat(t.value);
+  if(!isNaN(v)){ st[id]=v; render(); }
+});
+
+/* режимы и слои */
+const LY = { zones:'ly-zones', rays:'ly-rays', arcs:'ly-arcs', gaps:'ly-gaps', dims:'ly-dims' };
+function syncLayerBoxes(){ for(const k in LY) document.getElementById(LY[k]).checked = layers[k]; }
+function applyPreset(m){
+  mode = m;
+  if(m==='normal') Object.assign(layers,{zones:true, rays:false, arcs:false, gaps:false, dims:true});
+  else             Object.assign(layers,{zones:false, rays:true,  arcs:true,  gaps:true,  dims:false});
+  syncLayerBoxes(); render();
+}
+document.getElementById('modes').addEventListener('change', e=>{
+  if(e.target.name==='mode') applyPreset(e.target.value);
+});
+document.getElementById('layers').addEventListener('change', e=>{
+  for(const k in LY) if(e.target.id===LY[k]){ layers[k]=e.target.checked; render(); }
+});
+
+/* ═══════════════ 6. ПОДСВЕТКА В ОБЕ СТОРОНЫ ═══════════════ */
+let activeKey = null;
+function highlight(key){
+  if(key===activeKey) return;
+  activeKey = key;
+  svg.querySelectorAll('.on').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.row.row-on').forEach(el=>el.classList.remove('row-on'));
+  if(!key){ svg.classList.remove('hl'); return; }
+  svg.classList.add('hl');
+  svg.querySelectorAll(`.el[data-key="${key}"]`).forEach(el=>el.classList.add('on'));
+  document.querySelectorAll(`.row[data-key="${key}"]`).forEach(el=>el.classList.add('row-on'));
+}
+function showTip(text, x, y){
+  tipEl.textContent = text;
+  tipEl.style.left = x+'px';
+  tipEl.style.top  = y+'px';
+  tipEl.classList.add('show');
+}
+function hideTip(){ tipEl.classList.remove('show'); }
+
+const stage = svg.parentElement;
+svg.addEventListener('mousemove', e=>{
+  const t = e.target.closest('[data-key]');
+  if(!t){ highlight(null); hideTip(); return; }
+  highlight(t.getAttribute('data-key'));
+  const tip = t.getAttribute('data-tip');
+  if(tip){
+    const r = stage.getBoundingClientRect();
+    showTip(tip, e.clientX-r.left, e.clientY-r.top-6);
+  } else hideTip();
+});
+svg.addEventListener('mouseleave', ()=>{ highlight(null); hideTip(); });
+
+fieldsHost.addEventListener('mouseover', e=>{
+  const r = e.target.closest('.row');
+  highlight(r ? r.getAttribute('data-key') : null);
+});
+fieldsHost.addEventListener('mouseleave', ()=> highlight(null));
+fieldsHost.addEventListener('focusin', e=>{
+  const r = e.target.closest('.row');
+  if(r) highlight(r.getAttribute('data-key'));
+});
+
+/* старт */
+document.getElementById('f-invert').checked = st.invert;
+syncLayerBoxes();
+render();
+})();
+</script>
+</body>
+</html>

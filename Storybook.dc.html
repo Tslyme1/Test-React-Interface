@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="_ds/industry-66d27308-3d18-45af-a0fd-c391fc771079/_ds_bundle.js"></script>
+<style>
+  body{margin:0;background:#fff;-webkit-font-smoothing:antialiased}
+  :root,body{--color-surface:#fff;--color-bg:#fff}
+  .card,.dialog,.table,.input{background:#fff}
+  .btn,.input,.card,.dialog,.tag,select,textarea,.seg,.seg-opt,.sel-menu,.sel-box,[class*="card"],.dropdown-menu{border-radius:4px}
+  .btn-icon{border-radius:4px}
+  table.table,.table th,.table td,.table tr{border-radius:0}
+  .btn{min-height:38px;padding-left:14px;padding-right:14px}
+  .btn-icon{min-height:34px;min-width:34px;padding-left:0;padding-right:0}
+  select.input{appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:30px;text-overflow:ellipsis}
+  .input,input.input,button.input,select.input,textarea.input{font-family:var(--font-body) !important;font-size:14px !important;line-height:1.35}
+  input.input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(.55) brightness(1) contrast(.6);opacity:.75}
+  .card.elev-md .corner{display:none}
+  .float-field .input{padding-top:14px}
+  .float-label{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--color-neutral-500);pointer-events:none;transition:top .15s ease,font-size .15s ease,transform .15s ease;background:var(--color-surface);padding:0 3px;line-height:1.2}
+  .float-field .input:focus + .float-label,.float-field .input:not(:placeholder-shown) + .float-label{top:0;font-size:10.5px;transform:translateY(-50%)}
+  .seg-opt[aria-selected="true"]{background:var(--color-accent);color:var(--color-bg)}
+  .menu-row:hover{background:color-mix(in srgb, var(--color-neutral-100) 55%, #fff)}
+  .proj-table tbody tr:hover td{background:color-mix(in srgb, var(--color-neutral-100) 55%, #fff)}
+  .sb-tile{border:1px solid var(--color-divider);padding:20px;display:flex;flex-direction:column;gap:10px}
+  .sb-tile-label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--color-neutral-500)}
+  .sb-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .sb-swatch{width:64px;height:44px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-family:ui-monospace,Menlo,monospace}
+  .sb-icon{display:inline-flex;flex-shrink:0}
+</style>
+</helmet>
+
+<div style="max-width:1200px;margin:0 auto;padding:48px 32px 120px;font-family:var(--font-body);color:var(--color-text)">
+
+  <header style="margin-bottom:48px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:34px">Стори­бук — Дробилки КМД-КСД</div>
+    <div style="color:var(--color-neutral-600);font-size:14.5px;max-width:720px;margin-top:8px;line-height:1.5">Каталог всех атомарных элементов интерфейса приложения — единый визуальный язык на токенах дизайн-системы Industry. Использовать как источник правды при добавлении новых экранов: не изобретать новые кнопки/поля/подложки, компоновать из перечисленного ниже. Иконки — те же inline-SVG (Lucide, stroke-width 1.5), что в приложении.</div>
+  </header>
+
+  <!-- ============ TOKENS ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Токены</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Цвет, тип, отступы — берутся из styles.css, не хардкодятся.</div>
+    <div class="sb-row" style="margin-bottom:20px">
+      <div class="sb-swatch" style="background:var(--color-accent-900)">900</div>
+      <div class="sb-swatch" style="background:var(--color-accent-700)">700</div>
+      <div class="sb-swatch" style="background:var(--color-accent)">accent</div>
+      <div class="sb-swatch" style="background:var(--color-accent-300);color:var(--color-text)">300</div>
+      <div class="sb-swatch" style="background:var(--color-accent-100);color:var(--color-text)">100</div>
+      <div class="sb-swatch" style="background:var(--color-neutral-900)">900</div>
+      <div class="sb-swatch" style="background:var(--color-neutral-600)">600</div>
+      <div class="sb-swatch" style="background:var(--color-neutral-300);color:var(--color-text)">300</div>
+      <div class="sb-swatch" style="background:var(--color-neutral-100);color:var(--color-text)">100</div>
+    </div>
+    <div class="sb-row">
+      <div style="font-family:var(--font-heading);font-weight:700;font-size:26px">Barlow Condensed — заголовки</div>
+    </div>
+    <div class="sb-row" style="margin-top:4px">
+      <div style="font-family:var(--font-body);font-size:14px">Barlow — основной текст, 14px базовый размер полей и таблиц</div>
+    </div>
+  </section>
+
+  <!-- ============ ATOMS: ICONS ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Атомы — Иконки</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Набор Lucide, stroke-width 1.5, как в this.icon(name,size). Ниже — используемые в примерах storybook.</div>
+    <div class="sb-tile">
+      <div class="sb-row" style="gap:24px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg><span class="sb-tile-label">chevronDown</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="sb-tile-label">settings</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><span data-icon="slidersHorizontal"></span><span class="sb-tile-label">slidersHorizontal</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="sb-tile-label">plus</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span class="sb-tile-label">x</span></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span class="sb-tile-label">check</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ATOMS: BUTTONS ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Атомы — Кнопки</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Единственная заполненная кнопка — btn-primary. Остальные — контурные/прозрачные.</div>
+    <div class="sb-tile">
+      <div class="sb-row">
+        <button class="btn btn-primary">Продолжить</button>
+        <button class="btn btn-secondary">Отмена</button>
+        <button class="btn btn-ghost">Ghost</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+        <button class="btn btn-icon btn-ghost" title="Иконка"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+        <button class="btn btn-secondary" style="box-shadow:none">Активен (счётчик фильтров)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ATOMS: TAGS ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Атомы — Теги</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Проектные статусы: Черновик / Рабочий / Архив + произвольные пользовательские цвета.</div>
+    <div class="sb-tile">
+      <div class="sb-row">
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#f6e3c8">Черновик</span>
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#dbe6f0">Рабочий</span>
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#e4e4e4">Архив</span>
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#dcefd6">Пользовательский</span>
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#f0dbe0">Пользовательский</span>
+        <span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#e2dcf0">Пользовательский</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ATOMS: INPUTS ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Атомы — Поля ввода</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Один класс .input для text/date/select-триггера. Плавающая подпись — для полей без готового значения по умолчанию (название проекта, заказчик).</div>
+    <div class="sb-tile">
+      <div class="sb-row">
+        <input class="input" type="text" placeholder="Обычное поле" style="width:200px;height:38px;box-sizing:border-box">
+        <input class="input" type="date" style="width:170px;height:38px;box-sizing:border-box">
+        <div class="float-field" style="position:relative;width:220px">
+          <input class="input" placeholder=" " style="height:38px;width:100%;box-sizing:border-box">
+          <label class="float-label">Название проекта</label>
+        </div>
+        <div class="float-field" style="position:relative;width:220px">
+          <input class="input" placeholder=" " value="КМД-1750Т7" style="height:38px;width:100%;box-sizing:border-box">
+          <label class="float-label">Название проекта</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MOLECULES: SELECT / DROPDOWN ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Молекулы — Выпадающие списки</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Единый компонент SelectBox: одиночный/множественный выбор, поиск, заголовок с доп.действием (шестерёнка), футер («+Добавить»), группы-заголовки.</div>
+    <div class="sb-tile">
+      <div class="sb-row" style="align-items:flex-start">
+        <div style="width:190px">
+          <button class="input" style="width:100%;height:38px;box-sizing:border-box;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;background:var(--color-surface)">
+            <span style="flex:1;color:var(--color-neutral-600)">Дробилка</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-neutral-500)"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <div class="card elev-md sel-menu" style="position:relative;width:230px;padding:6px">
+          <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 8px;border-bottom:1px solid var(--color-divider);margin-bottom:4px">
+            <span style="flex:1;font-weight:600;font-size:13px">Тег</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-neutral-500)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <input type="checkbox">
+          </div>
+          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--color-neutral-500);padding:8px 8px 3px;font-weight:600">Группа</div>
+          <div class="menu-row" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:4px;cursor:pointer">
+            <span style="flex:1">Рабочий</span><input type="checkbox" readonly>
+          </div>
+          <div class="menu-row" style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:4px;cursor:pointer">
+            <span style="flex:1">Архив</span><input type="checkbox" checked readonly>
+          </div>
+          <div class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:7px;font-size:12.5px;padding:7px 8px;margin:4px 0 0;height:33px;box-sizing:border-box;border-top:1px solid var(--color-divider);border-radius:0;color:var(--color-neutral-600)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Добавить</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MOLECULES: SEGMENTED / RADIO MENU ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Молекулы — Переключатели</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Сегментированный контрол для 2-3 взаимоисключающих опций; чекбоксы справа — для меню-настроек (режим/слои/дельта).</div>
+    <div class="sb-tile">
+      <div class="sb-row">
+        <div class="seg" style="display:inline-flex;font-size:12.5px">
+          <div class="seg-opt" aria-selected="true" style="padding:6px 12px;cursor:pointer">Инженерный</div>
+          <div class="seg-opt" style="padding:6px 12px;cursor:pointer">Упрощённый</div>
+        </div>
+        <div class="card elev-md" style="position:relative;width:220px;padding:10px;display:flex;flex-direction:column;gap:2px">
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:7px 4px;border-radius:4px" class="menu-row">
+            <span>Показывать изменения</span><input type="checkbox" checked readonly>
+          </label>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;padding:7px 4px;border-radius:4px" class="menu-row">
+            <span>Не показывать изменения</span><input type="checkbox" readonly>
+          </label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORGANISMS: FILTER BAR ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Организмы — Строка фильтров</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Порядок закреплён: Дробилка → Заказчик → Тег → Дата → Исполнитель → поиск → «Фильтры».</div>
+    <div class="sb-tile">
+      <div class="sb-row">
+        <button class="input" style="width:150px;height:38px;box-sizing:border-box;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;color:var(--color-neutral-600)">Дробилка<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button class="input" style="width:140px;height:38px;box-sizing:border-box;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;color:var(--color-neutral-600)">Заказчик<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button class="input" style="width:140px;height:38px;box-sizing:border-box;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;color:var(--color-neutral-600)">Тег<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <input class="input" placeholder="Дата" style="width:140px;height:38px;box-sizing:border-box;color:var(--color-neutral-600)">
+        <button class="input" style="width:150px;height:38px;box-sizing:border-box;display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer;color:var(--color-neutral-600)">Исполнитель<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <input class="input" placeholder="Поиск" style="flex:1;min-width:140px;height:38px;box-sizing:border-box">
+        <button class="btn btn-ghost" style="height:38px;box-sizing:border-box;display:flex;align-items:center;gap:7px"><span data-icon="slidersHorizontal"></span>Фильтры</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORGANISMS: TABLE ROW ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Организмы — Таблица проектов</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Пустое значение везде — «—», text-muted 12px. Последняя строка без нижней границы.</div>
+    <div class="sb-tile" style="padding:0">
+      <table class="table proj-table" style="width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0">
+        <thead><tr>
+          <th style="padding:10px 12px;border-bottom:1px solid var(--color-divider)">Дробилка</th>
+          <th style="padding:10px 12px;border-bottom:1px solid var(--color-divider)">Заказчик</th>
+          <th style="padding:10px 12px;border-bottom:1px solid var(--color-divider)">Тег</th>
+          <th style="padding:10px 12px;border-bottom:1px solid var(--color-divider)">Дата</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="padding:12px">КМД-1750Т7-Д</td><td style="padding:12px"><span class="text-muted" style="font-size:12px">—</span></td><td style="padding:12px"><span style="display:inline-flex;align-items:center;padding:3px 9px;font-size:12.5px;background:#dbe6f0">Рабочий</span></td><td style="padding:12px;border-bottom:none">14.03.2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ORGANISMS: STEPPER ============ -->
+  <section style="margin-bottom:56px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Организмы — Степпер этапов</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Дробилка → Руда → Продукт. Кружок с номером/галкой + соединительная линия.</div>
+    <div class="sb-tile">
+      <div class="sb-row" style="gap:2px">
+        <span style="width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--color-accent-700);color:#fff">1</span>
+        <span style="font-size:13px;font-weight:600;color:var(--color-accent-700);margin-right:10px">Дробилка</span>
+        <span style="width:14px;height:1px;background:var(--color-accent);display:inline-block"></span>
+        <span style="width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--color-neutral-200);color:var(--color-neutral-600);margin-left:10px">2</span>
+        <span style="font-size:13px;color:var(--color-text)">Руда</span>
+        <span style="width:14px;height:1px;background:var(--color-neutral-300);display:inline-block"></span>
+        <span style="width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--color-neutral-200);color:var(--color-neutral-600);margin-left:10px">3</span>
+        <span style="font-size:13px;color:var(--color-text)">Продукт</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORGANISMS: CARDS & MODAL ============ -->
+  <section style="margin-bottom:16px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:22px;margin-bottom:4px">Организмы — Карточки и модалки</div>
+    <div style="color:var(--color-neutral-600);font-size:13px;margin-bottom:16px">Blueprint-карточки с регистрационными метками; модалки — тень elev-md/lg, скруглённые 4px, плавное появление/закрытие.</div>
+    <div class="sb-row" style="align-items:flex-start">
+      <div class="card blueprint elev-sm" style="width:220px;padding:16px;position:relative">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker" style="font-size:11px;text-transform:uppercase;color:var(--color-neutral-500);margin-bottom:4px">Проект</div>
+        <div class="card-title" style="font-family:var(--font-heading);font-weight:600;font-size:16px">КМД-1750Т7-Д</div>
+        <div class="card-body" style="font-size:12.5px;color:var(--color-neutral-600);margin-top:6px">Коркино, железистые кварциты</div>
+      </div>
+      <div class="dialog" style="width:280px;background:var(--color-surface);box-shadow:var(--shadow-md);padding:18px">
+        <div class="dialog-title" style="font-family:var(--font-heading);font-weight:700;font-size:18px;margin-bottom:10px">Удалить тег?</div>
+        <div style="font-size:13px;color:var(--color-neutral-600);margin-bottom:16px">Будет снят с 3 проектов.</div>
+        <div class="sb-row" style="justify-content:flex-end">
+          <button class="btn btn-secondary">Отмена</button>
+          <button class="btn btn-primary">Удалить</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  ICONS = {
+    chevronDown: [['polyline', { points: '6 9 12 15 18 9' }]],
+    settings: [['circle', { cx: 12, cy: 12, r: 3 }], ['path', { d: 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z' }]],
+    slidersHorizontal: [['line', { x1: 3, y1: 7, x2: 14, y2: 7 }], ['line', { x1: 18, y1: 7, x2: 21, y2: 7 }], ['circle', { cx: 16, cy: 7, r: 2 }], ['line', { x1: 3, y1: 17, x2: 6, y2: 17 }], ['line', { x1: 10, y1: 17, x2: 21, y2: 17 }], ['circle', { cx: 8, cy: 17, r: 2 }]],
+    x: [['line', { x1: 18, y1: 6, x2: 6, y2: 18 }], ['line', { x1: 6, y1: 6, x2: 18, y2: 18 }]],
+    plus: [['line', { x1: 12, y1: 5, x2: 12, y2: 19 }], ['line', { x1: 5, y1: 12, x2: 19, y2: 12 }]],
+    check: [['polyline', { points: '20 6 9 17 4 12' }]]
+  };
+  icon(name, size) {
+    const parts = this.ICONS[name];
+    if (!parts) return null;
+    const s = size || 16;
+    return React.createElement('svg', { width: s, height: s, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
+      parts.map((p, i) => React.createElement(p[0], { key: i, ...p[1] }))
+    );
+  }
+  componentDidMount() { this.mountIcons(); }
+  componentDidUpdate() { this.mountIcons(); }
+  mountIcons() {
+    document.querySelectorAll('[data-icon]').forEach((el) => {
+      if (el.dataset.mounted) return;
+      const name = el.getAttribute('data-icon');
+      const size = 15;
+      const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svgEl.setAttribute('width', size); svgEl.setAttribute('height', size); svgEl.setAttribute('viewBox', '0 0 24 24');
+      svgEl.setAttribute('fill', 'none'); svgEl.setAttribute('stroke', 'currentColor'); svgEl.setAttribute('stroke-width', '1.5');
+      svgEl.setAttribute('stroke-linecap', 'round'); svgEl.setAttribute('stroke-linejoin', 'round');
+      (this.ICONS[name] || []).forEach(([tag, attrs]) => {
+        const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+        svgEl.appendChild(node);
+      });
+      el.appendChild(svgEl);
+      el.dataset.mounted = '1';
+    });
+  }
+  renderVals() { return {}; }
+}
+
+</script>
+</body>
+</html>
