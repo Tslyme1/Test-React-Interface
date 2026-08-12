@@ -1,0 +1,9 @@
+.card {
+  width: 100%;
+  max-width: 380px;
+}
+
+.logo {
+  height: 32px;
+  width: auto;
+}
