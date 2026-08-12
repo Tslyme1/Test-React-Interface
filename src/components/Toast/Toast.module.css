@@ -1,0 +1,20 @@
+.host {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-xl);
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  pointer-events: none;
+  animation: toastIn var(--duration-base) var(--easing-standard);
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(var(--space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
