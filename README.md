@@ -4,16 +4,31 @@ React-приложение на дизайн-системе [`@uralmash/design-s
 Перенесено со статического прототипа «Claude Design» (`legacy-prototype/`) — см. ниже, что уже перенесено
 и что осталось.
 
-## Запуск
+## Как посмотреть и потестировать
+
+Три варианта, от самого быстрого к самому «настоящему»:
+
+1. **Ничего не ставить.** Собранная версия текущей ветки лежит в виде Artifact —
+   откройте её прямо в браузере и кликайте: [Дробилки КМД-КСД](https://claude.ai/code/artifact/2b712e1d-ff23-48b6-8eda-c80fa01622b9).
+   Это статический снимок на момент сборки — правки в коде сюда сами не попадают,
+   нужно пересобирать (`npm run build:demo`) и публиковать заново.
+2. **Деплой из GitHub, обновляется на каждый push.** Workflow
+   `.github/workflows/deploy-pages.yml` собирает и выкладывает приложение на
+   GitHub Pages при пуше в `main` или в эту ветку. **Нужно один раз включить
+   вручную:** Settings → Pages → Source → «GitHub Actions» в репозитории —
+   без этого шага Actions выведет ошибку «Pages site failed». После этого адрес —
+   `https://tslyme1.github.io/Test-React-Interface/`, обновляется сам.
+3. **Локально.**
+   ```bash
+   npm install   # подтягивает @uralmash/design-system из GitHub и собирает её (postinstall)
+   npm run dev   # http://localhost:5173
+   ```
 
 ```bash
-npm install   # подтягивает @uralmash/design-system из GitHub и собирает её (postinstall)
-npm run dev   # http://localhost:5173
-```
-
-```bash
-npm run typecheck  # tsc --noEmit
-npm run build       # typecheck + сборка в dist/
+npm run typecheck   # tsc --noEmit
+npm run build        # typecheck + сборка в dist/ (обычный деплой)
+npm run build:demo   # автономная сборка в dist-demo/index.html — один файл,
+                      # без сервера, для Artifact/вложений
 ```
 
 ## Демо-доступы

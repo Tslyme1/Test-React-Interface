@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Stack, Surface, Text } from '@uralmash/design-system';
+import logoSrc from '@/uztm-logo.png';
 import styles from './AuthShell.module.css';
 
 export function AuthShell({ title, children }: { title: string; children: ReactNode }) {
@@ -9,7 +10,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
         <Surface padding="2xl">
           <Stack gap="xl" direction="column">
             <Stack gap="xs" direction="column" align="center">
-              <img className={styles.logo} src="/assets/uztm-logo.png" alt="УЗТМ" />
+              <img className={styles.logo} src={logoSrc} alt="УЗТМ" />
               <Text variant="headingMd" align="center">
                 {title}
               </Text>
