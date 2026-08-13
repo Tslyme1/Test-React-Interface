@@ -80,9 +80,14 @@ export function ProjectsPage({ projects, onOpenProject, onRemoveProject, onNewPr
           <Text variant="headingMd" as="h1">
             Проекты
           </Text>
-          <Button variant="primary" iconStart="plus" onClick={onNewProject}>
-            Новый проект
-          </Button>
+          {/* На пустом экране действие несёт сам EmptyState. Вторая такая же
+              кнопка здесь дала бы две primary на одном экране, а система это
+              запрещает: если их две, главное действие не выбрано. */}
+          {projects.length > 0 ? (
+            <Button variant="primary" iconStart="plus" onClick={onNewProject}>
+              Новый проект
+            </Button>
+          ) : null}
         </Stack>
 
         {projects.length > 0 ? (

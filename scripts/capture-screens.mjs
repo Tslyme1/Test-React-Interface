@@ -159,11 +159,6 @@ const CONCURRENCY = Number(process.env.REVIEW_CONCURRENCY || 2);
 
 const jobs = ['light', 'dark'].flatMap((scheme) => SCREENS.map(([name, go]) => ({ scheme, name, go })));
 
-const contexts = new Map();
-for (const scheme of ['light', 'dark']) {
-  contexts.set(scheme, await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: scheme }));
-}
-
 const queue = [...jobs];
 
 async function worker() {
@@ -171,7 +166,19 @@ async function worker() {
     const job = queue.shift();
     if (!job) return;
 
-    const page = await contexts.get(job.scheme).newPage();
+    /**
+     * Свой контекст на каждый кадр, а не один на тему.
+     * localStorage принадлежит контексту, а не вкладке: пока экраны делили
+     * общий контекст, соседняя джоба успевала записать сессию, и экран входа
+     * снимался уже залогиненным. Изоляция здесь дороже на несколько
+     * миллисекунд и полностью убирает гонку.
+     */
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      colorScheme: job.scheme,
+    });
+    const page = await context.newPage();
+
     try {
       await job.go(page);
       // Кадр берётся после успокоения анимаций: панель и модалка выезжают.
@@ -183,14 +190,13 @@ async function worker() {
       console.log(`✗ ${job.name}-${job.scheme}: ${String(e).split('\n')[0]}`);
       await page.screenshot({ path: `${OUT}/${job.name}-${job.scheme}-FAILED.png` }).catch(() => {});
     } finally {
-      await page.close();
+      await context.close();
     }
   }
 }
 
 await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-for (const context of contexts.values()) await context.close();
 await browser.close();
 
 // Сервер, поднятый этим скриптом, им же и гасится — иначе он останется
