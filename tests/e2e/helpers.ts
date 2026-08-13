@@ -74,14 +74,15 @@ export type NewProject = {
   ore: string;
 };
 
+/** Значения берутся из настоящего каталога — выдуманных названий машин здесь нет. */
 export const SAMPLE_PROJECT: NewProject = {
   name: 'Тестовый проект',
   customer: 'ЕВРАЗ КГОК',
-  crusher: 'КСД-1750Т',
-  ore: 'Магнетитовая руда',
+  crusher: 'КСД-2200Т',
+  ore: 'Костомукшская',
 };
 
-/** Заполняет и отправляет модалку нового проекта. Модалка должна быть уже открыта. */
+/** Заполняет модалку нового проекта. Модалка должна быть уже открыта. */
 export async function fillNewProjectForm(page: Page, project = SAMPLE_PROJECT) {
   const dialog = page.getByRole('dialog');
 
@@ -90,11 +91,13 @@ export async function fillNewProjectForm(page: Page, project = SAMPLE_PROJECT) {
   await dialog.getByRole('button', { name: /Заказчик/ }).click();
   await page.getByRole('option', { name: project.customer }).click();
 
-  await dialog.getByRole('button', { name: /Дробилка/ }).click();
-  await page.getByRole('option', { name: project.crusher }).click();
+  // Дробилка и проба руды выбираются таблицей характеристик: окно
+  // переключается на выбор и возвращается обратно после клика по строке.
+  await dialog.getByRole('button', { name: /Выбрать из каталога/ }).click();
+  await dialog.getByRole('button', { name: project.crusher, exact: true }).click();
 
-  await dialog.getByRole('button', { name: /Проба руды/ }).click();
-  await page.getByRole('option', { name: project.ore }).click();
+  await dialog.getByRole('button', { name: /Выбрать из справочника/ }).click();
+  await dialog.getByRole('button', { name: project.ore, exact: true }).click();
 }
 
 export async function createProject(page: Page, project = SAMPLE_PROJECT) {
