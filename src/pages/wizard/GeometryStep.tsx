@@ -1,7 +1,12 @@
-import { Field, Grid, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
+import { useMemo } from 'react';
+import { Field, Grid, Input, SegmentedControl, Stack, Surface, Text } from '@uralmash/design-system';
 import type { GeomData } from '@/types';
+import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
+import { buildChamberSchemeProps } from './chamberSchemeAdapter';
 
 export function GeometryStep({ data, onChange }: { data: GeomData; onChange: (patch: Partial<GeomData>) => void }) {
+  const scheme = useMemo(() => buildChamberSchemeProps(data), [data]);
+
   return (
     <Stack gap="xl" direction="column">
       <Stack gap="xs" direction="column">
@@ -70,6 +75,17 @@ export function GeometryStep({ data, onChange }: { data: GeomData; onChange: (pa
           value={data.angleUnit}
           onChange={(v) => onChange({ angleUnit: v })}
         />
+      </Stack>
+
+      <Stack gap="sm" direction="column">
+        <Text variant="label">Схема профиля камеры</Text>
+        <Surface level="flat" border padding="md" fullWidth>
+          <ChamberScheme input={scheme.input} calibration={scheme.calibration} />
+        </Surface>
+        <Text variant="caption" color="textMuted">
+          Броня чаши — неподвижный профиль, броня конуса — гирационный. Схема пересчитывается по полям выше; узлы
+          профиля, не вынесенные в форму, взяты из демонстрационных значений методики-источника.
+        </Text>
       </Stack>
     </Stack>
   );

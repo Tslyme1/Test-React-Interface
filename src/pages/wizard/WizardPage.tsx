@@ -58,7 +58,7 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
           ) : stepKey === 'gran' ? (
             <GranStep data={project.data.gran} onChange={patchGran} />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} />
+            <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} />
           )}
         </Box>
       </div>

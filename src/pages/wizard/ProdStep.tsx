@@ -1,7 +1,20 @@
 import { Field, Grid, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { ProdData } from '@/types';
+import { SieveAnalysis } from './SieveAnalysis';
 
-export function ProdStep({ data, onChange }: { data: ProdData; onChange: (patch: Partial<ProdData>) => void }) {
+export type ProdStepProps = {
+  data: ProdData;
+  onChange: (patch: Partial<ProdData>) => void;
+  /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
+  showToast?: (message: string) => void;
+};
+
+export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
+  const applySieveToParams = (nextA0: number, nextVa0: number) => {
+    onChange({ a0: String(nextA0), va0: String(nextVa0) });
+    showToast?.(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
+  };
+
   return (
     <Stack gap="xl" direction="column">
       <Stack gap="xs" direction="column">
@@ -57,6 +70,57 @@ export function ProdStep({ data, onChange }: { data: ProdData; onChange: (patch:
           )}
         </Field>
       </Grid>
+
+      <Stack gap="lg" direction="column">
+        <Stack direction="row" justify="between" align="start" gap="md" wrap>
+          <Stack gap="xs" direction="column">
+            <Text variant="headingSm">Параметры формы куска</Text>
+            <Text variant="bodySm" color="textMuted">
+              a₀ и Va₀ задаются напрямую или получаются из ситового анализа пробы.
+            </Text>
+          </Stack>
+
+          {/* Не `Field` — см. пояснение выше по файлу и в GeometryStep: SegmentedControl
+              не принимает id, обёртка оставила бы подпись без контрола. */}
+          <Stack gap="2xs" direction="column" align="start">
+            <Text variant="label">Способ задания a₀ и Va₀</Text>
+            <SegmentedControl
+              legend="Способ задания a₀ и Va₀"
+              options={[
+                { value: 'direct', label: 'Прямой ввод' },
+                { value: 'sieve', label: 'Ситовый анализ' },
+              ]}
+              value={data.shapeMode}
+              onChange={(v) => onChange({ shapeMode: v })}
+            />
+          </Stack>
+        </Stack>
+
+        {data.shapeMode === 'direct' ? (
+          <Grid columns={2} gap="lg" rowGap="md">
+            <Field label="Среднее относительное длины куска a₀" hint="d̄ / dmax">
+              {(props) => (
+                <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
+              )}
+            </Field>
+
+            <Field label="Коэффициент вариации длины Va₀" hint="σ / d̄">
+              {(props) => (
+                <Input
+                  {...props}
+                  fullWidth
+                  type="number"
+                  step="0.001"
+                  value={data.va0}
+                  onChange={(e) => onChange({ va0: e.target.value })}
+                />
+              )}
+            </Field>
+          </Grid>
+        ) : (
+          <SieveAnalysis rows={data.sieveRows} onRowsChange={(rows) => onChange({ sieveRows: rows })} onApply={applySieveToParams} />
+        )}
+      </Stack>
     </Stack>
   );
 }

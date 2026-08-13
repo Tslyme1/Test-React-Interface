@@ -26,6 +26,10 @@ export function defaultWizardData(): WizardData {
       wk: '12',
       wm: '14',
       kpd: '0.82',
+      a0: '',
+      va0: '',
+      shapeMode: 'direct',
+      sieveRows: [],
     },
   };
 }

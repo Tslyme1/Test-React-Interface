@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Project, WizardData } from '@/types';
+import type { ProdData, Project, WizardData } from '@/types';
+import { defaultWizardData } from '@/data/wizardDefaults';
 
 const STORAGE_KEY = 'uztm-projects';
 
 /**
  * Версия формата хранения. Меняется, когда меняется форма `Project`.
- * Данные другой версии не читаются: показать пустой список честнее, чем
- * подсунуть экрану объект без половины полей и упасть при отрисовке.
+ *
+ * Версия 2 добавила параметры формы куска (`a0`, `va0`, `shapeMode`,
+ * `sieveRows`). Данные версии 1 не выбрасываются, а дополняются значениями
+ * по умолчанию: проекты — это работа пользователя, и терять её из-за того,
+ * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 type StoredPayload = { version: number; projects: Project[] };
 
@@ -26,13 +30,46 @@ function readProjects(): Project[] {
     if (typeof parsed !== 'object' || parsed === null) return [];
 
     const payload = parsed as Partial<StoredPayload>;
-    if (payload.version !== SCHEMA_VERSION) return [];
+    if (!Array.isArray(payload.projects)) return [];
 
-    return Array.isArray(payload.projects) ? payload.projects : [];
+    if (payload.version === SCHEMA_VERSION) return payload.projects;
+    if (payload.version === 1) return payload.projects.map(migrateFromV1);
+
+    // Версия из будущего или мусор — читать нечего.
+    return [];
   } catch {
     // Битое или недоступное хранилище не должно мешать открыть приложение.
     return [];
   }
+}
+
+/** Поля, которых в формате версии 1 ещё не было. */
+type ProdFieldsAddedInV2 = 'a0' | 'va0' | 'shapeMode' | 'sieveRows';
+
+/** Проект версии 1: у параметров продукта нет параметров формы куска. */
+type ProjectV1 = Omit<Project, 'data'> & {
+  data: Omit<WizardData, 'prod'> & { prod: Omit<ProdData, ProdFieldsAddedInV2> };
+};
+
+/**
+ * Дополняет проект версии 1 недостающими полями. Остальное не трогаем:
+ * задача миграции — довести форму до текущей, а не переосмыслить данные.
+ */
+function migrateFromV1(project: ProjectV1): Project {
+  const fallback = defaultWizardData().prod;
+  return {
+    ...project,
+    data: {
+      ...project.data,
+      prod: {
+        ...project.data.prod,
+        a0: fallback.a0,
+        va0: fallback.va0,
+        shapeMode: fallback.shapeMode,
+        sieveRows: fallback.sieveRows,
+      },
+    },
+  };
 }
 
 function writeProjects(projects: Project[]): void {
