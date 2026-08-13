@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { ChamberCalibration, ChamberGeometryInput, Vec2 } from '@/domain/chamberGeometry';
 import { applyCalibration, arcPath, computeChamberGeometry, makeTransform, phiOf } from '@/domain/chamberGeometry';
+import styles from './ChamberScheme.module.css';
 
 export type ChamberSchemeProps = {
   /** Полный набор параметров профиля — как в `st` прототипа-источника. */
@@ -52,6 +53,19 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
   const apex = transform.point({ x: 0, y: 0 });
   const bowlRaw = calibrated.bowl.points;
   const coneRaw = calibrated.cone.points;
+
+  /**
+   * Габариты (D/2, h, S₀) читаются с откалиброванного профиля — там они по
+   * построению равны введённым.
+   *
+   * А вот лучи точек — `r` и `α` — берутся до калибровки. Калибровка тянет
+   * профиль по осям с разными коэффициентами, чтобы попасть в заданные D и H,
+   * и в растянутых координатах длина луча и его угол перестают быть теми
+   * величинами, что задал пользователь: это уже артефакт отрисовки. Подсказка
+   * с числом обязана показывать величину, а не следствие масштаба.
+   */
+  const bowlTrue = geometry.bowl.points;
+  const coneTrue = geometry.cone.points;
   const bowlPts = bowlRaw.map(transform.point);
   const conePts = coneRaw.map(transform.point);
 
@@ -82,11 +96,9 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
   return (
     <svg
       viewBox={`0 0 ${VB.w} ${VB.h}`}
-      width="100%"
-      height="auto"
       role="img"
       aria-label="Схема профиля камеры дробления: броня чаши и броня конуса"
-      className={className}
+      className={[styles.scheme, className].filter(Boolean).join(' ')}
       data-testid="chamber-scheme"
     >
       <defs>
@@ -197,7 +209,7 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
           <text x={p.x - 9} y={p.y + 3} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
             {NAMES_B[i]}
           </text>
-          <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlRaw[i].x, bowlRaw[i].y))} мм · α = ${fmt(phiOf(bowlRaw[i]))}°`}</title>
+          <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlTrue[i].x, bowlTrue[i].y))} мм · α = ${fmt(phiOf(bowlTrue[i]))}°`}</title>
         </g>
       ))}
       {conePts.map((p, i) => (
@@ -207,7 +219,7 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
           <text x={p.x - 8} y={p.y + 14} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
             {NAMES_C[i]}
           </text>
-          <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneRaw[i].x, coneRaw[i].y))} мм · α = ${fmt(phiOf(coneRaw[i]))}°`}</title>
+          <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneTrue[i].x, coneTrue[i].y))} мм · α = ${fmt(phiOf(coneTrue[i]))}°`}</title>
         </g>
       ))}
 
