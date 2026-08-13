@@ -10,7 +10,7 @@ import { createProject, seedSession, watchConsole } from './helpers';
  */
 test.describe('Схема камеры дробления на шаге «Геометрия»', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
     await createProject(page);
   });
 
@@ -117,7 +117,7 @@ test.describe('Схема камеры дробления на шаге «Гео
 
 test.describe('Схема камеры: выносные размеры', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
     await createProject(page);
     await expect(page.getByTestId('chamber-scheme')).toBeVisible();
   });

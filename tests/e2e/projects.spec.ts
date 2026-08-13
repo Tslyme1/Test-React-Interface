@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, createProject, fillNewProjectForm, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, createProject, fillNewProjectForm, removeFirstProject, seedSession, watchConsole } from './helpers';
 
 test.describe('Список проектов', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
   });
 
   test('пустое состояние предлагает создать первый проект', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('Список проектов', () => {
     await createProject(page);
     await page.getByRole('button', { name: 'Проекты' }).click();
 
-    const search = page.getByLabel('Поиск');
+    const search = page.getByLabel('Поиск по проектам');
 
     await search.fill(SAMPLE_PROJECT.customer);
     await expect(page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toBeVisible();
@@ -64,7 +64,7 @@ test.describe('Список проектов', () => {
     await createProject(page);
     await page.getByRole('button', { name: 'Проекты' }).click();
 
-    await page.getByRole('button', { name: 'Удалить проект' }).click();
+    await removeFirstProject(page);
 
     await expect(page.getByText('Проектов пока нет')).toBeVisible();
   });
@@ -83,7 +83,7 @@ test.describe('Список проектов', () => {
   test('удаление проекта тоже сохраняется', async ({ page }) => {
     await createProject(page);
     await page.getByRole('button', { name: 'Проекты' }).click();
-    await page.getByRole('button', { name: 'Удалить проект' }).click();
+    await removeFirstProject(page);
     await expect(page.getByText('Проектов пока нет')).toBeVisible();
 
     await page.reload();
@@ -95,7 +95,7 @@ test.describe('Список проектов', () => {
     await createProject(page);
     await page.getByRole('button', { name: 'Проекты' }).click();
 
-    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher }).click();
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
   });

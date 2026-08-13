@@ -25,13 +25,13 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
   {
     name: 'список проектов — пусто',
     go: async (page) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
     },
   },
   {
     name: 'модалка нового проекта',
     go: async (page) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
       await expect(page.getByRole('dialog')).toBeVisible();
     },
@@ -39,14 +39,14 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
   {
     name: 'визард — шаг геометрии',
     go: async (page) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
     },
   },
   {
     name: 'список проектов — со строкой',
     go: async (page) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Проекты' }).click();
       await expect(page.getByRole('table')).toBeVisible();
@@ -55,7 +55,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
   {
     name: 'панель результата',
     go: async (page) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: 'Смотреть результат' }).click();
@@ -94,7 +94,7 @@ for (const screen of SCREENS) {
 test.describe('Инварианты: тема', () => {
   test('тёмная тема не оставляет прозрачный фон и нечитаемый текст', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
-    await seedSession(page);
+    await seedSession(page, { empty: true });
 
     const { bg, fg } = await page.evaluate(() => {
       const style = getComputedStyle(document.body);

@@ -3,7 +3,7 @@ import { SAMPLE_PROJECT, createProject, seedSession, watchConsole } from './help
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
     await createProject(page);
   });
 
@@ -69,7 +69,7 @@ test.describe('Инженерный визард', () => {
     await field.fill('1900');
 
     await page.getByRole('button', { name: 'Проекты' }).click();
-    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher }).click();
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
   });
@@ -82,7 +82,7 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
 
     await page.reload();
-    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher }).click();
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
@@ -93,7 +93,7 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Проекты' }).click();
-    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher }).click();
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
   });

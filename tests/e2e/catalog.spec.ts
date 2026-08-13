@@ -8,7 +8,7 @@ import { SAMPLE_PROJECT, seedSession, watchConsole } from './helpers';
  */
 test.describe('Выбор дробилки из каталога', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
     await page.getByRole('dialog').getByRole('button', { name: /Выбрать из каталога/ }).click();
     await expect(page.getByRole('table')).toBeVisible();

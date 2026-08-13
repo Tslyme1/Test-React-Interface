@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { createProject, seedSession } from './helpers';
+import { createProject, openTrash, removeFirstProject, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -35,19 +35,19 @@ for (const scheme of ['light', 'dark'] as const) {
     });
 
     test(`02 список пуст @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await shot(page, `02-projects-empty-${scheme}`);
     });
 
     test(`03 новый проект @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await shot(page, `03-new-project-modal-${scheme}`);
     });
 
     test(`04 выбор дробилки @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
       await page.getByRole('dialog').getByRole('button', { name: /Выбрать из каталога/ }).click();
       await expect(page.getByRole('table')).toBeVisible();
@@ -55,7 +55,7 @@ for (const scheme of ['light', 'dark'] as const) {
     });
 
     test(`05 выбор пробы руды @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
       await page.getByRole('dialog').getByRole('button', { name: /Выбрать из справочника/ }).click();
       await expect(page.getByRole('table')).toBeVisible();
@@ -63,14 +63,14 @@ for (const scheme of ['light', 'dark'] as const) {
     });
 
     test(`06 визард геометрия со схемой @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
       await expect(page.getByTestId('chamber-scheme')).toBeVisible();
       await shot(page, `06-wizard-geometry-${scheme}`);
     });
 
     test(`07 панель результата @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: 'Смотреть результат' }).click();
@@ -79,15 +79,31 @@ for (const scheme of ['light', 'dark'] as const) {
     });
 
     test(`08 список с проектом @screens`, async ({ page }) => {
-      await seedSession(page);
+      await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Проекты' }).click();
       await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `08-projects-list-${scheme}`);
     });
 
-    test(`09 ситовый анализ @screens`, async ({ page }) => {
+    test(`10 список с примерами @screens`, async ({ page }) => {
+      // Без `empty` — тот самый экран, который видит пользователь
+      // при первом открытии: заполненный список, фильтры, корзина.
       await seedSession(page);
+      await expect(page.getByRole('table')).toBeVisible();
+      await shot(page, `10-projects-seeded-${scheme}`);
+    });
+
+    test(`11 корзина @screens`, async ({ page }) => {
+      await seedSession(page);
+      await expect(page.getByRole('table')).toBeVisible();
+      await removeFirstProject(page);
+      await openTrash(page);
+      await shot(page, `11-trash-${scheme}`);
+    });
+
+    test(`09 ситовый анализ @screens`, async ({ page }) => {
+      await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Грансостав/ }).click();

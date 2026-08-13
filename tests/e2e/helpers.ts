@@ -47,21 +47,57 @@ export async function login(page: Page, user = DEMO_USER) {
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 }
 
+export type SeedOptions = {
+  user?: typeof DEMO_USER;
+  /**
+   * Начать с пустым списком проектов.
+   *
+   * По умолчанию приложение при первом запуске подсыпает примеры — экран
+   * с ними и надо проверять. Но сценариям про пустое состояние и про
+   * «создал один проект — он единственный в таблице» примеры мешают,
+   * и они объявляют пустоту явно, а не полагаются на побочный эффект.
+   */
+  empty?: boolean;
+};
+
+/** Версия формата хранилища проектов. Должна совпадать с `useProjects`. */
+const PROJECTS_SCHEMA_VERSION = 3;
+
 /**
  * Быстрый вход: сессия кладётся в localStorage до загрузки страницы.
  * Форма входа покрыта отдельным спеком, и прогонять её перед каждым
  * сценарием — платить временем за уже проверенное.
  */
-export async function seedSession(page: Page, user = DEMO_USER) {
-  await page.addInitScript((seeded) => {
-    localStorage.setItem('uztm-session', JSON.stringify(seeded));
-  }, {
-    login: user.login,
-    password: user.password,
-    name: user.name,
-    email: `${user.login}@uztm.ru`,
-    role: 'Инженер',
-  });
+export async function seedSession(page: Page, options: SeedOptions = {}) {
+  const user = options.user ?? DEMO_USER;
+
+  await page.addInitScript(
+    (seeded) => {
+      localStorage.setItem('uztm-session', JSON.stringify(seeded.user));
+
+      // Скрипт выполняется перед КАЖДОЙ загрузкой страницы, включая
+      // `page.reload()`. Записывать пустой список безусловно — значит стирать
+      // то, что тест только что создал, ровно в сценариях про перезагрузку.
+      // Поэтому только когда ключа ещё нет — как и делает само приложение.
+      if (seeded.empty && localStorage.getItem('uztm-projects') === null) {
+        localStorage.setItem(
+          'uztm-projects',
+          JSON.stringify({ version: seeded.version, projects: [], trash: [] })
+        );
+      }
+    },
+    {
+      user: {
+        login: user.login,
+        password: user.password,
+        name: user.name,
+        email: `${user.login}@uztm.ru`,
+        role: 'Инженер',
+      },
+      empty: options.empty ?? false,
+      version: PROJECTS_SCHEMA_VERSION,
+    }
+  );
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
@@ -159,4 +195,22 @@ export async function orphanLabels(page: Page): Promise<string[]> {
 /** Горизонтальная прокрутка страницы — признак съехавшей раскладки. */
 export async function hasHorizontalOverflow(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+}
+
+/**
+ * Удаляет первый проект таблицы через меню строки.
+ *
+ * Прямой кнопки удаления в ячейке больше нет: действия строки собраны
+ * под многоточием, как в прототипе. Удаление мягкое — проект уходит
+ * в корзину, а не исчезает.
+ */
+export async function removeFirstProject(page: Page) {
+  await page.getByRole('button', { name: /^Действия:/ }).first().click();
+  await page.getByRole('button', { name: 'Удалить в корзину' }).click();
+}
+
+/** Открывает окно корзины из дока в правом нижнем углу. */
+export async function openTrash(page: Page) {
+  await page.getByRole('button', { name: /^Корзина:/ }).click();
+  await expect(page.getByRole('dialog', { name: /Корзина/ })).toBeVisible();
 }

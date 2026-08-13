@@ -15,7 +15,7 @@ async function goToProdStep(page: Page) {
 
 test.describe('Ситовый анализ на шаге «Продукт»', () => {
   test.beforeEach(async ({ page }) => {
-    await seedSession(page);
+    await seedSession(page, { empty: true });
     await createProject(page);
     await goToProdStep(page);
   });
