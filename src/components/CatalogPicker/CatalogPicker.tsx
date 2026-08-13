@@ -50,7 +50,16 @@ export function CatalogPicker({
   visibleNames,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<TableSort | null>(null);
+
+  /**
+   * Сортировка по первой характеристике — у дробилок это диаметр конуса,
+   * у проб руды плотность. Без неё справочник открывается в порядке файла,
+   * то есть ни по чему: сравнивать 30 машин глазами проще, когда они уже
+   * выстроены по определяющей величине.
+   */
+  const [sort, setSort] = useState<TableSort | null>(
+    specs.length > 0 ? { key: specs[0].short, direction: 'asc' } : null
+  );
 
   const rows = useMemo(() => {
     const allowed = visibleNames ? new Set(visibleNames) : null;
@@ -100,7 +109,13 @@ export function CatalogPicker({
 
   return (
     <Stack gap="lg" direction="column">
-      <Stack direction="row" gap="lg" align="end" wrap>
+      {/* Колонка, а не ряд. Поле поиска занимает всю ширину, и в ряду фильтр
+          всё равно переносился бы на вторую строку при любой ширине окна —
+          `direction="row"` тут только вводил бы в заблуждение. Разложить их
+          в строку нечем: «расти, но не на всю ширину» в системе не выражается
+          (у `Stack` проп `grow` растягивает сам стек, а не делит место между
+          детьми). Заявка на такой примитив — в систему. */}
+      <Stack direction="column" gap="md">
         <Box fullWidth>
           <Field label="Поиск" hint="По названию или любому значению характеристики">
             {(props) => (

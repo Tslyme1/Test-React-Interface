@@ -114,3 +114,22 @@ test.describe('Схема камеры дробления на шаге «Гео
     await expect(svg.locator('title', { hasText: 'Точка' })).toHaveCount(11);
   });
 });
+
+test.describe('Схема камеры: выносные размеры', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page);
+    await createProject(page);
+    await expect(page.getByTestId('chamber-scheme')).toBeVisible();
+  });
+
+  test('подписи D, h и S₀ совпадают с полями формы', async ({ page }) => {
+    const scheme = page.getByTestId('chamber-scheme');
+
+    // Значения по умолчанию: D = 1750, H = 1200, S0 = 32.
+    await expect(scheme).toContainText('D = 1 750 мм');
+
+    // Меняем диаметр — подпись обязана пойти за полем, а не за чертежом.
+    await page.getByLabel('Диаметр основания D, мм').fill('2200');
+    await expect(scheme).toContainText('D = 2 200 мм');
+  });
+});

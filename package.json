@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "ds:docs": "node scripts/ds-docs.mjs",
     "ds:lint": "node scripts/ds-lint.mjs src",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @screens",
     "test:e2e:ui": "playwright test --ui",
-    "screens": "node scripts/capture-screens.mjs screenshots-review",
+    "screens": "playwright test --grep @screens",
     "check": "npm run typecheck && npm run ds:lint && npm run test:e2e"
   },
   "dependencies": {

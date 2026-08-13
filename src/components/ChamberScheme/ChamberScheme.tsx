@@ -73,21 +73,38 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
   const bottom = AREA.y + AREA.h + 26;
   const coneAxisEnd = { x: apex.x - (bottom - apex.y) * Math.sin(input.theta * (Math.PI / 180)), y: bottom };
 
-  const gapRaw = Math.hypot(bowlRaw[4].x - coneRaw[4].x, bowlRaw[4].y - coneRaw[4].y);
-  const diameterRaw = Math.abs(coneRaw[4].x) * 2;
-  const heightRaw = coneRaw[4].y;
+  /**
+   * Выносные размеры показывают введённые величины, а не измеренные
+   * по чертежу.
+   *
+   * Измерять их по профилю нельзя: калибровка сначала растягивает его
+   * под заданные D и H, а затем сдвигает конус целиком ради S₀ — и после
+   * сдвига конус уже не там, где по нему мерили диаметр. Подпись начинала
+   * противоречить полю формы: в поле 1750, на чертеже 3535,6.
+   *
+   * Замер остаётся запасным вариантом, когда цель не задана.
+   */
+  const gapRaw =
+    calibration?.targetGap0 ?? Math.hypot(bowlRaw[4].x - coneRaw[4].x, bowlRaw[4].y - coneRaw[4].y);
+  const diameterRaw = calibration?.targetDiameter ?? Math.abs(coneRaw[4].x) * 2;
+  const heightRaw = calibration?.targetHeight ?? coneRaw[4].y;
 
+  /**
+   * Залита только зона калибровки — та, где стоит размер S₀, ради которого
+   * на схему и смотрят. Остальные зоны различаются границами и подписями.
+   *
+   * Заливка площадей отсюда убрана намеренно. `surfaceSunken` для зоны
+   * дробления в светлой теме давал едва заметный тон, а в тёмной оказывался
+   * темнее не только схемы, но и фона страницы — зона читалась как дыра
+   * в чертеже. Роль эта описана для шапки таблицы и фона disabled,
+   * а не для площадной заливки, и в двух темах её вес расходится.
+   * Заявка на роль «мягкая заливка области» — в систему; здесь обходимся
+   * без неё, тем более что язык системы и так линейный, а не заливочный.
+   */
   const zones = [
-    { key: 'zone-entry', title: 'Зона входа', poly: [bowlPts[0], bowlPts[1], conePts[1], conePts[0]], fill: 'var(--color-surface)' },
-    {
-      key: 'zone-crush',
-      title: 'Зоны дробления',
-      poly: [bowlPts[1], bowlPts[2], bowlPts[3], conePts[3], conePts[2], conePts[1]],
-      fill: 'var(--color-surface-sunken)',
-    },
     {
       key: 'zone-cal',
-      title: 'Зона калибровки',
+      title: 'Зона калибровки — здесь задаётся выходная щель S₀',
       poly: [bowlPts[3], bowlPts[4], conePts[4], conePts[3]],
       fill: 'var(--color-accent-subtle)',
     },
