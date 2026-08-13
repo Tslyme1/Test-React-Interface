@@ -44,6 +44,24 @@ const RULES = [
     msg: 'Сырое значение в CSS. Используй var(--space-*) / var(--radius-*) / var(--text-*).',
   },
   {
+    id: 'spacing-margin',
+    scope: CSS,
+    /**
+     * Аналог правила `spacing-margin` из кита, переписанный под CSS Modules:
+     * в оригинале оно ловит Tailwind-классы (`mt-4`), которых здесь нет.
+     *
+     * `0` и `auto` остаются легальными: это сброс и центрирование, а не
+     * расстояние между соседями. Отрицательные значения тоже ловятся —
+     * ими обычно чинят то, что должен был решить родительский Stack.
+     *
+     * `\s*` в начале проверки не лишний: без него движок откатывает
+     * предыдущий `\s*`, встаёт на пробел перед значением и проскакивает
+     * мимо исключения — `margin: 0` начинает считаться нарушением.
+     */
+    re: /(?:^|[;{\s])margin(?:-(?:top|right|bottom|left|inline|block))?\s*:\s*(?!\s*(?:(?:0(?:px|rem|em|%)?|auto)\s*)+(?:[;}]|$))[^;}]+/g,
+    msg: 'Margin для расстояния между соседями. Используй <Stack gap>.',
+  },
+  {
     id: 'style-object-size',
     scope: CODE,
     re: /\b(?:padding|margin|gap|rowGap|columnGap|fontSize|borderRadius)(?:Top|Right|Bottom|Left|Inline|Block)?\s*:\s*(?:-?\d+(?:\.\d+)?\b|['"`]-?\d)/g,

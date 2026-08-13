@@ -69,6 +69,28 @@ test.describe('Список проектов', () => {
     await expect(page.getByText('Проектов пока нет')).toBeVisible();
   });
 
+  test('проекты переживают перезагрузку страницы', async ({ page }) => {
+    await createProject(page);
+    await page.getByRole('button', { name: 'Проекты' }).click();
+    await expect(page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toBeVisible();
+
+    await page.reload();
+
+    await expect(page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toBeVisible();
+    await expect(page.getByText('Проектов пока нет')).toBeHidden();
+  });
+
+  test('удаление проекта тоже сохраняется', async ({ page }) => {
+    await createProject(page);
+    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'Удалить проект' }).click();
+    await expect(page.getByText('Проектов пока нет')).toBeVisible();
+
+    await page.reload();
+
+    await expect(page.getByText('Проектов пока нет')).toBeVisible();
+  });
+
   test('открытие проекта из таблицы ведёт в визард', async ({ page }) => {
     await createProject(page);
     await page.getByRole('button', { name: 'Проекты' }).click();

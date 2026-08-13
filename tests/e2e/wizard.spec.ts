@@ -74,6 +74,20 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
   });
 
+  test('введённые значения и отметка расчёта переживают перезагрузку', async ({ page }) => {
+    // Проверяет, что вложенные данные визарда переживают сериализацию,
+    // а не только верхний уровень записи проекта.
+    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+
+    await page.reload();
+    await page.getByRole('button', { name: 'КСД-1750Т' }).click();
+
+    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+  });
+
   test('посчитанный шаг остаётся посчитанным после возврата', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
