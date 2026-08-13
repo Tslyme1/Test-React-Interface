@@ -2,6 +2,11 @@ node_modules/
 dist/
 dist-demo/
 build/
+
+# Артефакты проверок
+test-results/
+playwright-report/
+screenshots-review/
 .DS_Store
 Thumbs.db
 *.log

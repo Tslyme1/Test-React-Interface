@@ -55,19 +55,22 @@ export function GeometryStep({ data, onChange }: { data: GeomData; onChange: (pa
         </Field>
       </Grid>
 
-      <Field label="Единица измерения углов">
-        {() => (
-          <SegmentedControl
-            legend="Единица измерения углов"
-            options={[
-              { value: 'deg', label: 'Градусы' },
-              { value: 'рад', label: 'Радианы' },
-            ]}
-            value={data.angleUnit}
-            onChange={(v) => onChange({ angleUnit: v })}
-          />
-        )}
-      </Field>
+      {/* Не `Field`: у SegmentedControl свой fieldset с legend, а id он не принимает —
+          обёртка оставила бы <label for> указывающим в пустоту. Видимая подпись
+          повторяет анатомию Field (gap 2xs + Text label), имя для скринридера
+          даёт сам контрол. */}
+      <Stack gap="2xs" direction="column" align="start">
+        <Text variant="label">Единица измерения углов</Text>
+        <SegmentedControl
+          legend="Единица измерения углов"
+          options={[
+            { value: 'deg', label: 'Градусы' },
+            { value: 'рад', label: 'Радианы' },
+          ]}
+          value={data.angleUnit}
+          onChange={(v) => onChange({ angleUnit: v })}
+        />
+      </Stack>
     </Stack>
   );
 }

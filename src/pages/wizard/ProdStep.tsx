@@ -11,19 +11,20 @@ export function ProdStep({ data, onChange }: { data: ProdData; onChange: (patch:
         </Text>
       </Stack>
 
-      <Field label="Тип питания">
-        {() => (
-          <SegmentedControl
-            legend="Тип питания"
-            options={[
-              { value: 'dry', label: 'Сухое' },
-              { value: 'wet', label: 'Влажное' },
-            ]}
-            value={data.feedType}
-            onChange={(v) => onChange({ feedType: v })}
-          />
-        )}
-      </Field>
+      {/* Не `Field` — см. пояснение в GeometryStep: SegmentedControl не принимает id,
+          и обёртка оставила бы подпись без контрола. */}
+      <Stack gap="2xs" direction="column" align="start">
+        <Text variant="label">Тип питания</Text>
+        <SegmentedControl
+          legend="Тип питания"
+          options={[
+            { value: 'dry', label: 'Сухое' },
+            { value: 'wet', label: 'Влажное' },
+          ]}
+          value={data.feedType}
+          onChange={(v) => onChange({ feedType: v })}
+        />
+      </Stack>
 
       <Grid columns={2} gap="lg" rowGap="md">
         <Field label="Минимальная крупность продукта Dmin, мм" required>
