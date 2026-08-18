@@ -50,11 +50,12 @@ jobs:
             test-results/
           retention-days: 7
 
+      # Без ручного поднятия сервера: у `playwright.config.ts` свой `webServer`,
+      # и он уже поднимал и гасил его в шаге E2E. Ручной старт вторым сервером
+      # на тот же порт только мешал — `reuseExistingServer: false` в CI
+      # заставляет Playwright поднимать собственный, и порт оказывался занят.
       - name: Снимки экранов
-        run: |
-          npm run dev -- --host 127.0.0.1 --port 5173 --strictPort &
-          until curl -sS -o /dev/null --max-time 2 http://127.0.0.1:5173/; do sleep 1; done
-          npm run screens
+        run: npm run screens
 
       - name: Выложить снимки
         uses: actions/upload-artifact@v4
