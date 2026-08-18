@@ -11,6 +11,7 @@ import {
   Button,
 } from '@uralmash/design-system';
 import type { User } from '@/types';
+import styles from './AppShell.module.css';
 
 export type AppShellProps = {
   user: User;
@@ -87,9 +88,7 @@ export function AppShell({
         </Popover>
       </AppHeader>
 
-      <Stack direction="column" grow as="main">
-        {children}
-      </Stack>
+      <main className={styles.main}>{children}</main>
     </Stack>
   );
 }

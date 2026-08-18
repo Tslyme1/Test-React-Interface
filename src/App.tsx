@@ -13,7 +13,8 @@ import type { Project } from '@/types';
 
 export function App() {
   const { user, login, logout } = useSession();
-  const { projects, createProject, updateProject, removeProject } = useProjects();
+  const { projects, trash, createProject, updateProject, removeProject, restoreProject, purgeProject } =
+    useProjects();
   const { message, showToast } = useToast();
 
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -52,11 +53,14 @@ export function App() {
         ) : (
           <ProjectsPage
             projects={projects}
+            trash={trash}
             onOpenProject={openProject}
             onRemoveProject={(id) => {
               if (id === activeProjectId) setActiveProjectId(null);
               removeProject(id);
             }}
+            onRestoreProject={restoreProject}
+            onPurgeProject={purgeProject}
             onNewProject={() => setNewProjectOpen(true)}
           />
         )}
@@ -71,6 +75,7 @@ export function App() {
           setNewProjectOpen(false);
           setActiveProjectId(project.id);
           showToast(`Проект «${project.name}» создан`);
+          // Проба руды здесь не спрашивается — её выбирают на шаге «Грансостав».
         }}
       />
 

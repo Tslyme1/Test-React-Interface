@@ -34,6 +34,15 @@ export type GranData = {
 export type FeedType = 'dry' | 'wet';
 
 /** Подмножество параметров шага «Грансостав продукта и усилия». */
+/** Способ задания параметров формы куска. */
+export type ShapeMode = 'direct' | 'sieve';
+
+/** Строка ситовой таблицы: класс крупности вида `-0,5+0,3` и масса в граммах. */
+export type SieveRowData = {
+  cls: string;
+  mass: string;
+};
+
 export type ProdData = {
   feedType: FeedType;
   dMin: string;
@@ -41,6 +50,17 @@ export type ProdData = {
   wk: string;
   wm: string;
   kpd: string;
+  /** Среднее относительное длины куска, d̄/dmax. */
+  a0: string;
+  /** Коэффициент вариации длины, σ/d̄. */
+  va0: string;
+  shapeMode: ShapeMode;
+  /**
+   * Ситовая таблица хранится вместе с проектом, а не живёт в состоянии
+   * экрана: это введённые данные измерений, и из них выводятся a₀ и Va₀.
+   * Потерять их при переходе на соседний шаг — потерять работу.
+   */
+  sieveRows: SieveRowData[];
 };
 
 export type WizardData = {
@@ -56,6 +76,7 @@ export type Project = {
   name: string;
   customer: string;
   crusherName: string;
+  /** Месторождение пробы руды. Пусто, пока проба не выбрана на шаге «Грансостав». */
   ore: string;
   code: string;
   tag: string | null;

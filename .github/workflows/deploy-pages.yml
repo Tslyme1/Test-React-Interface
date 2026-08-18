@@ -17,6 +17,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Полный набор проверок живёт в checks.yml и гоняется на тот же push.
+  # Здесь дублируются только типы и линтер: они дёшевы, а выкладывать
+  # заведомо сломанную сборку не стоит даже ради скорости.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +31,7 @@ jobs:
 
       - run: npm install
       - run: npm run typecheck
+      - run: npm run ds:lint
       - run: npx vite build --base=/${{ github.event.repository.name }}/
 
       - uses: actions/configure-pages@v5

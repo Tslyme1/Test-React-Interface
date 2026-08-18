@@ -1,113 +1,143 @@
 import { useState } from 'react';
-import { Field, Input, Modal, Button, Select, Stack } from '@uralmash/design-system';
-import { CRUSHER_OPTIONS, CUSTOMER_OPTIONS, ORE_OPTIONS } from '@/data/reference';
+import { Button, Field, Input, Modal, SegmentedControl, Select, Stack, Text } from '@uralmash/design-system';
+import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
+import { CRUSHERS, CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
+import { CUSTOMER_OPTIONS } from '@/data/reference';
+import styles from './NewProjectModal.module.css';
 
 export type NewProjectModalProps = {
   open: boolean;
   onClose: () => void;
   defaultExecutor: string;
-  onCreate: (input: { name: string; customer: string; crusherName: string; ore: string; executor: string }) => void;
+  onCreate: (input: { name: string; customer: string; crusherName: string; executor: string }) => void;
 };
 
-export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: NewProjectModalProps) {
-  const [name, setName] = useState('');
-  const [customer, setCustomer] = useState<string | null>(null);
-  const [crusherName, setCrusherName] = useState<string | null>(null);
-  const [ore, setOre] = useState<string | null>(null);
-  const [executor, setExecutor] = useState(defaultExecutor);
+type Family = 'all' | 'КМД' | 'КСД';
 
-  const canCreate = Boolean(name.trim() && customer && crusherName && ore);
+/**
+ * Новый проект начинается с выбора дробилки.
+ *
+ * Не с формы: машина — единственное, без чего расчёта не существует,
+ * и выбирают её сравнением характеристик по столбцам, то есть таблицей
+ * во весь размер окна. Название и заказчик дописываются внизу, рядом
+ * с «Продолжить», — так это устроено и в прототипе.
+ *
+ * Пробы руды здесь нет намеренно: она нужна только на шаге «Грансостав»,
+ * там же и выбирается. Спрашивать её на входе — задерживать создание
+ * проекта ради данных, которые понадобятся через два шага.
+ */
+export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: NewProjectModalProps) {
+  const [crusherName, setCrusherName] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  /**
+   * Название, которое подставили мы. Пока пользователь не переписал его сам,
+   * смена дробилки обновляет подсказку; после ручной правки — уже нет,
+   * иначе выбор другой машины затирал бы введённое имя.
+   */
+  const [suggested, setSuggested] = useState('');
+  const [customer, setCustomer] = useState<string | null>(null);
+  const [family, setFamily] = useState<Family>('all');
+
+  const canCreate = Boolean(crusherName && name.trim() && customer);
 
   const reset = () => {
-    setName('');
-    setCustomer(null);
     setCrusherName(null);
-    setOre(null);
-    setExecutor(defaultExecutor);
+    setName('');
+    setSuggested('');
+    setCustomer(null);
+    setFamily('all');
+  };
+
+  const close = () => {
+    reset();
+    onClose();
+  };
+
+  const pickCrusher = (picked: string) => {
+    setCrusherName(picked);
+    if (!name.trim() || name === suggested) {
+      setName(picked);
+      setSuggested(picked);
+    }
   };
 
   const submit = () => {
-    if (!canCreate || !customer || !crusherName || !ore) return;
-    onCreate({ name: name.trim(), customer, crusherName, ore, executor: executor.trim() || defaultExecutor });
+    if (!canCreate || !crusherName || !customer) return;
+    onCreate({ name: name.trim(), customer, crusherName, executor: defaultExecutor });
     reset();
   };
+
+  const visibleCrushers =
+    family === 'all' ? undefined : CRUSHERS.filter((c) => crusherFamily(c.name) === family).map((c) => c.name);
 
   return (
     <Modal
       open={open}
-      onClose={() => {
-        reset();
-        onClose();
-      }}
+      onClose={close}
       title="Новый проект"
-      size="sm"
+      size="lg"
       footer={
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              reset();
-              onClose();
-            }}
-          >
+        <Modal.Footer
+          aside={
+            <div className={styles.footerFields}>
+              <div className={styles.footerField}>
+                <Field label="Название проекта" required>
+                  {(props) => <Input {...props} fullWidth value={name} onChange={(e) => setName(e.target.value)} />}
+                </Field>
+              </div>
+              <div className={styles.footerField}>
+                <Field label="Заказчик" required>
+                  {(props) => (
+                    <Select
+                      {...props}
+                      fullWidth
+                      options={CUSTOMER_OPTIONS}
+                      value={customer}
+                      onChange={(v) => setCustomer(v as string)}
+                      allowCustom
+                      placeholder="Выберите или введите"
+                    />
+                  )}
+                </Field>
+              </div>
+            </div>
+          }
+        >
+          <Button variant="secondary" onClick={close}>
             Отмена
           </Button>
           <Button variant="primary" disabled={!canCreate} onClick={submit}>
-            Создать проект
+            Продолжить
           </Button>
         </Modal.Footer>
       }
     >
-      <Stack gap="lg" direction="column">
-        <Field label="Название проекта" required>
-          {(props) => <Input {...props} fullWidth value={name} onChange={(e) => setName(e.target.value)} />}
-        </Field>
-
-        <Field label="Заказчик" required>
-          {(props) => (
-            <Select
-              {...props}
-              fullWidth
-              options={CUSTOMER_OPTIONS}
-              value={customer}
-              onChange={(v) => setCustomer(v as string)}
-              allowCustom
-              placeholder="Выберите или введите заказчика"
+      <CatalogPicker
+        specs={CRUSHER_SPECS}
+        items={CRUSHERS}
+        value={crusherName}
+        onPick={pickCrusher}
+        nameLabel="Дробилка"
+        searchPlaceholder="КМД-2200, 2200, 500-655…"
+        visibleNames={visibleCrushers}
+        filter={
+          /* Не `Field`: у SegmentedControl свой fieldset с legend, а id он
+             не принимает — обёртка оставила бы подпись без контрола. */
+          <Stack gap="2xs" direction="column" align="start">
+            <Text variant="label">Семейство</Text>
+            <SegmentedControl
+              legend="Семейство машины"
+              options={[
+                { value: 'all', label: 'Все' },
+                { value: 'КМД', label: 'КМД' },
+                { value: 'КСД', label: 'КСД' },
+              ]}
+              value={family}
+              onChange={setFamily}
             />
-          )}
-        </Field>
-
-        <Field label="Дробилка" required>
-          {(props) => (
-            <Select
-              {...props}
-              fullWidth
-              options={CRUSHER_OPTIONS}
-              value={crusherName}
-              onChange={(v) => setCrusherName(v as string)}
-              searchable
-              placeholder="Выберите дробилку"
-            />
-          )}
-        </Field>
-
-        <Field label="Проба руды" required>
-          {(props) => (
-            <Select
-              {...props}
-              fullWidth
-              options={ORE_OPTIONS}
-              value={ore}
-              onChange={(v) => setOre(v as string)}
-              placeholder="Выберите пробу руды"
-            />
-          )}
-        </Field>
-
-        <Field label="Исполнитель">
-          {(props) => <Input {...props} fullWidth value={executor} onChange={(e) => setExecutor(e.target.value)} />}
-        </Field>
-      </Stack>
+          </Stack>
+        }
+      />
     </Modal>
   );
 }

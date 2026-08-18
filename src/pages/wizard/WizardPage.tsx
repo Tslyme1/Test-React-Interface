@@ -30,6 +30,10 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
   const stepKey = STEP_KEYS[step];
   const calculated = project.calc[step];
 
+  // Шаг «Грансостав» без пробы руды считать нечего: форма ещё закрыта
+  // заглушкой, и активная кнопка расчёта обещала бы результат из пустоты.
+  const ready = stepKey !== 'gran' || Boolean(project.ore);
+
   const steps: Step[] = STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }));
 
   const patchGeom = (patch: Partial<GeomData>) => {
@@ -52,13 +56,21 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
   return (
     <div className={styles.root}>
       <div className={styles.body}>
-        <Box padding="2xl" fullWidth>
+        {/* `paddingX`+`paddingY`, а не `padding` — см. комментарий у `Box`
+            в `ProjectsPage.tsx`: в этой версии компонента одиночный `padding`
+            гасит сам себя. */}
+        <Box paddingX="2xl" paddingY="2xl" fullWidth>
           {stepKey === 'geom' ? (
             <GeometryStep data={project.data.geom} onChange={patchGeom} />
           ) : stepKey === 'gran' ? (
-            <GranStep data={project.data.gran} onChange={patchGran} />
+            <GranStep
+              data={project.data.gran}
+              onChange={patchGran}
+              ore={project.ore}
+              onPickOre={(ore) => onUpdateProject(project.id, { ore })}
+            />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} />
+            <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} />
           )}
         </Box>
       </div>
@@ -72,7 +84,7 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
               Смотреть результат
             </Button>
           ) : (
-            <Button variant="primary" onClick={runCalc}>
+            <Button variant="primary" disabled={!ready} onClick={runCalc}>
               Выполнить расчёт
             </Button>
           )}

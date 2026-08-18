@@ -9,7 +9,13 @@
     "build": "tsc --noEmit && vite build",
     "build:demo": "tsc --noEmit && vite build --config vite.demo.config.ts",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "ds:docs": "node scripts/ds-docs.mjs",
+    "ds:lint": "node scripts/ds-lint.mjs src",
+    "test:e2e": "playwright test --grep-invert @screens",
+    "test:e2e:ui": "playwright test --ui",
+    "screens": "playwright test --grep @screens",
+    "check": "npm run typecheck && npm run ds:lint && npm run test:e2e"
   },
   "dependencies": {
     "@uralmash/design-system": "github:Tslyme1/design-system",
@@ -17,6 +23,8 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^22.20.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
