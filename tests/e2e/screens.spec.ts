@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { createProject, openTrash, removeFirstProject, seedSession } from './helpers';
+import { createProject, fillNewProjectForm, openTrash, pickOre, removeFirstProject, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -39,26 +39,27 @@ for (const scheme of ['light', 'dark'] as const) {
       await shot(page, `02-projects-empty-${scheme}`);
     });
 
-    test(`03 новый проект @screens`, async ({ page }) => {
+    test(`03 новый проект — каталог дробилок @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `03-new-project-modal-${scheme}`);
     });
 
-    test(`04 выбор дробилки @screens`, async ({ page }) => {
+    test(`04 новый проект с выбранной машиной @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
-      await page.getByRole('dialog').getByRole('button', { name: /Выбрать из каталога/ }).click();
-      await expect(page.getByRole('table')).toBeVisible();
-      await shot(page, `04-catalog-crusher-${scheme}`);
+      await fillNewProjectForm(page);
+      await shot(page, `04-new-project-filled-${scheme}`);
     });
 
     test(`05 выбор пробы руды @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
-      await page.getByRole('button', { name: 'Новый проект' }).first().click();
-      await page.getByRole('dialog').getByRole('button', { name: /Выбрать из справочника/ }).click();
-      await expect(page.getByRole('table')).toBeVisible();
+      await createProject(page);
+      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+      await page.getByRole('button', { name: /Грансостав/ }).click();
+      await page.getByRole('button', { name: /Выбрать пробу руды/ }).click();
+      await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
       await shot(page, `05-catalog-ore-${scheme}`);
     });
 
@@ -107,6 +108,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Грансостав/ }).click();
+      await pickOre(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Продукт/ }).click();
       await page.getByRole('radio', { name: 'Ситовый анализ' }).check();

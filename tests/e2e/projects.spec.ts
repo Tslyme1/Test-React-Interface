@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, createProject, fillNewProjectForm, removeFirstProject, seedSession, watchConsole } from './helpers';
+import {
+  SAMPLE_PROJECT,
+  createProject,
+  fillNewProjectForm,
+  pickOre,
+  removeFirstProject,
+  seedSession,
+  watchConsole,
+} from './helpers';
 
 test.describe('Список проектов', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,9 +27,10 @@ test.describe('Список проектов', () => {
   test('кнопка создания заблокирована, пока не заполнены обязательные поля', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
 
-    const submit = page.getByRole('button', { name: 'Создать проект' });
+    const submit = page.getByRole('button', { name: 'Продолжить' });
     await expect(submit).toBeDisabled();
 
+    // Одного названия мало: без выбранной машины считать нечего.
     await page.getByRole('dialog').getByLabel('Название проекта').fill('Только название');
     await expect(submit).toBeDisabled();
 
@@ -38,10 +47,27 @@ test.describe('Список проектов', () => {
     const row = page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher });
     await expect(row).toBeVisible();
     await expect(row).toContainText(SAMPLE_PROJECT.customer);
-    await expect(row).toContainText(SAMPLE_PROJECT.ore);
+    // Исполнитель — вошедший пользователь: отдельного поля при создании нет.
     await expect(row).toContainText('Иванов Алексей Сергеевич');
+    // Характеристики машины подставлены из каталога сразу, без расчёта.
+    await expect(row).toContainText('т/ч');
+    // А месторождения ещё нет: пробу руды выбирают на шаге «Грансостав».
+    await expect(row).not.toContainText(SAMPLE_PROJECT.ore);
 
     console_.assertClean();
+  });
+
+  test('выбранная на шаге «Грансостав» проба руды попадает в строку таблицы', async ({ page }) => {
+    await createProject(page);
+
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await pickOre(page);
+
+    await page.getByRole('button', { name: 'Проекты' }).click();
+
+    const row = page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher });
+    await expect(row).toContainText(SAMPLE_PROJECT.ore);
   });
 
   test('поиск фильтрует строки и показывает пустой результат', async ({ page }) => {

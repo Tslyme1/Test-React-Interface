@@ -102,7 +102,10 @@ export function SieveAnalysis({ rows, onRowsChange, onApply }: SieveAnalysisProp
                 </Grid>
               ))}
 
-              <Box background="surfaceSunken" radius="md" padding="sm" fullWidth>
+              {/* `paddingX`+`paddingY`, а не `padding` — см. комментарий у `Box`
+                  в `ProjectsPage.tsx`: одиночный `padding` в этой версии
+                  компонента гасит сам себя. */}
+              <Box background="surfaceSunken" radius="md" paddingX="sm" paddingY="sm" fullWidth>
                 <Grid columns={4} gap="md">
                   <Text variant="label">Всего</Text>
                   <Text variant="label">{fmt1(computed.total)} г</Text>

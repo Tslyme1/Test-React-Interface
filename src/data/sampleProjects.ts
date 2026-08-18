@@ -21,11 +21,15 @@ const EXECUTORS = ['Иванов А.С.', 'Петрова О.Н.', 'Сидоро
 const CUSTOMERS = ['ЕВРАЗ КГОК', 'Михайловский ГОК', 'Лебединский ГОК', 'Стойленский ГОК', 'Костомукшский ГОК'];
 const TAGS = ['Рабочий', 'Черновик', null, 'Архив', null] as const;
 
-/** Дата в прошлом с шагом в сутки — чтобы сортировка по дате была осмысленной. */
+/**
+ * Дата в прошлом с шагом в сутки — чтобы сортировка по дате была
+ * осмысленной. С минутами, как `nowStamp()` в прототипе.
+ */
 function pastDate(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toLocaleDateString('ru-RU');
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 export function buildSampleProjects(): Project[] {

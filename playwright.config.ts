@@ -19,6 +19,9 @@ export default defineConfig({
     // а зелёный прогон не должен плодить мусор.
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
+    // Без этого нативный `<input type="date">` рисует `mm/dd/yyyy» —
+    // формат браузера по умолчанию в песочнице, а не пользователя.
+    locale: 'ru-RU',
   },
 
   projects: [

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, createProject, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, createProject, pickOre, seedSession, watchConsole } from './helpers';
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
@@ -58,10 +58,43 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
 
     await page.getByRole('button', { name: /Грансостав/ }).click();
+    await pickOre(page);
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
     await page.getByRole('button', { name: /Геометрия/ }).click();
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+  });
+
+  test('шаг «Грансостав» закрыт заглушкой, пока не выбрана проба руды', async ({ page }) => {
+    const console_ = watchConsole(page);
+
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Грансостав/ }).click();
+
+    await expect(page.getByText('Выберите пробу руды')).toBeVisible();
+    // Считать нечего, пока руда неизвестна: кнопка расчёта заблокирована,
+    // а полей на шаге ещё нет.
+    await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeDisabled();
+    await expect(page.getByLabel('Минимальная крупность Dmin, мм')).toHaveCount(0);
+
+    await pickOre(page);
+
+    await expect(page.getByLabel('Минимальная крупность Dmin, мм')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeEnabled();
+
+    console_.assertClean();
+  });
+
+  test('выбранная проба руды переживает уход на другой шаг', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await pickOre(page);
+
+    await page.getByRole('button', { name: /Геометрия/ }).click();
+    await page.getByRole('button', { name: /Грансостав/ }).click();
+
+    await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+    await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
   });
 
   test('введённые значения переживают выход в список и возврат в проект', async ({ page }) => {

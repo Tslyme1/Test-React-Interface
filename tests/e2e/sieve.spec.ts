@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createProject, seedSession, watchConsole } from './helpers';
+import { createProject, pickOre, seedSession, watchConsole } from './helpers';
 
 /**
  * Доходит до шага «Продукт»: расчёт шага «Геометрия» открывает «Грансостав»,
@@ -8,6 +8,8 @@ import { createProject, seedSession, watchConsole } from './helpers';
 async function goToProdStep(page: Page) {
   await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
   await page.getByRole('button', { name: /Грансостав/ }).click();
+  // «Грансостав» закрыт заглушкой, пока не выбрана проба руды.
+  await pickOre(page);
   await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
   await page.getByRole('button', { name: /Продукт/ }).click();
   await expect(page.getByRole('heading', { name: 'Грансостав продукта и усилия' })).toBeVisible();

@@ -76,6 +76,7 @@ export type Project = {
   name: string;
   customer: string;
   crusherName: string;
+  /** Месторождение пробы руды. Пусто, пока проба не выбрана на шаге «Грансостав». */
   ore: string;
   code: string;
   tag: string | null;

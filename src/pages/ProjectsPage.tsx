@@ -64,16 +64,16 @@ export function ProjectsPage({
   // Варианты фильтров выводятся из самих проектов: показывать в списке то,
   // чего в таблице нет, — обещать результат, которого не будет.
   const crusherOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.crusherName)), 'Дробилка: любая'),
+    () => toOptions(uniqueSorted(projects.map((p) => p.crusherName)), 'Дробилка'),
     [projects]
   );
   const customerOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.customer)), 'Заказчик: любой'),
+    () => toOptions(uniqueSorted(projects.map((p) => p.customer)), 'Заказчик'),
     [projects]
   );
-  const tagOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.tag)), 'Тег: любой'), [projects]);
+  const tagOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.tag)), 'Тег'), [projects]);
   const executorOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.executor)), 'Исполнитель: любой'),
+    () => toOptions(uniqueSorted(projects.map((p) => p.executor)), 'Исполнитель'),
     [projects]
   );
 
@@ -97,7 +97,8 @@ export function ProjectsPage({
       if (customer !== ANY && p.customer !== customer) return false;
       if (tag !== ANY && p.tag !== tag) return false;
       if (executor !== ANY && p.executor !== executor) return false;
-      if (date && p.date !== new Date(date).toLocaleDateString('ru-RU')) return false;
+      // `p.date` несёт минуты («24.07.2026 14:32»), фильтр — только календарный день.
+      if (date && p.date.split(' ')[0] !== new Date(date).toLocaleDateString('ru-RU')) return false;
       if (!query) return true;
       return [p.name, p.crusherName, p.customer, p.ore, p.executor, p.code, oreTypeOf(p.ore)].some((v) =>
         v.toLowerCase().includes(query)
@@ -192,7 +193,13 @@ export function ProjectsPage({
 
   return (
     <>
-      <Box padding="2xl" fullWidth>
+      {/* `paddingX`+`paddingY`, а не единый `padding`: в этой версии `Box`
+          проп `padding` сам себя гасит — компонент дописывает в объект стиля
+          `paddingLeft/Right/Top/Bottom: undefined`, и React применяет их
+          после шорткода, обнуляя уже поставленный отступ. `paddingX`/`paddingY`
+          через тот же баг не проходят, потому что заполняют как раз те самые
+          длинные свойства. Заявка в дизайн-систему подана отдельно. */}
+      <Box paddingX="2xl" paddingY="2xl" fullWidth>
         <div className={styles.page}>
           <Stack gap="xl" direction="column">
             <Text variant="headingMd" as="h1">

@@ -24,7 +24,9 @@ test.describe('Главный экран со списком проектов', 
   });
 
   test('фильтр по дробилке сужает список, сброс возвращает всё', async ({ page }) => {
-    await page.getByRole('button', { name: /Дробилка: любая/ }).click();
+    // `.first()`, а не `exact`: колонка «Дробилка» сортируемая и тоже кнопка
+    // с тем же именем — фильтр в разметке идёт раньше таблицы.
+    await page.getByRole('button', { name: 'Дробилка', exact: true }).first().click();
     await page.getByRole('option', { name: 'КМД-1350Т' }).click();
 
     await expect(page.getByText(/Проекты: 1 из 18/)).toBeVisible();
@@ -34,7 +36,8 @@ test.describe('Главный экран со списком проектов', 
   });
 
   test('фильтр по исполнителю сужает список', async ({ page }) => {
-    await page.getByRole('button', { name: /Исполнитель: любой/ }).click();
+    // `.first()` — колонка «Исполнитель» тоже сортируемая кнопка с тем же именем.
+    await page.getByRole('button', { name: 'Исполнитель', exact: true }).first().click();
     await page.getByRole('option', { name: 'Захаров Д.П.' }).click();
 
     const caption = page.getByText(/Проекты: \d+ из 18/);
@@ -43,7 +46,7 @@ test.describe('Главный экран со списком проектов', 
   });
 
   test('поиск и фильтр складываются, а не заменяют друг друга', async ({ page }) => {
-    await page.getByRole('button', { name: /Тег: любой/ }).click();
+    await page.getByRole('button', { name: 'Тег', exact: true }).click();
     await page.getByRole('option', { name: 'Рабочий' }).click();
 
     await page.getByLabel('Поиск по проектам').fill('несуществующее');

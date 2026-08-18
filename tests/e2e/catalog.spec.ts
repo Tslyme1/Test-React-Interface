@@ -9,8 +9,8 @@ import { SAMPLE_PROJECT, seedSession, watchConsole } from './helpers';
 test.describe('Выбор дробилки из каталога', () => {
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
+    // Каталог и есть тело окна нового проекта — отдельного перехода в него нет.
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
-    await page.getByRole('dialog').getByRole('button', { name: /Выбрать из каталога/ }).click();
     await expect(page.getByRole('table')).toBeVisible();
   });
 
@@ -63,17 +63,25 @@ test.describe('Выбор дробилки из каталога', () => {
     await expect(firstRow).toContainText('3500');
   });
 
-  test('выбор возвращает к форме и показывает выбранную машину', async ({ page }) => {
-    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+  test('выбор отмечает строку и подставляет название проекта', async ({ page }) => {
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByLabel('Название проекта')).toHaveValue('');
 
-    await expect(page.getByRole('heading', { name: 'Новый проект' })).toBeVisible();
-    await expect(page.getByText(SAMPLE_PROJECT.crusher)).toBeVisible();
+    await dialog.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+
+    // Строка помечена, окно осталось открытым — каталог никуда не уходит.
+    await expect(dialog.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toContainText('Выбрано');
+    await expect(dialog.getByLabel('Название проекта')).toHaveValue(SAMPLE_PROJECT.crusher);
   });
 
-  test('возврат без выбора ничего не меняет', async ({ page }) => {
-    await page.getByRole('button', { name: 'Назад к проекту' }).click();
+  test('своё название не затирается при смене дробилки', async ({ page }) => {
+    const dialog = page.getByRole('dialog');
 
-    await expect(page.getByRole('heading', { name: 'Новый проект' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Выбрать из каталога/ })).toBeVisible();
+    await dialog.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await dialog.getByLabel('Название проекта').fill('Своё название');
+
+    await dialog.getByRole('button', { name: 'КМД-3000Т2', exact: true }).click();
+
+    await expect(dialog.getByLabel('Название проекта')).toHaveValue('Своё название');
   });
 });

@@ -75,6 +75,7 @@ export function App() {
           setNewProjectOpen(false);
           setActiveProjectId(project.id);
           showToast(`Проект «${project.name}» создан`);
+          // Проба руды здесь не спрашивается — её выбирают на шаге «Грансостав».
         }}
       />
 

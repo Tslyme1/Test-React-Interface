@@ -61,7 +61,7 @@ export type SeedOptions = {
 };
 
 /** Версия формата хранилища проектов. Должна совпадать с `useProjects`. */
-const PROJECTS_SCHEMA_VERSION = 3;
+const PROJECTS_SCHEMA_VERSION = 4;
 
 /**
  * Быстрый вход: сессия кладётся в localStorage до загрузки страницы.
@@ -80,9 +80,11 @@ export async function seedSession(page: Page, options: SeedOptions = {}) {
       // то, что тест только что создал, ровно в сценариях про перезагрузку.
       // Поэтому только когда ключа ещё нет — как и делает само приложение.
       if (seeded.empty && localStorage.getItem('uztm-projects') === null) {
+        // `seeded: true` — иначе приложение решит, что список ещё
+        // нетронутый, и подсыплет примеры поверх намеренно пустого списка.
         localStorage.setItem(
           'uztm-projects',
-          JSON.stringify({ version: seeded.version, projects: [], trash: [] })
+          JSON.stringify({ version: seeded.version, projects: [], trash: [], seeded: true })
         );
       }
     },
@@ -118,30 +120,40 @@ export const SAMPLE_PROJECT: NewProject = {
   ore: 'Костомукшская',
 };
 
-/** Заполняет модалку нового проекта. Модалка должна быть уже открыта. */
+/**
+ * Заполняет модалку нового проекта. Модалка должна быть уже открыта.
+ *
+ * Тело окна — каталог дробилок, название и заказчик стоят в футере.
+ * Пробы руды здесь нет: её выбирают на шаге «Грансостав».
+ */
 export async function fillNewProjectForm(page: Page, project = SAMPLE_PROJECT) {
   const dialog = page.getByRole('dialog');
 
+  await dialog.getByRole('button', { name: project.crusher, exact: true }).click();
+
+  // Название подставляется по выбранной машине — перебиваем своим.
   await dialog.getByLabel('Название проекта').fill(project.name);
 
   await dialog.getByRole('button', { name: /Заказчик/ }).click();
   await page.getByRole('option', { name: project.customer }).click();
-
-  // Дробилка и проба руды выбираются таблицей характеристик: окно
-  // переключается на выбор и возвращается обратно после клика по строке.
-  await dialog.getByRole('button', { name: /Выбрать из каталога/ }).click();
-  await dialog.getByRole('button', { name: project.crusher, exact: true }).click();
-
-  await dialog.getByRole('button', { name: /Выбрать из справочника/ }).click();
-  await dialog.getByRole('button', { name: project.ore, exact: true }).click();
 }
 
 export async function createProject(page: Page, project = SAMPLE_PROJECT) {
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
   await fillNewProjectForm(page, project);
-  await page.getByRole('button', { name: 'Создать проект' }).click();
+  await page.getByRole('button', { name: 'Продолжить' }).click();
   // Признак попадания в визард — первый шаг.
   await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+}
+
+/**
+ * Выбирает пробу руды на шаге «Грансостав». Шаг должен быть уже открыт:
+ * без пробы он закрыт заглушкой, и полей на нём нет.
+ */
+export async function pickOre(page: Page, ore = SAMPLE_PROJECT.ore) {
+  await page.getByRole('button', { name: /Выбрать пробу руды/ }).click();
+  await page.getByRole('dialog', { name: 'Выбор пробы руды' }).getByRole('button', { name: ore, exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 }
 
 /**

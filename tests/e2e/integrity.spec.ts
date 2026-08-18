@@ -44,6 +44,16 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     },
   },
   {
+    name: 'визард — шаг грансостава без пробы руды',
+    go: async (page) => {
+      await seedSession(page, { empty: true });
+      await createProject(page);
+      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+      await page.getByRole('button', { name: /Грансостав/ }).click();
+      await expect(page.getByText('Выберите пробу руды')).toBeVisible();
+    },
+  },
+  {
     name: 'список проектов — со строкой',
     go: async (page) => {
       await seedSession(page, { empty: true });
