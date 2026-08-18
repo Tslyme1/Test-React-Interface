@@ -50,9 +50,7 @@ export function ResultsDrawer({
       }
     >
       <Stack gap="lg" direction="column">
-        <Badge tone="success" icon="check">
-          Рассчитано
-        </Badge>
+        <Badge tone="success">Рассчитано</Badge>
 
         <Text variant="bodySm" color="textMuted">
           Значения — иллюстративная оценка на основе введённых параметров, а не результат полной инженерной методики

@@ -94,7 +94,7 @@ export function CatalogPicker({
       render: (item) => (
         <Stack direction="row" gap="sm" align="center">
           <Text variant="bodySm">{item.name}</Text>
-          {item.name === value ? <Badge tone="accent" icon="check">Выбрано</Badge> : null}
+          {item.name === value ? <Badge tone="accent">Выбрано</Badge> : null}
         </Stack>
       ),
     },

@@ -135,9 +135,7 @@ export function SieveAnalysis({ rows, onRowsChange, onApply }: SieveAnalysisProp
 
           <Stack direction="row" gap="sm" align="center">
             {computed.dmax === 0 ? (
-              <Badge tone="warning" icon="alertTriangle">
-                Не распознан класс с верхней границей — a₀ не посчитан
-              </Badge>
+              <Badge tone="warning">Не распознан класс с верхней границей — a₀ не посчитан</Badge>
             ) : null}
             <Button
               variant="secondary"
