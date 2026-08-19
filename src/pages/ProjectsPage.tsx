@@ -17,6 +17,8 @@ import {
 import type { SelectOption, TableColumn, TableSort } from '@uralmash/design-system';
 import type { Project } from '@/types';
 import { oreTypeOf } from '@/data/oreSamples';
+import { printStepReport } from '@/domain/printReport';
+import { STEP_KEYS, STEP_LABELS } from '@/domain/steps';
 import styles from './ProjectsPage.module.css';
 
 export type ProjectsPageProps = {
@@ -172,6 +174,29 @@ export function ProjectsPage({
             >
               Открыть проект
             </Button>
+
+            {/* Печать — по одному пункту на посчитанный шаг. Непосчитанный
+                шаг печатать нечего: показывать кнопку, которая ничего
+                не даст, хуже, чем не показывать её вовсе. */}
+            {STEP_KEYS.map((key, i) =>
+              row.calc[i] ? (
+                <Button
+                  key={key}
+                  variant="ghost"
+                  size="sm"
+                  iconStart="print"
+                  fullWidth
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuFor(null);
+                    printStepReport(row, key);
+                  }}
+                >
+                  Печать: {STEP_LABELS[key]}
+                </Button>
+              ) : null
+            )}
+
             <Button
               variant="ghost"
               size="sm"

@@ -6,9 +6,8 @@ import { GeometryStep } from './GeometryStep';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
 import { ResultsDrawer } from './ResultsDrawer';
+import { STEP_KEYS } from '@/domain/steps';
 import styles from './WizardPage.module.css';
-
-const STEP_KEYS: StepKey[] = ['geom', 'gran', 'prod'];
 
 const STEP_META: Step[] = [
   { label: 'Геометрия', description: 'Камера дробления' },
@@ -24,7 +23,11 @@ export type WizardPageProps = {
 
 export function WizardPage({ project, onUpdateProject, showToast }: WizardPageProps) {
   const [step, setStep] = useState(0);
-  const [resultStep, setResultStep] = useState<StepKey | null>(null);
+  const [resultOpen, setResultOpen] = useState(false);
+  // Последний непустой шаг результата держим отдельно от `resultOpen`:
+  // при закрытии контент не должен мигать на пустое, пока `Drawer`
+  // (в этой версии дизайн-системы) убирает панель.
+  const [resultStep, setResultStep] = useState<StepKey>('geom');
 
   const available = (i: number) => i === 0 || project.calc[i - 1] || project.calc[i];
   const stepKey = STEP_KEYS[step];
@@ -80,7 +83,14 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
           <Stepper steps={steps} current={step} onStepClick={(i) => available(i) && setStep(i)} />
 
           {calculated ? (
-            <Button variant="primary" iconStart="fileText" onClick={() => setResultStep(stepKey)}>
+            <Button
+              variant="primary"
+              iconStart="fileText"
+              onClick={() => {
+                setResultStep(stepKey);
+                setResultOpen(true);
+              }}
+            >
               Смотреть результат
             </Button>
           ) : (
@@ -91,9 +101,10 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
         </Stack>
       </Surface>
 
-      {resultStep ? (
-        <ResultsDrawer open={Boolean(resultStep)} onClose={() => setResultStep(null)} stepKey={resultStep} project={project} />
-      ) : null}
+      {/* Рендерится безусловно, как `Modal`/`Popover` в остальном приложении —
+          снятие панели отдаём целиком компоненту дизайн-системы, а не гасим
+          её снаружи ещё раз. */}
+      <ResultsDrawer open={resultOpen} onClose={() => setResultOpen(false)} stepKey={resultStep} project={project} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import type { GeomData, GranData, ProdData } from '@/types';
+import type { GeomData, GranData, Project, ProdData, StepKey } from '@/types';
+import { STEP_TITLES } from './steps';
 
 /**
  * Иллюстративные оценки для экрана результатов. В прототипе-источнике
@@ -53,4 +54,22 @@ export function estimateProd(data: ProdData, geom: GeomData) {
     { label: 'Максимальная крупность продукта', value: data.dMax, unit: 'мм' },
     { label: 'КПД дробления', value: (kpd * 100).toFixed(0), unit: '%' },
   ];
+}
+
+export type StepReport =
+  | { kind: 'kv'; title: string; rows: { label: string; value: string; unit: string }[] }
+  | { kind: 'gran'; title: string; rows: { class: string; pass: string }[] };
+
+/**
+ * Одна и та же оценка — что на экране в панели результата, что в печати:
+ * оба места собирают отчёт отсюда, а не считают заново каждое по-своему.
+ */
+export function buildStepReport(project: Project, stepKey: StepKey): StepReport {
+  if (stepKey === 'gran') {
+    return { kind: 'gran', title: STEP_TITLES.gran, rows: estimateGran(project.data.gran) };
+  }
+  if (stepKey === 'prod') {
+    return { kind: 'kv', title: STEP_TITLES.prod, rows: estimateProd(project.data.prod, project.data.geom) };
+  }
+  return { kind: 'kv', title: STEP_TITLES.geom, rows: estimateGeom(project.data.geom) };
 }
