@@ -40,10 +40,9 @@ export function AppShell({
     <Stack direction="column" grow>
       <AppHeader>
         <AppHeader.Left>
-          {/* Знак, а не кнопка «домой»: `HeaderLogo` неинтерактивен намеренно —
-              логотип, который выглядит нажимаемым и никуда не ведёт, обманывает.
-              Переход в список проектов живёт справа отдельной ячейкой. */}
-          <HeaderLogo label="УЗТМ">
+          {/* Знак и есть переход на главную. Отдельной ячейки «домой» рядом
+              нет — это было бы одно действие двумя элементами подряд. */}
+          <HeaderLogo label="УЗТМ" active={!currentProjectName} onClick={onGoProjects}>
             <img className={styles.logo} src={logoSrc} alt="" />
           </HeaderLogo>
 
@@ -61,7 +60,9 @@ export function AppShell({
         </AppHeader.Left>
 
         <AppHeader.Right>
-          <HeaderButton icon="home" active={!currentProjectName} onClick={onGoProjects}>
+          {/* Подпись без иконки: «домой» теперь рисует знак слева, и вторая
+              иконка дома в одной полосе читалась бы как второй дом. */}
+          <HeaderButton active={!currentProjectName} onClick={onGoProjects}>
             Проекты
           </HeaderButton>
 
