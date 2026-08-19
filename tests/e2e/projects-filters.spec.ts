@@ -98,6 +98,33 @@ test.describe('Главный экран со списком проектов', 
     await expect(page.getByRole('button', { name: 'Фильтры: 1' })).toBeVisible();
   });
 
+  test('условия из окна фильтров применяются только по «Готово»', async ({ page }) => {
+    const drawer = await openFilters(page);
+
+    await drawer.getByLabel('Тег').click();
+    await page.getByRole('option', { name: 'Рабочий' }).click();
+
+    // Окно ещё открыто — выборка под ним не тронута.
+    await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
+
+    await drawer.getByRole('button', { name: 'Готово' }).click();
+    await expect(page.getByText(/Проекты: 18 из 18/)).toHaveCount(0);
+  });
+
+  test('закрытие окна фильтров мимо «Готово» отбрасывает черновик', async ({ page }) => {
+    const drawer = await openFilters(page);
+
+    await drawer.getByLabel('Тег').click();
+    await page.getByRole('option', { name: 'Рабочий' }).click();
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
+
+    // И черновик не всплывает при повторном открытии.
+    const again = await openFilters(page);
+    await expect(again.getByRole('button', { name: 'Сбросить' })).toBeDisabled();
+  });
+
   test('при сужении окна фильтры уходят из строки по одному, а не переносятся', async ({ page }) => {
     // По атрибуту очереди, а не по имени: колонка «Исполнитель» в таблице —
     // тоже кнопка с тем же именем, и когда фильтр уходит из строки, поиск

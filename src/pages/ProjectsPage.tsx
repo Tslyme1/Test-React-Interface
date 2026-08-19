@@ -35,8 +35,12 @@ import styles from './ProjectsPage.module.css';
  * число, тем раньше фильтр уходит. Уходит только с экрана; в панели доступны
  * все, поэтому терять доступ к фильтру пользователь не может.
  */
+type FilterKey = 'crusher' | 'customer' | 'tag' | 'executor' | 'date';
+
+type FilterValues = Record<FilterKey, string> & { search: string };
+
 type FilterField = {
-  key: string;
+  key: FilterKey;
   label: string;
   priority: number;
   render: (props: { id?: string }) => ReactNode;
@@ -84,6 +88,18 @@ export function ProjectsPage({
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /**
+   * Черновик панели «Фильтры». Не `null` ровно пока панель открыта.
+   *
+   * Условия из панели применяются по «Готово», а не по каждому нажатию:
+   * иначе таблица слева пересобирается на каждый щелчок, и понять, что
+   * именно отбираешь, можно только закрыв панель. Закрытие мимо «Готово»
+   * черновик отбрасывает.
+   *
+   * Фильтры, оставшиеся в строке, применяются сразу — они и так на виду,
+   * и результат виден в тот же момент.
+   */
+  const [draft, setDraft] = useState<FilterValues | null>(null);
 
   // Варианты фильтров выводятся из самих проектов: показывать в списке то,
   // чего в таблице нет, — обещать результат, которого не будет.
@@ -101,15 +117,57 @@ export function ProjectsPage({
     [projects]
   );
 
+  /** Применённые условия одним объектом — их же вид принимает черновик панели. */
+  const applied: FilterValues = { crusher, customer, tag, executor, date, search };
+
+  const EMPTY: FilterValues = { crusher: ANY, customer: ANY, tag: ANY, executor: ANY, date: '', search: '' };
+
+  const setters: Record<keyof FilterValues, (value: string) => void> = {
+    crusher: setCrusher,
+    customer: setCustomer,
+    tag: setTag,
+    executor: setExecutor,
+    date: setDate,
+    search: setSearch,
+  };
+
+  const applyAll = (values: FilterValues) => {
+    (Object.keys(setters) as (keyof FilterValues)[]).forEach((key) => setters[key](values[key]));
+  };
+
+  const countActive = (values: FilterValues) =>
+    [values.crusher, values.customer, values.tag, values.executor].filter((v) => v !== ANY).length +
+    (values.date ? 1 : 0) +
+    (values.search.trim() ? 1 : 0);
+
   /* Счёт, а не «да/нет»: кнопка «Фильтры» прячет часть условий под собой,
      и сколько именно их применено, из строки уже не видно. */
-  const activeCount =
-    [crusher, customer, tag, executor].filter((v) => v !== ANY).length +
-    (date ? 1 : 0) +
-    (search.trim() ? 1 : 0);
-  const filtersActive = activeCount > 0;
+  const activeCount = countActive(applied);
 
-  const filterFields: FilterField[] = [
+  const openFilters = () => {
+    setDraft(applied);
+    setFiltersOpen(true);
+  };
+
+  const closeFilters = () => {
+    setDraft(null);
+    setFiltersOpen(false);
+  };
+
+  const commitFilters = () => {
+    if (draft) applyAll(draft);
+    closeFilters();
+  };
+
+  /**
+   * Один набор описаний на два места: строку под заголовком и панель
+   * «Фильтры». Значения и способ их менять приходят снаружи — строка правит
+   * применённое сразу, панель правит черновик до «Готово».
+   */
+  const buildFilterFields = (
+    values: FilterValues,
+    set: (key: keyof FilterValues, value: string) => void
+  ): FilterField[] => [
     {
       key: 'crusher',
       label: 'Дробилка',
@@ -119,8 +177,8 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={crusherOptions}
-          value={crusher}
-          onChange={(v) => setCrusher(v as string)}
+          value={values.crusher}
+          onChange={(v) => set('crusher', v as string)}
           searchable
         />
       ),
@@ -134,8 +192,8 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={customerOptions}
-          value={customer}
-          onChange={(v) => setCustomer(v as string)}
+          value={values.customer}
+          onChange={(v) => set('customer', v as string)}
         />
       ),
     },
@@ -144,7 +202,13 @@ export function ProjectsPage({
       label: 'Тег',
       priority: 3,
       render: (props) => (
-        <Select {...props} fullWidth options={tagOptions} value={tag} onChange={(v) => setTag(v as string)} />
+        <Select
+          {...props}
+          fullWidth
+          options={tagOptions}
+          value={values.tag}
+          onChange={(v) => set('tag', v as string)}
+        />
       ),
     },
     {
@@ -157,8 +221,8 @@ export function ProjectsPage({
           fullWidth
           type="date"
           aria-label="Дата проекта"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+          value={values.date}
+          onChange={(e) => set('date', e.target.value)}
         />
       ),
     },
@@ -171,13 +235,22 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={executorOptions}
-          value={executor}
-          onChange={(v) => setExecutor(v as string)}
+          value={values.executor}
+          onChange={(v) => set('executor', v as string)}
           searchable
         />
       ),
     },
   ];
+
+  /** Строка под заголовком: правки применяются сразу — результат тут же виден. */
+  const rowFields = buildFilterFields(applied, (key, value) => setters[key](value));
+
+  /** Панель: правки копятся в черновике до «Готово». */
+  const draftValues = draft ?? applied;
+  const draftFields = buildFilterFields(draftValues, (key, value) =>
+    setDraft((current) => ({ ...(current ?? applied), [key]: value }))
+  );
 
   const resetFilters = () => {
     setSearch('');
@@ -353,7 +426,7 @@ export function ProjectsPage({
                     от него отступают ровно из-за плотности. */}
                 <div className={styles.filtersBar}>
                   <div className={styles.filters}>
-                    {filterFields.map((field) => (
+                    {rowFields.map((field) => (
                       <div key={field.key} className={styles.filterItem} data-filter-priority={field.priority}>
                         {field.render({})}
                       </div>
@@ -374,7 +447,7 @@ export function ProjectsPage({
                           действие над применённым, а нужен доступ к тому,
                           что в строку не поместилось. Сброс уехал в панель,
                           где ему и место — рядом с тем, что он сбрасывает. */}
-                      <Button variant="secondary" iconStart="filter" onClick={() => setFiltersOpen(true)}>
+                      <Button variant="secondary" iconStart="filter" onClick={openFilters}>
                         {activeCount > 0 ? `Фильтры: ${activeCount}` : 'Фильтры'}
                       </Button>
                       <Button variant="primary" iconStart="plus" onClick={onNewProject}>
@@ -433,24 +506,38 @@ export function ProjectsPage({
           на списке проектов и в каталоге дробилок кнопка «Фильтры» одна и та
           же, а открывала разное. Один вход — один вид: пользователь запоминает
           место кнопки, а не то, в каком экране он сейчас находится. */}
+      {/* Условия применяются по «Готово», а не по каждому нажатию внутри.
+          Иначе таблица под окном пересобирается на каждый щелчок: щёлкаешь
+          второе условие, а список уже уехал под первым, и понять, что именно
+          отбираешь, можно только закрыв окно. Закрытие мимо «Готово» —
+          крестиком, по фону, по Esc — черновик отбрасывает.
+
+          Фильтры, оставшиеся в строке под заголовком, применяются сразу:
+          они на виду, и результат виден в тот же момент. */}
       <Modal
         open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
+        onClose={closeFilters}
         title="Фильтры"
         size="sm"
         footer={
           <Modal.Footer>
-            <Button variant="secondary" disabled={!filtersActive} onClick={resetFilters}>
+            {/* Сброс правит черновик, а не применённое: иначе одна кнопка
+                окна действовала бы сразу, а остальные — по «Готово». */}
+            <Button
+              variant="secondary"
+              disabled={countActive(draftValues) === 0}
+              onClick={() => setDraft(EMPTY)}
+            >
               Сбросить
             </Button>
-            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+            <Button variant="primary" onClick={commitFilters}>
               Готово
             </Button>
           </Modal.Footer>
         }
       >
         <Stack gap="lg" direction="column">
-          {filterFields.map((field) => (
+          {draftFields.map((field) => (
             <Field key={field.key} label={field.label} fullWidth>
               {(props) => field.render(props)}
             </Field>
@@ -462,8 +549,8 @@ export function ProjectsPage({
                 {...props}
                 fullWidth
                 placeholder="Поиск…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={draftValues.search}
+                onChange={(e) => setDraft((current) => ({ ...(current ?? applied), search: e.target.value }))}
               />
             )}
           </Field>

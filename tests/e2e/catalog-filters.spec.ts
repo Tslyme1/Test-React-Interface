@@ -47,3 +47,54 @@ test('высота окна не меняется при сужении выбо
 
   expect(Math.abs(after - before), `высота: было ${before}, стало ${after}`).toBeLessThan(2);
 });
+
+test('семейство применяется только по «Готово»', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await page.getByRole('button', { name: 'Новый проект' }).first().click();
+  await expect(page.getByRole('table')).toBeVisible();
+
+  await page.getByRole('dialog', { name: 'Новый проект' }).getByRole('button', { name: 'Фильтры' }).click();
+  await page.getByRole('radio', { name: 'КСД' }).check();
+
+  // Окно фильтров ещё открыто — каталог под ним не пересобран.
+  await expect(page.getByRole('row').filter({ hasText: 'КМД-3000Т2' })).toHaveCount(1);
+
+  await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('button', { name: 'Готово' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'КМД-3000Т2' })).toHaveCount(0);
+});
+
+test('повторное нажатие по строке снимает выбор', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await page.getByRole('button', { name: 'Новый проект' }).first().click();
+
+  const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+  const mark = dialog.getByRole('checkbox', { name: 'Выбрать КСД-2200Т' });
+  const row = dialog.getByRole('button', { name: 'КСД-2200Т', exact: true });
+
+  await expect(mark).not.toBeChecked();
+  await row.click();
+  await expect(mark).toBeChecked();
+  await row.click();
+  await expect(mark).not.toBeChecked();
+
+  // Продолжить без выбранной машины нельзя.
+  await expect(dialog.getByRole('button', { name: 'Продолжить' })).toBeDisabled();
+});
+
+test('колонка названия не меняет ширину при смене выборки', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await page.getByRole('button', { name: 'Новый проект' }).first().click();
+
+  const nameHead = page.getByRole('columnheader', { name: /Дробилка/ }).first();
+  const before = (await nameHead.boundingBox())!.width;
+
+  await page.getByRole('dialog', { name: 'Новый проект' }).getByRole('button', { name: 'Фильтры' }).click();
+  await page.getByRole('radio', { name: 'КСД' }).check();
+  await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('button', { name: 'Готово' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'КМД-3000Т2' })).toHaveCount(0);
+
+  const after = (await nameHead.boundingBox())!.width;
+  // Ширину колонки таблица считает по содержимому: у КМД самое длинное имя
+  // на 15px длиннее, чем у КСД, и без минимума таблица съезжала вбок целиком.
+  expect(Math.abs(after - before), `ширина: было ${before}, стало ${after}`).toBeLessThan(2);
+});

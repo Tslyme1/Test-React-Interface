@@ -110,6 +110,9 @@ export function GranStep({ data, onChange, ore, onPickOre }: GranStepProps) {
           items={ORE_SAMPLES}
           value={ore || null}
           onPick={(picked) => {
+            /* Снятие выбора здесь ничего не даёт: шаг без пробы закрыт
+               заглушкой, и уйти из окна ни с чем можно крестиком. */
+            if (!picked) return;
             onPickOre(picked);
             setPickerOpen(false);
           }}

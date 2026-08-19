@@ -36,7 +36,15 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
    */
   const [suggested, setSuggested] = useState('');
   const [customer, setCustomer] = useState<string | null>(null);
+  /**
+   * Применённое семейство и черновик из окна фильтров.
+   *
+   * Черновик нужен, потому что окно фильтров применяет условия по «Готово»:
+   * пока оно открыто, таблица под ним не должна пересобираться на каждое
+   * нажатие. Закрытие мимо «Готово» возвращает черновик к применённому.
+   */
   const [family, setFamily] = useState<Family>('all');
+  const [familyDraft, setFamilyDraft] = useState<Family>('all');
 
   const canCreate = Boolean(crusherName && name.trim() && customer);
 
@@ -46,6 +54,7 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     setSuggested('');
     setCustomer(null);
     setFamily('all');
+    setFamilyDraft('all');
   };
 
   const close = () => {
@@ -53,8 +62,19 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     onClose();
   };
 
-  const pickCrusher = (picked: string) => {
+  const pickCrusher = (picked: string | null) => {
     setCrusherName(picked);
+
+    /* Отжали машину — подставленное по ней название уходит вместе с ней,
+       но только если его не переписали руками. */
+    if (!picked) {
+      if (name === suggested) {
+        setName('');
+        setSuggested('');
+      }
+      return;
+    }
+
     if (!name.trim() || name === suggested) {
       setName(picked);
       setSuggested(picked);
@@ -126,6 +146,8 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         nameLabel="Дробилка"
         searchPlaceholder="КМД-2200, 2200, 500-655…"
         visibleNames={visibleCrushers}
+        onFiltersApply={() => setFamily(familyDraft)}
+        onFiltersCancel={() => setFamilyDraft(family)}
         filter={
           /* Подписи над переключателем нет: он стоит в панели фильтров, где
              назначение читается из самих вариантов, а `legend` остаётся
@@ -138,8 +160,8 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
               { value: 'КМД', label: 'КМД' },
               { value: 'КСД', label: 'КСД' },
             ]}
-            value={family}
-            onChange={setFamily}
+            value={familyDraft}
+            onChange={setFamilyDraft}
           />
         }
       />

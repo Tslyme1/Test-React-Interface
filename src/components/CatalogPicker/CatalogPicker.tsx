@@ -11,12 +11,24 @@ export type CatalogPickerProps = {
   items: CatalogItem[];
   /** Имя выбранной позиции, если она уже есть. */
   value: string | null;
-  onPick: (name: string) => void;
+  /**
+   * Выбор позиции. `null` — выбор снят: нажатие по уже выбранной строке
+   * её отжимает, как и повторное нажатие по флажку.
+   */
+  onPick: (name: string | null) => void;
   /** Подпись первой колонки: «Дробилка», «Проба руды». */
   nameLabel: string;
   searchPlaceholder: string;
-  /** Дополнительный фильтр над таблицей — например, семейство машины. */
+  /**
+   * Дополнительный фильтр над таблицей — например, семейство машины.
+   * Контролы внутри должны быть привязаны к черновику: применяются они
+   * не сразу, а по «Готово» (см. `onFiltersApply`).
+   */
   filter?: ReactNode;
+  /** «Готово» в окне фильтров: черновик пора применить. */
+  onFiltersApply?: () => void;
+  /** Окно фильтров закрыто мимо «Готово»: черновик пора вернуть к применённому. */
+  onFiltersCancel?: () => void;
   /** Уже отфильтрованный снаружи набор имён. Пусто — показываются все. */
   visibleNames?: string[];
 };
@@ -39,6 +51,8 @@ export function CatalogPicker({
   nameLabel,
   searchPlaceholder,
   filter,
+  onFiltersApply,
+  onFiltersCancel,
   visibleNames,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
@@ -110,36 +124,45 @@ export function CatalogPicker({
     return sort.direction === 'desc' ? sorted.reverse() : sorted;
   }, [items, visibleNames, search, sort]);
 
+  /* Нажатие по выбранной строке снимает выбор. Иначе передумать нельзя:
+     раз отметив машину, снять отметку было нечем — только выбрать другую. */
+  const toggle = (name: string) => onPick(name === value ? null : name);
+
   const columns: TableColumn<CatalogItem>[] = [
     {
-      key: 'name',
-      title: nameLabel,
-      sortable: true,
-      /* Название стоит первым, и это не только про порядок чтения.
-         `Table` оборачивает содержимое первой колонки в кнопку — так строка
-         становится доступной с клавиатуры, и её доступным именем служит
-         то, что в этой колонке лежит. Когда первым стоял флажок, в кнопку
-         попадал `input`: интерактивное внутри интерактивного. Указатель
-         до флажка не доходил — его перехватывала галочка, — а строка
-         называлась «Выбрать КМД-2200Т» вместо имени машины. Теперь в кнопке
-         имя, а флажок живёт в обычной ячейке и работает сам по себе.
-
-         `label`, а не `bodySm`: имя машины выделено весом, как в прототипе.
-         Веса отдельным пропом в системе нет — его задаёт роль целиком,
-         поэтому выделение приходит вместе с размером роли. */
-      render: (item) => <Text variant="label">{item.name}</Text>,
-    },
-    {
-      /* Флажок дублирует клик по строке, а не заменяет его: он показывает,
-         что строку можно отметить, до того как по ней кликнули. */
+      /* Флажок стоит первым — там, где его ищут глазами. Кнопку строки
+         таблица уносит на колонку с названием (`rowActionKey`), поэтому
+         флажок не оказывается внутри кнопки и работает сам по себе. */
       key: 'picked',
       title: '',
       render: (item) => (
         <Checkbox
           checked={item.name === value}
-          onChange={() => onPick(item.name)}
+          onChange={() => toggle(item.name)}
           aria-label={`Выбрать ${item.name}`}
         />
+      ),
+    },
+    {
+      key: 'name',
+      title: nameLabel,
+      sortable: true,
+      /* Кнопка строки живёт здесь, а не на флажке слева: доступным именем
+         строки должно быть имя машины, а не подпись «Выбрать КМД-2200Т».
+
+         Ширина колонки задана минимумом у содержимого. Без него таблица
+         считает её по самому длинному имени в текущей выборке: «КМД-2200Т6-Д»
+         даёт 156px, «КСД-1750Гр» — 141, и при каждой смене фильтра вся
+         таблица съезжала вбок. Минимум взят с запасом к самому длинному
+         имени справочника.
+
+         `label`, а не `bodySm`: имя машины выделено весом, как в прототипе.
+         Веса отдельным пропом в системе нет — его задаёт роль целиком,
+         поэтому выделение приходит вместе с размером роли. */
+      render: (item) => (
+        <Text variant="label">
+          <span className={styles.name}>{item.name}</span>
+        </Text>
       ),
     },
     ...specs.map<TableColumn<CatalogItem>>((spec) => ({
@@ -190,7 +213,8 @@ export function CatalogPicker({
           captionHidden
           sort={sort}
           onSortChange={setSort}
-          onRowClick={(item) => onPick(item.name)}
+          rowActionKey="name"
+          onRowClick={(item) => toggle(item.name)}
           empty={
             <EmptyState
               icon="search"
@@ -205,14 +229,30 @@ export function CatalogPicker({
           окно во окне — раскладка та же, что на списке проектов, и разводить
           два разных способа добраться до одних и тех же условий отбора
           не стоит: пользователь запоминает место кнопки, а не её контекст. */}
+      {/* Условия применяются по «Готово», а не по каждому нажатию внутри.
+          Иначе выборка под окном пересобирается на каждый чих: пользователь
+          щёлкает второе условие, а список за окном уже уехал под первым —
+          и понять, что именно он отбирает, можно только закрыв окно.
+          Закрытие мимо «Готово» — крестиком, по фону, по Esc — черновик
+          отбрасывает: закрыть окно и получить применённое молча хуже, чем
+          не применить. */}
       <Modal
         open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
+        onClose={() => {
+          onFiltersCancel?.();
+          setFiltersOpen(false);
+        }}
         title="Фильтры"
         size="sm"
         footer={
           <Modal.Footer>
-            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                onFiltersApply?.();
+                setFiltersOpen(false);
+              }}
+            >
               Готово
             </Button>
           </Modal.Footer>
