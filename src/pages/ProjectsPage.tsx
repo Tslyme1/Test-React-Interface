@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Badge,
   Box,
   Button,
+  Drawer,
   EmptyState,
+  Field,
   Input,
   Modal,
   Popover,
@@ -20,6 +23,23 @@ import { oreTypeOf } from '@/data/oreSamples';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_LABELS } from '@/domain/steps';
 import styles from './ProjectsPage.module.css';
+
+/**
+ * Описание одного фильтра. Нужен именно список, а не шесть отдельных кусков
+ * разметки: фильтры выводятся в двух местах — строкой под заголовком и
+ * списком в панели «Фильтры», — и разойдясь, два набора начнут фильтровать
+ * по-разному. Заметить такое можно только сравнив выдачу.
+ *
+ * `priority` — очередь исчезновения из строки при сужении окна: чем больше
+ * число, тем раньше фильтр уходит. Уходит только с экрана; в панели доступны
+ * все, поэтому терять доступ к фильтру пользователь не может.
+ */
+type FilterField = {
+  key: string;
+  label: string;
+  priority: number;
+  render: (props: { id?: string }) => ReactNode;
+};
 
 export type ProjectsPageProps = {
   projects: Project[];
@@ -62,6 +82,7 @@ export function ProjectsPage({
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Варианты фильтров выводятся из самих проектов: показывать в списке то,
   // чего в таблице нет, — обещать результат, которого не будет.
@@ -79,8 +100,83 @@ export function ProjectsPage({
     [projects]
   );
 
-  const filtersActive =
-    [crusher, customer, tag, executor].some((v) => v !== ANY) || Boolean(date) || Boolean(search.trim());
+  /* Счёт, а не «да/нет»: кнопка «Фильтры» прячет часть условий под собой,
+     и сколько именно их применено, из строки уже не видно. */
+  const activeCount =
+    [crusher, customer, tag, executor].filter((v) => v !== ANY).length +
+    (date ? 1 : 0) +
+    (search.trim() ? 1 : 0);
+  const filtersActive = activeCount > 0;
+
+  const filterFields: FilterField[] = [
+    {
+      key: 'crusher',
+      label: 'Дробилка',
+      priority: 1,
+      render: (props) => (
+        <Select
+          {...props}
+          fullWidth
+          options={crusherOptions}
+          value={crusher}
+          onChange={(v) => setCrusher(v as string)}
+          searchable
+        />
+      ),
+    },
+    {
+      key: 'customer',
+      label: 'Заказчик',
+      priority: 2,
+      render: (props) => (
+        <Select
+          {...props}
+          fullWidth
+          options={customerOptions}
+          value={customer}
+          onChange={(v) => setCustomer(v as string)}
+        />
+      ),
+    },
+    {
+      key: 'tag',
+      label: 'Тег',
+      priority: 3,
+      render: (props) => (
+        <Select {...props} fullWidth options={tagOptions} value={tag} onChange={(v) => setTag(v as string)} />
+      ),
+    },
+    {
+      key: 'date',
+      label: 'Дата проекта',
+      priority: 4,
+      render: (props) => (
+        <Input
+          {...props}
+          fullWidth
+          type="date"
+          aria-label="Дата проекта"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      ),
+    },
+    {
+      key: 'executor',
+      label: 'Исполнитель',
+      priority: 5,
+      render: (props) => (
+        <Select
+          {...props}
+          fullWidth
+          options={executorOptions}
+          value={executor}
+          onChange={(v) => setExecutor(v as string)}
+          searchable
+        />
+      ),
+    },
+  ];
 
   const resetFilters = () => {
     setSearch('');
@@ -233,61 +329,46 @@ export function ProjectsPage({
 
             {projects.length > 0 ? (
               <>
-                {/* Фильтры без `Field`. Назначение написано внутри самого поля,
-                    и оно же служит доступным именем контрола: у `Select` это текст
-                    триггера, у поиска — плейсхолдер. Подпись над каждым из шести
-                    соседних фильтров дублировала бы то же слово и делала панель
-                    вдвое выше — то же исключение, что для строк таблицы. */}
-                <div className={styles.filters}>
-                  <div className={styles.filterItem}>
-                    <Select
-                      fullWidth
-                      options={crusherOptions}
-                      value={crusher}
-                      onChange={(v) => setCrusher(v as string)}
-                      searchable
-                    />
-                  </div>
-                  <div className={styles.filterItem}>
-                    <Select fullWidth options={customerOptions} value={customer} onChange={(v) => setCustomer(v as string)} />
-                  </div>
-                  <div className={styles.filterItem}>
-                    <Select fullWidth options={tagOptions} value={tag} onChange={(v) => setTag(v as string)} />
-                  </div>
-                  <div className={styles.filterItem}>
-                    <Input
-                      fullWidth
-                      type="date"
-                      aria-label="Дата проекта"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.filterItem}>
-                    <Select
-                      fullWidth
-                      options={executorOptions}
-                      value={executor}
-                      onChange={(v) => setExecutor(v as string)}
-                      searchable
-                    />
-                  </div>
-                  <div className={styles.filterSearch}>
-                    <Input
-                      fullWidth
-                      aria-label="Поиск по проектам"
-                      placeholder="Поиск…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
-                  <div className={styles.filterActions}>
-                    <Button variant="secondary" iconStart="filter" disabled={!filtersActive} onClick={resetFilters}>
-                      Сбросить
-                    </Button>
-                    <Button variant="primary" iconStart="plus" onClick={onNewProject}>
-                      Новый проект
-                    </Button>
+                {/* В строке фильтры идут без `Field`. Назначение написано внутри
+                    самого поля, и оно же служит доступным именем контрола: у `Select`
+                    это текст триггера, у поиска — плейсхолдер. Подпись над каждым из
+                    шести соседних фильтров дублировала бы то же слово и делала панель
+                    вдвое выше — то же исключение, что для строк таблицы.
+
+                    В панели «Фильтры» — наоборот, через `Field`: там фильтры идут
+                    столбцом, места по вертикали хватает, и исключение теряет
+                    основание. Правило системы — подпись через `Field`; в строке
+                    от него отступают ровно из-за плотности. */}
+                <div className={styles.filtersBar}>
+                  <div className={styles.filters}>
+                    {filterFields.map((field) => (
+                      <div key={field.key} className={styles.filterItem} data-filter-priority={field.priority}>
+                        {field.render({})}
+                      </div>
+                    ))}
+
+                    <div className={styles.filterSearch}>
+                      <Input
+                        fullWidth
+                        aria-label="Поиск по проектам"
+                        placeholder="Поиск…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </div>
+
+                    <div className={styles.filterActions}>
+                      {/* Кнопка не «Сбросить», а вход во все фильтры: сброс —
+                          действие над применённым, а нужен доступ к тому,
+                          что в строку не поместилось. Сброс уехал в панель,
+                          где ему и место — рядом с тем, что он сбрасывает. */}
+                      <Button variant="secondary" iconStart="filter" onClick={() => setFiltersOpen(true)}>
+                        {activeCount > 0 ? `Фильтры: ${activeCount}` : 'Фильтры'}
+                      </Button>
+                      <Button variant="primary" iconStart="plus" onClick={onNewProject}>
+                        Новый проект
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -334,6 +415,46 @@ export function ProjectsPage({
           </Stack>
         </div>
       </Box>
+
+      {/* Все фильтры разом. Панель, а не модалка: она не блокирует таблицу,
+          и результат фильтрации виден сразу же, слева от панели, — по нему
+          и понятно, стоит ли уточнять условие дальше. */}
+      <Drawer
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        size="narrow"
+        title="Фильтры"
+        footer={
+          <Stack direction="row" gap="sm" justify="end" grow>
+            <Button variant="secondary" disabled={!filtersActive} onClick={resetFilters}>
+              Сбросить
+            </Button>
+            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+              Готово
+            </Button>
+          </Stack>
+        }
+      >
+        <Stack gap="lg" direction="column">
+          {filterFields.map((field) => (
+            <Field key={field.key} label={field.label} fullWidth>
+              {(props) => field.render(props)}
+            </Field>
+          ))}
+
+          <Field label="Поиск по проектам" fullWidth>
+            {(props) => (
+              <Input
+                {...props}
+                fullWidth
+                placeholder="Поиск…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+          </Field>
+        </Stack>
+      </Drawer>
 
       {/* Корзина. Показывается всегда: пустая объясняет, что удалённое
           не пропадает сразу, — это снимает страх перед удалением. */}

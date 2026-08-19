@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { createProject, openTrash, removeFirstProject, seedSession, watchConsole } from './helpers';
 
 /**
@@ -6,6 +6,23 @@ import { createProject, openTrash, removeFirstProject, seedSession, watchConsole
  * с данными, поэтому здесь примеры первого запуска не отключаются —
  * именно этот экран пользователь и видит, открыв приложение впервые.
  */
+/**
+ * Панель «Фильтры». Часть фильтров при узком окне уходит из строки, и
+ * добраться до них можно только отсюда — поэтому сценарии, которым нужен
+ * конкретный фильтр, открывают панель, а не полагаются на то, что контрол
+ * оказался виден.
+ */
+function filtersDrawer(page: Page) {
+  return page.getByRole('dialog', { name: 'Фильтры' });
+}
+
+async function openFilters(page: Page) {
+  await page.getByRole('button', { name: /^Фильтры/ }).click();
+  const drawer = filtersDrawer(page);
+  await expect(drawer).toBeVisible();
+  return drawer;
+}
+
 test.describe('Главный экран со списком проектов', () => {
   test.beforeEach(async ({ page }) => {
     await seedSession(page);
@@ -31,14 +48,21 @@ test.describe('Главный экран со списком проектов', 
 
     await expect(page.getByText(/Проекты: 1 из 18/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Сбросить' }).click();
+    // Сброс живёт в панели «Фильтры», рядом с тем, что он сбрасывает.
+    const drawer = await openFilters(page);
+    await drawer.getByRole('button', { name: 'Сбросить' }).click();
+    await drawer.getByRole('button', { name: 'Готово' }).click();
+
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
   });
 
   test('фильтр по исполнителю сужает список', async ({ page }) => {
-    // `.first()` — колонка «Исполнитель» тоже сортируемая кнопка с тем же именем.
-    await page.getByRole('button', { name: 'Исполнитель', exact: true }).first().click();
+    // Через панель, а не через строку: «Исполнитель» уходит из строки первым,
+    // и на стандартной ширине окна теста его там уже нет.
+    const drawer = await openFilters(page);
+    await drawer.getByLabel('Исполнитель').click();
     await page.getByRole('option', { name: 'Захаров Д.П.' }).click();
+    await drawer.getByRole('button', { name: 'Готово' }).click();
 
     const caption = page.getByText(/Проекты: \d+ из 18/);
     await expect(caption).toBeVisible();
@@ -58,10 +82,43 @@ test.describe('Главный экран со списком проектов', 
   });
 
   test('кнопка сброса неактивна, пока ничего не отобрано', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Сбросить' })).toBeDisabled();
+    const drawer = await openFilters(page);
+    await expect(drawer.getByRole('button', { name: 'Сбросить' })).toBeDisabled();
 
-    await page.getByLabel('Поиск по проектам').fill('КМД');
-    await expect(page.getByRole('button', { name: 'Сбросить' })).toBeEnabled();
+    await drawer.getByLabel('Поиск по проектам').fill('КМД');
+    await expect(drawer.getByRole('button', { name: 'Сбросить' })).toBeEnabled();
+  });
+
+  test('кнопка «Фильтры» показывает, сколько условий применено', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Фильтры', exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Тег', exact: true }).click();
+    await page.getByRole('option', { name: 'Рабочий' }).click();
+
+    await expect(page.getByRole('button', { name: 'Фильтры: 1' })).toBeVisible();
+  });
+
+  test('при сужении окна фильтры уходят из строки по одному, а не переносятся', async ({ page }) => {
+    // По атрибуту очереди, а не по имени: колонка «Исполнитель» в таблице —
+    // тоже кнопка с тем же именем, и когда фильтр уходит из строки, поиск
+    // по имени незаметно переключается на заголовок колонки.
+    const executor = page.locator('[data-filter-priority="5"]');
+    const search = page.getByLabel('Поиск по проектам');
+
+    // Широкое окно: в строке все шесть контролов.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await expect(executor).toBeVisible();
+    await expect(search).toBeVisible();
+
+    // Узкое: «Исполнитель» ушёл, поиск и кнопка остались.
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await expect(executor).toBeHidden();
+    await expect(search).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Фильтры/ })).toBeVisible();
+
+    // Ушедший фильтр доступен в панели — доступ к нему не теряется.
+    const drawer = await openFilters(page);
+    await expect(drawer.getByLabel('Исполнитель')).toBeVisible();
   });
 });
 
