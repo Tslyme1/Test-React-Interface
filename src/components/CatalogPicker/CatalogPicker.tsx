@@ -1,17 +1,9 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  Badge,
-  Box,
-  EmptyState,
-  Field,
-  Input,
-  Stack,
-  Table,
-  Text,
-} from '@uralmash/design-system';
+import { Checkbox, EmptyState, Input, Stack, Table, Text } from '@uralmash/design-system';
 import type { TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
+import styles from './CatalogPicker.module.css';
 
 export type CatalogPickerProps = {
   /** Колонки характеристик. Порядок сохраняется как в справочнике. */
@@ -88,15 +80,28 @@ export function CatalogPicker({
 
   const columns: TableColumn<CatalogItem>[] = [
     {
+      /* Флажок вместо метки «Выбрано» рядом с названием: в прототипе выбор
+         показан именно флажком, и он же читается как «строку можно отметить»
+         до того, как по ней кликнули. Клик по строке остаётся — флажок его
+         дублирует, а не заменяет. */
+      key: 'picked',
+      title: '',
+      render: (item) => (
+        <Checkbox
+          checked={item.name === value}
+          onChange={() => onPick(item.name)}
+          aria-label={`Выбрать ${item.name}`}
+        />
+      ),
+    },
+    {
       key: 'name',
       title: nameLabel,
       sortable: true,
-      render: (item) => (
-        <Stack direction="row" gap="sm" align="center">
-          <Text variant="bodySm">{item.name}</Text>
-          {item.name === value ? <Badge tone="accent">Выбрано</Badge> : null}
-        </Stack>
-      ),
+      /* `label`, а не `bodySm`: имя машины выделено весом, как в прототипе.
+         Веса отдельным пропом в системе нет — его задаёт роль целиком,
+         поэтому выделение приходит вместе с размером роли. */
+      render: (item) => <Text variant="label">{item.name}</Text>,
     },
     ...specs.map<TableColumn<CatalogItem>>((spec) => ({
       key: spec.short,
@@ -115,39 +120,47 @@ export function CatalogPicker({
           в строку нечем: «расти, но не на всю ширину» в системе не выражается
           (у `Stack` проп `grow` растягивает сам стек, а не делит место между
           детьми). Заявка на такой примитив — в систему. */}
-      <Stack direction="column" gap="md">
-        <Box fullWidth>
-          <Field label="Поиск" hint="По названию или любому значению характеристики">
-            {(props) => (
-              <Input
-                {...props}
-                fullWidth
-                placeholder={searchPlaceholder}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            )}
-          </Field>
-        </Box>
+      {/* Панель фильтров: назначение написано внутри самого поля и служит
+          его доступным именем. Подпись сверху здесь удвоила бы высоту полосы
+          и повторила бы слово, которое уже стоит в поле, — то же исключение,
+          что на панели фильтров списка проектов. */}
+      <div className={styles.toolbar}>
         {filter}
-      </Stack>
-
-      <Table
-        columns={columns}
-        rows={rows}
-        rowKey={(item) => item.name}
-        caption={nameLabel}
-        sort={sort}
-        onSortChange={setSort}
-        onRowClick={(item) => onPick(item.name)}
-        empty={
-          <EmptyState
-            icon="search"
-            title="Ничего не найдено"
-            description="Измените запрос или снимите фильтр."
+        <div className={styles.search}>
+          <Input
+            fullWidth
+            type="search"
+            aria-label={`Поиск: ${nameLabel.toLowerCase()} или значение характеристики`}
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-        }
-      />
+        </div>
+      </div>
+
+      {/* Прокрутка каталога — снаружи таблицы: липкой шапки в системе нет
+          намеренно (sticky требует предка с ограниченной высотой, а шкалы
+          высот в системе не существует), поэтому шапка уезжает вместе
+          со строками. Заявка на «область с ограниченной высотой» — в систему. */}
+      <div className={styles.scroll}>
+        <Table
+          columns={columns}
+          rows={rows}
+          rowKey={(item) => item.name}
+          caption={nameLabel}
+          captionHidden
+          sort={sort}
+          onSortChange={setSort}
+          onRowClick={(item) => onPick(item.name)}
+          empty={
+            <EmptyState
+              icon="search"
+              title="Ничего не найдено"
+              description="Измените запрос или снимите фильтр."
+            />
+          }
+        />
+      </div>
 
       <Text variant="caption" color="textMuted">
         Показано: {rows.length} из {items.length}. Прочерк означает, что величина не измерялась.

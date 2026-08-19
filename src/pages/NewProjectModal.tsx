@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Field, Input, Modal, SegmentedControl, Select, Stack, Text } from '@uralmash/design-system';
+import { Button, Field, Input, Modal, SegmentedControl, Select } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
@@ -81,12 +81,15 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
           aside={
             <div className={styles.footerFields}>
               <div className={styles.footerField}>
-                <Field label="Название проекта" required>
+                {/* Плавающая подпись: она лежит в поле и уходит наверх при
+                    вводе — ровно как в прототипе, где подписи в футере
+                    не занимают отдельной строки над полями. */}
+                <Field label="Название проекта" variant="floating" required>
                   {(props) => <Input {...props} fullWidth value={name} onChange={(e) => setName(e.target.value)} />}
                 </Field>
               </div>
               <div className={styles.footerField}>
-                <Field label="Заказчик" required>
+                <Field label="Заказчик" variant="floating" required>
                   {(props) => (
                     <Select
                       {...props}
@@ -95,7 +98,6 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
                       value={customer}
                       onChange={(v) => setCustomer(v as string)}
                       allowCustom
-                      placeholder="Выберите или введите"
                     />
                   )}
                 </Field>
@@ -121,21 +123,20 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         searchPlaceholder="КМД-2200, 2200, 500-655…"
         visibleNames={visibleCrushers}
         filter={
-          /* Не `Field`: у SegmentedControl свой fieldset с legend, а id он
-             не принимает — обёртка оставила бы подпись без контрола. */
-          <Stack gap="2xs" direction="column" align="start">
-            <Text variant="label">Семейство</Text>
-            <SegmentedControl
-              legend="Семейство машины"
-              options={[
-                { value: 'all', label: 'Все' },
-                { value: 'КМД', label: 'КМД' },
-                { value: 'КСД', label: 'КСД' },
-              ]}
-              value={family}
-              onChange={setFamily}
-            />
-          </Stack>
+          /* Подписи над переключателем нет: он стоит в панели фильтров, где
+             назначение читается из самих вариантов, а `legend` остаётся
+             доступным именем для скринридера. В `Field` не заворачивается —
+             у SegmentedControl свой fieldset, и id он не принимает. */
+          <SegmentedControl
+            legend="Семейство машины"
+            options={[
+              { value: 'all', label: 'Все' },
+              { value: 'КМД', label: 'КМД' },
+              { value: 'КСД', label: 'КСД' },
+            ]}
+            value={family}
+            onChange={setFamily}
+          />
         }
       />
     </Modal>

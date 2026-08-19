@@ -26,7 +26,9 @@ test.describe('Выбор дробилки из каталога', () => {
   });
 
   test('поиск находит и по названию, и по значению характеристики', async ({ page }) => {
-    const search = page.getByLabel('Поиск');
+    // Поле поиска стоит в панели фильтров и подписано изнутри:
+    // назначение написано в самом поле и служит его доступным именем.
+    const search = page.getByLabel(/^Поиск:/);
 
     await search.fill('КСД-2200');
     await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
@@ -69,8 +71,10 @@ test.describe('Выбор дробилки из каталога', () => {
 
     await dialog.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    // Строка помечена, окно осталось открытым — каталог никуда не уходит.
-    await expect(dialog.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toContainText('Выбрано');
+    // Строка помечена флажком, окно осталось открытым — каталог никуда не уходит.
+    await expect(
+      dialog.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher }).getByRole('checkbox')
+    ).toBeChecked();
     await expect(dialog.getByLabel('Название проекта')).toHaveValue(SAMPLE_PROJECT.crusher);
   });
 
