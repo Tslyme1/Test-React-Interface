@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Checkbox, EmptyState, Input, Stack, Table, Text } from '@uralmash/design-system';
+import { Button, Checkbox, EmptyState, Input, Modal, Stack, Table, Text } from '@uralmash/design-system';
 import type { TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
 import styles from './CatalogPicker.module.css';
@@ -42,6 +42,38 @@ export function CatalogPicker({
   visibleNames,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  /**
+   * Esc закрывает только верхнее окно.
+   *
+   * Каталог живёт внутри окна нового проекта, а окно фильтров открывается
+   * поверх него — два `Modal` разом. Каждый вешает свой обработчик Esc на
+   * `document` в фазе всплытия, и порядок срабатывания у них — порядок
+   * подписки: внешнее окно смонтировано раньше, поэтому первым закрывается
+   * оно. Нажатие Esc в фильтрах уносило вместе с ними и весь выбор дробилки.
+   *
+   * Перехватываем на погружении: обработчик на `document` в фазе capture
+   * идёт раньше любых всплывающих на том же узле, поэтому здесь событие
+   * можно остановить и закрыть ровно то окно, которое сверху. Своё закрытие
+   * приходится делать руками — остановленное событие не дойдёт и до
+   * собственного обработчика окна фильтров.
+   *
+   * Это подпорка под дефект системы: `Modal` не проверяет, верхний ли он
+   * слой. Заявка в дизайн-систему — отдельно; чинить там, а не здесь.
+   */
+  useEffect(() => {
+    if (!filtersOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      setFiltersOpen(false);
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [filtersOpen]);
 
   /**
    * Сортировка по первой характеристике — у дробилок это диаметр конуса,
@@ -80,10 +112,26 @@ export function CatalogPicker({
 
   const columns: TableColumn<CatalogItem>[] = [
     {
-      /* Флажок вместо метки «Выбрано» рядом с названием: в прототипе выбор
-         показан именно флажком, и он же читается как «строку можно отметить»
-         до того, как по ней кликнули. Клик по строке остаётся — флажок его
-         дублирует, а не заменяет. */
+      key: 'name',
+      title: nameLabel,
+      sortable: true,
+      /* Название стоит первым, и это не только про порядок чтения.
+         `Table` оборачивает содержимое первой колонки в кнопку — так строка
+         становится доступной с клавиатуры, и её доступным именем служит
+         то, что в этой колонке лежит. Когда первым стоял флажок, в кнопку
+         попадал `input`: интерактивное внутри интерактивного. Указатель
+         до флажка не доходил — его перехватывала галочка, — а строка
+         называлась «Выбрать КМД-2200Т» вместо имени машины. Теперь в кнопке
+         имя, а флажок живёт в обычной ячейке и работает сам по себе.
+
+         `label`, а не `bodySm`: имя машины выделено весом, как в прототипе.
+         Веса отдельным пропом в системе нет — его задаёт роль целиком,
+         поэтому выделение приходит вместе с размером роли. */
+      render: (item) => <Text variant="label">{item.name}</Text>,
+    },
+    {
+      /* Флажок дублирует клик по строке, а не заменяет его: он показывает,
+         что строку можно отметить, до того как по ней кликнули. */
       key: 'picked',
       title: '',
       render: (item) => (
@@ -93,15 +141,6 @@ export function CatalogPicker({
           aria-label={`Выбрать ${item.name}`}
         />
       ),
-    },
-    {
-      key: 'name',
-      title: nameLabel,
-      sortable: true,
-      /* `label`, а не `bodySm`: имя машины выделено весом, как в прототипе.
-         Веса отдельным пропом в системе нет — его задаёт роль целиком,
-         поэтому выделение приходит вместе с размером роли. */
-      render: (item) => <Text variant="label">{item.name}</Text>,
     },
     ...specs.map<TableColumn<CatalogItem>>((spec) => ({
       key: spec.short,
@@ -114,18 +153,12 @@ export function CatalogPicker({
 
   return (
     <Stack gap="lg" direction="column">
-      {/* Колонка, а не ряд. Поле поиска занимает всю ширину, и в ряду фильтр
-          всё равно переносился бы на вторую строку при любой ширине окна —
-          `direction="row"` тут только вводил бы в заблуждение. Разложить их
-          в строку нечем: «расти, но не на всю ширину» в системе не выражается
-          (у `Stack` проп `grow` растягивает сам стек, а не делит место между
-          детьми). Заявка на такой примитив — в систему. */}
-      {/* Панель фильтров: назначение написано внутри самого поля и служит
-          его доступным именем. Подпись сверху здесь удвоила бы высоту полосы
-          и повторила бы слово, которое уже стоит в поле, — то же исключение,
-          что на панели фильтров списка проектов. */}
+      {/* Поиск занимает левый край и забирает всю свободную ширину: это
+          основной способ найти машину в каталоге из тридцати позиций, и
+          прятать его за кнопку значило бы прятать главное действие панели.
+          Остальные условия отбора уехали под кнопку справа — их немного,
+          но каждое, вынесенное в строку, отнимает ширину у поиска. */}
       <div className={styles.toolbar}>
-        {filter}
         <div className={styles.search}>
           <Input
             fullWidth
@@ -136,6 +169,12 @@ export function CatalogPicker({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        {filter ? (
+          <Button variant="secondary" iconStart="filter" onClick={() => setFiltersOpen(true)}>
+            Фильтры
+          </Button>
+        ) : null}
       </div>
 
       {/* Прокрутка каталога — снаружи таблицы: липкой шапки в системе нет
@@ -162,9 +201,27 @@ export function CatalogPicker({
         />
       </div>
 
-      <Text variant="caption" color="textMuted">
-        Показано: {rows.length} из {items.length}. Прочерк означает, что величина не измерялась.
-      </Text>
+      {/* Окно общих фильтров. Каталог сам живёт внутри окна, поэтому это
+          окно во окне — раскладка та же, что на списке проектов, и разводить
+          два разных способа добраться до одних и тех же условий отбора
+          не стоит: пользователь запоминает место кнопки, а не её контекст. */}
+      <Modal
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        title="Фильтры"
+        size="sm"
+        footer={
+          <Modal.Footer>
+            <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+              Готово
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <Stack gap="lg" direction="column">
+          {filter}
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

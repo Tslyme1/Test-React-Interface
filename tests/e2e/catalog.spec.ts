@@ -17,7 +17,9 @@ test.describe('Выбор дробилки из каталога', () => {
   test('показывает весь каталог с характеристиками', async ({ page }) => {
     const console_ = watchConsole(page);
 
-    await expect(page.getByText('Показано: 30 из 30')).toBeVisible();
+    // Счётчик «Показано: N из M» убран с экрана: он занимал полосу под
+    // таблицей и повторял то, что видно по самому списку. Считаем строки.
+    await expect(page.getByRole('row')).toHaveCount(31); // 30 машин + шапка
     // Шапка несёт короткие подписи характеристик, а не только названия машин.
     await expect(page.getByRole('columnheader', { name: /D, мм/ })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /Q, т\/ч/ })).toBeVisible();
@@ -41,13 +43,32 @@ test.describe('Выбор дробилки из каталога', () => {
     await expect(page.getByText('Ничего не найдено')).toBeVisible();
   });
 
+  /**
+   * Семейство машины живёт в окне «Фильтры», а не в строке над таблицей:
+   * поиск занял левый край целиком, и каждое условие, вынесенное в строку,
+   * отнимало бы у него ширину.
+   */
   test('фильтр по семейству сужает список', async ({ page }) => {
+    const openFilters = async () => {
+      await page.getByRole('button', { name: 'Фильтры' }).click();
+      await expect(page.getByRole('heading', { name: 'Фильтры' })).toBeVisible();
+    };
+    const apply = async () => {
+      await page.getByRole('button', { name: 'Готово' }).click();
+      await expect(page.getByRole('heading', { name: 'Фильтры' })).toHaveCount(0);
+    };
+
+    await openFilters();
     await page.getByRole('radio', { name: 'КСД' }).check();
+    await apply();
 
     await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toHaveCount(0);
 
+    await openFilters();
     await page.getByRole('radio', { name: 'Все' }).check();
+    await apply();
+
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toBeVisible();
   });
 

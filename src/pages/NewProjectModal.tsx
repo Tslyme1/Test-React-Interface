@@ -19,8 +19,8 @@ type Family = 'all' | 'КМД' | 'КСД';
  *
  * Не с формы: машина — единственное, без чего расчёта не существует,
  * и выбирают её сравнением характеристик по столбцам, то есть таблицей
- * во весь размер окна. Название и заказчик дописываются внизу, рядом
- * с «Продолжить», — так это устроено и в прототипе.
+ * во весь размер окна. Название и заказчик стоят в футере справа, вплотную
+ * к «Продолжить»: это последний шаг перед созданием проекта.
  *
  * Пробы руды здесь нет намеренно: она нужна только на шаге «Грансостав»,
  * там же и выбирается. Спрашивать её на входе — задерживать создание
@@ -77,37 +77,41 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
       title="Новый проект"
       size="lg"
       footer={
-        <Modal.Footer
-          aside={
-            <div className={styles.footerFields}>
-              <div className={styles.footerField}>
-                {/* Плавающая подпись: она лежит в поле и уходит наверх при
-                    вводе — ровно как в прототипе, где подписи в футере
-                    не занимают отдельной строки над полями. */}
-                <Field label="Название проекта" variant="floating" required>
-                  {(props) => <Input {...props} fullWidth value={name} onChange={(e) => setName(e.target.value)} />}
-                </Field>
-              </div>
-              <div className={styles.footerField}>
-                <Field label="Заказчик" variant="floating" required>
-                  {(props) => (
-                    <Select
-                      {...props}
-                      fullWidth
-                      options={CUSTOMER_OPTIONS}
-                      value={customer}
-                      onChange={(v) => setCustomer(v as string)}
-                      allowCustom
-                    />
-                  )}
-                </Field>
-              </div>
+        /* Поля стоят справа, вплотную к главному действию: заполнение имени
+           и заказчика — последний шаг перед «Продолжить», и разносить их
+           по разным краям футера значило бы вести взгляд через всю ширину
+           окна и обратно. `aside` не используется намеренно — он прижимает
+           содержимое к левому краю, а слева здесь ничего быть не должно.
+
+           «Отмена» убрана: окно закрывается крестиком в шапке, кликом по фону
+           и клавишей Esc. Четвёртый способ уйти ничего не добавлял, но занимал
+           место рядом с действием, ради которого окно открывали. */
+        <Modal.Footer>
+          <div className={styles.footerFields}>
+            <div className={styles.footerField}>
+              {/* Плавающая подпись: она лежит в поле и уходит наверх при
+                  вводе — ровно как в прототипе, где подписи в футере
+                  не занимают отдельной строки над полями. */}
+              <Field label="Название проекта" variant="floating" required>
+                {(props) => <Input {...props} fullWidth value={name} onChange={(e) => setName(e.target.value)} />}
+              </Field>
             </div>
-          }
-        >
-          <Button variant="secondary" onClick={close}>
-            Отмена
-          </Button>
+            <div className={styles.footerField}>
+              <Field label="Заказчик" variant="floating" required>
+                {(props) => (
+                  <Select
+                    {...props}
+                    fullWidth
+                    options={CUSTOMER_OPTIONS}
+                    value={customer}
+                    onChange={(v) => setCustomer(v as string)}
+                    allowCustom
+                  />
+                )}
+              </Field>
+            </div>
+          </div>
+
           <Button variant="primary" disabled={!canCreate} onClick={submit}>
             Продолжить
           </Button>
