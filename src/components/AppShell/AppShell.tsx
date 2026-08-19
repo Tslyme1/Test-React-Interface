@@ -2,15 +2,17 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   AppHeader,
+  Cell,
   HeaderButton,
   HeaderDivider,
-  HeaderSpacer,
+  HeaderLogo,
+  Icon,
   Popover,
   Stack,
   Text,
-  Button,
 } from '@uralmash/design-system';
 import type { User } from '@/types';
+import logoSrc from '@/uztm-logo.png';
 import styles from './AppShell.module.css';
 
 export type AppShellProps = {
@@ -37,55 +39,64 @@ export function AppShell({
   return (
     <Stack direction="column" grow>
       <AppHeader>
-        <HeaderButton icon="home" active={!currentProjectName} onClick={onGoProjects}>
-          Проекты
-        </HeaderButton>
-        <HeaderButton icon="plus" aria-label="Новый проект" onClick={onNewProject} />
+        <AppHeader.Left>
+          {/* Знак, а не кнопка «домой»: `HeaderLogo` неинтерактивен намеренно —
+              логотип, который выглядит нажимаемым и никуда не ведёт, обманывает.
+              Переход в список проектов живёт справа отдельной ячейкой. */}
+          <HeaderLogo label="УЗТМ">
+            <img className={styles.logo} src={logoSrc} alt="" />
+          </HeaderLogo>
 
-        {currentProjectName ? (
-          <>
-            <HeaderDivider />
-            <HeaderButton active>{currentProjectName}</HeaderButton>
-            {onCloseProject ? (
-              <HeaderButton icon="x" aria-label="Закрыть проект" onClick={onCloseProject} />
-            ) : null}
-          </>
-        ) : null}
+          <HeaderButton icon="plus" aria-label="Новый проект" onClick={onNewProject} />
 
-        <HeaderSpacer />
+          {currentProjectName ? (
+            <>
+              <HeaderDivider />
+              <HeaderButton active>{currentProjectName}</HeaderButton>
+              {onCloseProject ? (
+                <HeaderButton icon="x" aria-label="Закрыть проект" onClick={onCloseProject} />
+              ) : null}
+            </>
+          ) : null}
+        </AppHeader.Left>
 
-        <Popover
-          open={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          placement="bottom-end"
-          width="sm"
-          trigger={
-            <HeaderButton icon="user" expandable onClick={() => setMenuOpen((v) => !v)}>
-              {user.name.split(' ')[0]}
-            </HeaderButton>
-          }
-        >
-          <Stack gap="xs" direction="column">
-            <Stack gap="none" direction="column">
-              <Text variant="label">{user.name}</Text>
-              <Text variant="caption" color="textMuted">
-                {user.role}
-              </Text>
+        <AppHeader.Right>
+          <HeaderButton icon="home" active={!currentProjectName} onClick={onGoProjects}>
+            Проекты
+          </HeaderButton>
+
+          <Popover
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            placement="bottom-end"
+            width="sm"
+            trigger={
+              <HeaderButton icon="user" expandable onClick={() => setMenuOpen((v) => !v)}>
+                {user.name.split(' ')[0]}
+              </HeaderButton>
+            }
+          >
+            <Stack gap="xs" direction="column">
+              <Stack gap="none" direction="column">
+                <Text variant="label">{user.name}</Text>
+                <Text variant="caption" color="textMuted">
+                  {user.role}
+                </Text>
+              </Stack>
+              {/* Строка меню — `Cell`, а не кнопка: у кнопки содержимое стоит
+                  по центру, и в списке подписи не выстраиваются в столбец. */}
+              <Cell
+                leading={<Icon name="logOut" size="sm" />}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onLogout();
+                }}
+              >
+                Выйти
+              </Cell>
             </Stack>
-            <Button
-              variant="ghost"
-              size="sm"
-              iconStart="logOut"
-              fullWidth
-              onClick={() => {
-                setMenuOpen(false);
-                onLogout();
-              }}
-            >
-              Выйти
-            </Button>
-          </Stack>
-        </Popover>
+          </Popover>
+        </AppHeader.Right>
       </AppHeader>
 
       <main className={styles.main}>{children}</main>

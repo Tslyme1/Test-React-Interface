@@ -4,9 +4,10 @@ import {
   Badge,
   Box,
   Button,
-  Drawer,
+  Cell,
   EmptyState,
   Field,
+  Icon,
   Input,
   Modal,
   Popover,
@@ -256,57 +257,68 @@ export function ProjectsPage({
           {/* Всплытие гасится на каждом пункте. Панель поповера живёт внутри
               ячейки, а на строке висит переход в проект — без этого «Удалить
               в корзину» заодно открывало бы удаляемый проект. */}
-          <Stack gap="2xs" direction="column">
-            <Button
-              variant="ghost"
-              size="sm"
-              iconStart="fileText"
-              fullWidth
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuFor(null);
-                onOpenProject(row);
-              }}
-            >
-              Открыть проект
-            </Button>
+          {/* Пункты — `Cell`, а не кнопки. У кнопки содержимое стоит по центру,
+              и в столбце подписи разной длины не выстраиваются в колонку:
+              перечень читался как набор обрывков. `Cell` задаёт эту строку
+              один раз на всю систему — слот под иконку фиксирован по ширине.
 
-            {/* Печать — по одному пункту на посчитанный шаг. Непосчитанный
-                шаг печатать нечего: показывать кнопку, которая ничего
-                не даст, хуже, чем не показывать её вовсе. */}
-            {STEP_KEYS.map((key, i) =>
-              row.calc[i] ? (
-                <Button
-                  key={key}
-                  variant="ghost"
-                  size="sm"
-                  iconStart="print"
-                  fullWidth
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuFor(null);
-                    printStepReport(row, key);
-                  }}
-                >
-                  Печать: {STEP_LABELS[key]}
-                </Button>
-              ) : null
-            )}
+              Без `role`: `Cell` тогда рисуется кнопкой — тем, чем пункт и
+              является. `menuitem` здесь был бы неправдой, роль требует
+              родителя с `role="menu"`, а панель поповера объявлена диалогом.
 
-            <Button
-              variant="ghost"
-              size="sm"
-              iconStart="trash"
-              fullWidth
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuFor(null);
-                onRemoveProject(row.id);
-              }}
-            >
-              Удалить в корзину
-            </Button>
-          </Stack>
+              Всплытие гасится один раз на обёртке, а не в каждом пункте:
+              `Cell` отдаёт `onClick` без события, гасить внутри нечем.
+              Без этого нажатие на «Удалить в корзину» заодно открывало бы
+              удаляемый проект — панель поповера лежит в React-дереве ячейки,
+              а на строке таблицы висит переход в проект, и портал событию
+              не помеха. */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <Stack gap="none" direction="column">
+              <Cell
+                size="sm"
+                leading={<Icon name="fileText" size="sm" />}
+                onClick={() => {
+                  setMenuFor(null);
+                  onOpenProject(row);
+                }}
+              >
+                Открыть проект
+              </Cell>
+
+              {/* Печать — по одному пункту на посчитанный шаг. Непосчитанный
+                  шаг печатать нечего: показывать пункт, который ничего
+                  не даст, хуже, чем не показывать его вовсе. */}
+              {STEP_KEYS.map((key, i) =>
+                row.calc[i] ? (
+                  <Cell
+                    key={key}
+                    size="sm"
+                    leading={<Icon name="print" size="sm" />}
+                    onClick={() => {
+                      setMenuFor(null);
+                      printStepReport(row, key);
+                    }}
+                  >
+                    Печать: {STEP_LABELS[key]}
+                  </Cell>
+                ) : null
+              )}
+
+              {/* `danger` — строка, разрушающая данные. Удаление мягкое, но
+                  красный здесь про направление действия, а не про необратимость. */}
+              <Cell
+                size="sm"
+                tone="danger"
+                leading={<Icon name="trash" size="sm" />}
+                onClick={() => {
+                  setMenuFor(null);
+                  onRemoveProject(row.id);
+                }}
+              >
+                Удалить в корзину
+              </Cell>
+            </Stack>
+          </div>
         </Popover>
       ),
     },
@@ -416,23 +428,25 @@ export function ProjectsPage({
         </div>
       </Box>
 
-      {/* Все фильтры разом. Панель, а не модалка: она не блокирует таблицу,
-          и результат фильтрации виден сразу же, слева от панели, — по нему
-          и понятно, стоит ли уточнять условие дальше. */}
-      <Drawer
+      {/* Все фильтры разом — окном, а не выдвижной панелью. Панель оставляла
+          таблицу видимой, но занимала её край и сдвигала колонки; к тому же
+          на списке проектов и в каталоге дробилок кнопка «Фильтры» одна и та
+          же, а открывала разное. Один вход — один вид: пользователь запоминает
+          место кнопки, а не то, в каком экране он сейчас находится. */}
+      <Modal
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
-        size="narrow"
         title="Фильтры"
+        size="sm"
         footer={
-          <Stack direction="row" gap="sm" justify="end" grow>
+          <Modal.Footer>
             <Button variant="secondary" disabled={!filtersActive} onClick={resetFilters}>
               Сбросить
             </Button>
             <Button variant="primary" onClick={() => setFiltersOpen(false)}>
               Готово
             </Button>
-          </Stack>
+          </Modal.Footer>
         }
       >
         <Stack gap="lg" direction="column">
@@ -454,7 +468,7 @@ export function ProjectsPage({
             )}
           </Field>
         </Stack>
-      </Drawer>
+      </Modal>
 
       {/* Корзина. Показывается всегда: пустая объясняет, что удалённое
           не пропадает сразу, — это снимает страх перед удалением. */}
