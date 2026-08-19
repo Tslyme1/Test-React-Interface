@@ -296,6 +296,12 @@ export function ProjectsPage({
                   rows={rows}
                   rowKey={(row) => row.id}
                   caption={`Проекты: ${rows.length} из ${projects.length}`}
+                  /* Счётчик убран с экрана: таблицу называет заголовок
+                     «Проекты» над ней, и вторая подпись прямо под ним
+                     занимала полосу, ничего не добавляя. В разметке счётчик
+                     остался — он служит таблице именем, а в этом файле
+                     таблиц две (вторая — корзина). */
+                  captionHidden
                   sort={sort}
                   onSortChange={setSort}
                   onRowClick={onOpenProject}
