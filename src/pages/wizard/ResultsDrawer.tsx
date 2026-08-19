@@ -2,12 +2,7 @@ import { Badge, Button, Drawer, Stack, Table, Text } from '@uralmash/design-syst
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGran, estimateProd } from '@/domain/estimates';
-
-const STEP_TITLES: Record<StepKey, string> = {
-  geom: 'Результат: геометрия камеры дробления',
-  gran: 'Результат: характеристический грансостав',
-  prod: 'Результат: грансостав продукта и усилия',
-};
+import { STEP_TITLES } from '@/domain/steps';
 
 type KvRow = { label: string; value: string; unit: string };
 

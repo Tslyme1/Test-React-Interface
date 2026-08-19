@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openTrash, removeFirstProject, seedSession, watchConsole } from './helpers';
+import { createProject, openTrash, removeFirstProject, seedSession, watchConsole } from './helpers';
 
 /**
  * Панель фильтров, меню строки и корзина. Все три работают на списке
@@ -119,5 +119,36 @@ test.describe('Корзина', () => {
     await openTrash(page);
     await expect(page.getByText('Корзина пуста')).toBeVisible();
     await expect(page.getByText('Удалённые проекты попадают сюда, и их можно вернуть.')).toBeVisible();
+  });
+});
+
+test.describe('Печать по шагам из меню строки', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+  });
+
+  test('пункт печати появляется только для посчитанных шагов', async ({ page }) => {
+    await page.getByRole('button', { name: 'Проекты' }).click();
+
+    await page.getByRole('button', { name: /^Действия:/ }).first().click();
+    await expect(page.getByRole('button', { name: /^Печать:/ })).toHaveCount(0);
+  });
+
+  test('печать открывает отчёт с таблицей посчитанного шага', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: 'Проекты' }).click();
+
+    await page.getByRole('button', { name: /^Действия:/ }).first().click();
+    // Посчитан только первый шаг — пункт печати ровно один.
+    await expect(page.getByRole('button', { name: /^Печать:/ })).toHaveCount(1);
+
+    const [popup] = await Promise.all([
+      page.waitForEvent('popup'),
+      page.getByRole('button', { name: 'Печать: Геометрия' }).click(),
+    ]);
+    await expect(popup.locator('h1')).toHaveText('Результат: геометрия камеры дробления');
+    await expect(popup.locator('table')).toContainText('D/2');
+    await popup.close();
   });
 });
