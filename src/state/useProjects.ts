@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ProdData, Project, WizardData } from '@/types';
+import type { GeomData, ProdData, Project, WizardData } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { CRUSHERS } from '@/data/crushers';
@@ -10,12 +10,14 @@ const STORAGE_KEY = 'uztm-projects';
  * Версия формата хранения. Меняется, когда меняется форма `Project`.
  *
  * Версия 2 добавила параметры формы куска (`a0`, `va0`, `shapeMode`,
- * `sieveRows`), версия 3 — корзину, версия 4 — отметку `seeded`. Данные
+ * `sieveRows`), версия 3 — корзину, версия 4 — отметку `seeded`, версия 5 —
+ * параметры шага «Геометрия» (`zones`, `beta2`, `l11`, `l12`, `R`, `a`),
+ * добавленные при синхронизации вёрстки шага с формой источника. Данные
  * прежних версий не выбрасываются, а дополняются значениями по умолчанию:
  * проекты — это работа пользователя, и терять её из-за того, что мы
  * дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -48,10 +50,11 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
-    if (payload.version === 3) return seedIfNeeded({ projects: payload.projects, trash, seeded });
-    if (payload.version === 2) return seedIfNeeded({ projects: payload.projects, trash, seeded: false });
+    if (payload.version === 4) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded });
+    if (payload.version === 3) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded });
+    if (payload.version === 2) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded: false });
     if (payload.version === 1) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateFromV1), trash, seeded: false });
+      return seedIfNeeded({ projects: payload.projects.map(migrateFromV1).map(migrateGeomV5), trash, seeded: false });
     }
 
     // Версия из будущего или мусор — читать нечего.
@@ -82,6 +85,22 @@ function migrateFromV1(project: Project): Project {
   return {
     ...project,
     data: { ...project.data, prod: { ...fallback, ...stored } },
+  };
+}
+
+/**
+ * До версии 5 у шага «Геометрия» не было `zones`, `beta2`, `l11`, `l12`,
+ * `R`, `a` — их добавила синхронизация вёрстки шага с формой источника.
+ * Тот же порядок слияния, что и у `migrateFromV1`: дефолты сначала,
+ * реальные сохранённые значения — поверх.
+ */
+function migrateGeomV5(project: Project): Project {
+  const fallback = defaultWizardData().geom;
+  const stored = project.data.geom as Partial<GeomData>;
+
+  return {
+    ...project,
+    data: { ...project.data, geom: { ...fallback, ...stored } },
   };
 }
 

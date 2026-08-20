@@ -32,15 +32,21 @@ function toNum(raw: string): number {
 }
 
 /**
- * `GeomData` — упрощённое подмножество параметров: только 7 полей против
- * ~24 в полной цепочке прототипа. Прямое соответствие есть только у части
+ * `GeomData` — упрощённое подмножество параметров: 13 полей против ~24
+ * в полной цепочке прототипа. Прямое соответствие есть только у части
  * полей:
  *
  * - `theta` → θ (тот же смысл, тот же узел `computeChamberGeometry`).
  * - `beta10` → первый узловой угол брони конуса (β10 прототипа).
  * - `beta40` → первый узловой угол брони чаши (β40 прототипа).
+ * - `beta2` → терминальный угол брони конуса, «угол на выходе конуса»
+ *   (β2 прототипа).
  * - `l2` → длина последнего сегмента брони чаши (4i→3, «длина параллельной
  *   зоны» — тот же калибровочный сегмент l2, что и в прототипе).
+ * - `l11` → длина первого сегмента брони чаши (40→41).
+ * - `l12` → длина второго сегмента брони чаши (41→42). Подставляется только
+ *   при `zones === '2'` — при одной зоне дробления прототип второй сегмент
+ *   не выделяет отдельным полем, и здесь остаётся значение по умолчанию.
  *
  * `D`, `H`, `S0` в прототипе — производные величины (считаются из уже
  * построенной цепочки), а не входные параметры узла. В форме визарда они,
@@ -48,8 +54,12 @@ function toNum(raw: string): number {
  * а идут в `ChamberCalibration` — калибровку поверх готового профиля (см.
  * комментарий у `applyCalibration`).
  *
- * Остальные узлы (r40, r10, a40, a10, промежуточные β и L, терминальные β3
- * и β2) в `GeomData` не заведены — используются значения по умолчанию.
+ * `R` и `a` в форме есть (перенесены из группы «Геометрия камеры» прототипа),
+ * но в прототипе они относятся к другой части методики (грансостав/усилия),
+ * а не к цепочке профиля — `computeChamberGeometry` их не использует.
+ *
+ * Остальные узлы (r40, r10, a40, a10, промежуточные β и L, терминальный β3)
+ * в `GeomData` не заведены — используются значения по умолчанию.
  * «Инвертировать направление β» из прототипа тоже не имеет отдельного поля
  * в форме — направление фиксировано (`invert: false`, как и в прототипе).
  */
@@ -63,7 +73,10 @@ export function buildChamberSchemeProps(data: GeomData): { input: ChamberGeometr
   const theta = toDeg(data.theta);
   const beta10 = toDeg(data.beta10);
   const beta40 = toDeg(data.beta40);
+  const beta2 = toDeg(data.beta2);
   const l2 = toNum(data.l2);
+  const l11 = toNum(data.l11);
+  const l12 = toNum(data.l12);
   const targetDiameter = toNum(data.D);
   const targetHeight = toNum(data.H);
   const targetGap0 = toNum(data.S0);
@@ -75,8 +88,8 @@ export function buildChamberSchemeProps(data: GeomData): { input: ChamberGeometr
       ...defaults.bowl,
       beta: [Number.isFinite(beta40) ? beta40 : defaults.bowl.beta[0], defaults.bowl.beta[1], defaults.bowl.beta[2], defaults.bowl.beta[3]],
       length: [
-        defaults.bowl.length[0],
-        defaults.bowl.length[1],
+        Number.isFinite(l11) && l11 > 0 ? l11 : defaults.bowl.length[0],
+        data.zones === '2' && Number.isFinite(l12) && l12 > 0 ? l12 : defaults.bowl.length[1],
         defaults.bowl.length[2],
         Number.isFinite(l2) && l2 > 0 ? l2 : defaults.bowl.length[3],
       ],
@@ -84,6 +97,7 @@ export function buildChamberSchemeProps(data: GeomData): { input: ChamberGeometr
     cone: {
       ...defaults.cone,
       beta: [Number.isFinite(beta10) ? beta10 : defaults.cone.beta[0], defaults.cone.beta[1], defaults.cone.beta[2], defaults.cone.beta[3]],
+      terminalBeta: Number.isFinite(beta2) ? beta2 : defaults.cone.terminalBeta,
     },
     theta: Number.isFinite(theta) ? theta : defaults.theta,
     invert: defaults.invert,

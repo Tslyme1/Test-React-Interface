@@ -3,11 +3,39 @@ import type { ChamberCalibration, ChamberGeometryInput, Vec2 } from '@/domain/ch
 import { applyCalibration, arcPath, computeChamberGeometry, makeTransform, phiOf } from '@/domain/chamberGeometry';
 import styles from './ChamberScheme.module.css';
 
+/**
+ * Видимость групп элементов схемы — соответствует меню «Слои» на панели.
+ * Все группы включены по умолчанию, поэтому вызов без пропа не меняет
+ * прежний внешний вид схемы.
+ */
+export type ChamberSchemeLayers = {
+  /** Профиль и точки брони чаши. */
+  bowl?: boolean;
+  /** Профиль и точки брони конуса. */
+  cone?: boolean;
+  /** Ось конуса, дуга и подпись угла качания θ. */
+  theta?: boolean;
+  /** Зазор S₀ и заливка зоны калибровки. */
+  gap?: boolean;
+  /** Выносные размеры D/2 и h. */
+  dims?: boolean;
+};
+
+const DEFAULT_LAYERS: Required<ChamberSchemeLayers> = { bowl: true, cone: true, theta: true, gap: true, dims: true };
+
 export type ChamberSchemeProps = {
   /** Полный набор параметров профиля — как в `st` прототипа-источника. */
   input: ChamberGeometryInput;
   /** Целевые D, H, S0 — независимый ввод формы, накладывается поверх построенной цепочки. */
   calibration?: ChamberCalibration;
+  /** Какие группы элементов рисовать. Непереданные группы — видимы. */
+  layers?: ChamberSchemeLayers;
+  /**
+   * Режим «Линии построения»: поверх обычной схемы — лучи от точки
+   * подвеса к каждой точке профиля, тот же приём «повернуть на β,
+   * шагнуть на L», которым строится цепочка в `computeChamberGeometry`.
+   */
+  construction?: boolean;
   className?: string;
 };
 
@@ -41,7 +69,8 @@ function polygonFrom(points: Vec2[]): string {
  * профиль строится как обычное дерево `<path>` / `<circle>` / `<text>` из
  * точек, посчитанных `computeChamberGeometry` (см. `src/domain/chamberGeometry.ts`).
  */
-export function ChamberScheme({ input, calibration, className }: ChamberSchemeProps) {
+export function ChamberScheme({ input, calibration, layers, construction, className }: ChamberSchemeProps) {
+  const L = { ...DEFAULT_LAYERS, ...layers };
   const geometry = useMemo(() => computeChamberGeometry(input), [input]);
   const calibrated = useMemo(() => applyCalibration(geometry, calibration ?? {}), [geometry, calibration]);
 
@@ -127,118 +156,168 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
       <rect x={0} y={0} width={VB.w} height={VB.h} fill="var(--color-surface)" />
 
       {/* ── зоны ── */}
-      {zones.map((z) => (
-        <path key={z.key} d={polygonFrom(z.poly)} fill={z.fill} stroke="none">
-          <title>{z.title}</title>
-        </path>
-      ))}
+      {L.gap
+        ? zones.map((z) => (
+            <path key={z.key} d={polygonFrom(z.poly)} fill={z.fill} stroke="none">
+              <title>{z.title}</title>
+            </path>
+          ))
+        : null}
 
       {/* ── оси ── */}
       <line x1={apex.x} y1={top} x2={apex.x} y2={bottom} stroke="var(--color-border-strong)" strokeWidth={1}>
         <title>Ось дробилки</title>
       </line>
-      <line
-        x1={apex.x}
-        y1={top}
-        x2={coneAxisEnd.x}
-        y2={coneAxisEnd.y}
-        stroke="var(--color-text-muted)"
-        strokeWidth={1}
-        strokeDasharray="14 4 2 4"
-      >
-        <title>Ось конуса (наклонена на угол качания θ)</title>
-      </line>
-      {input.theta !== 0 ? (
-        <path
-          d={arcPath(apex, (bottom - apex.y) * 0.18, 0, input.theta)}
-          fill="none"
-          stroke="var(--color-text-muted)"
-          strokeWidth={1}
-        >
-          <title>θ — угол качания конуса: {fmt(input.theta)}°</title>
-        </path>
+      {L.theta ? (
+        <>
+          <line
+            x1={apex.x}
+            y1={top}
+            x2={coneAxisEnd.x}
+            y2={coneAxisEnd.y}
+            stroke="var(--color-text-muted)"
+            strokeWidth={1}
+            strokeDasharray="14 4 2 4"
+          >
+            <title>Ось конуса (наклонена на угол качания θ)</title>
+          </line>
+          {input.theta !== 0 ? (
+            <path
+              d={arcPath(apex, (bottom - apex.y) * 0.18, 0, input.theta)}
+              fill="none"
+              stroke="var(--color-text-muted)"
+              strokeWidth={1}
+            >
+              <title>θ — угол качания конуса: {fmt(input.theta)}°</title>
+            </path>
+          ) : null}
+          <text x={apex.x - 8} y={top + (bottom - top) * 0.18 - 6} textAnchor="end" fontSize={13} fontStyle="italic" fill="var(--color-text-muted)">
+            θ
+          </text>
+        </>
       ) : null}
-      <text x={apex.x - 8} y={top + (bottom - top) * 0.18 - 6} textAnchor="end" fontSize={13} fontStyle="italic" fill="var(--color-text-muted)">
-        θ
-      </text>
+
+      {/* ── линии построения: лучи от точки подвеса к каждой точке профиля ── */}
+      {construction ? (
+        <g>
+          {bowlPts.map((p, i) => (
+            <line
+              key={`build-b-${NAMES_B[i]}`}
+              x1={apex.x}
+              y1={apex.y}
+              x2={p.x}
+              y2={p.y}
+              stroke="var(--color-border-strong)"
+              strokeWidth={0.6}
+              strokeDasharray="2 3"
+            />
+          ))}
+          {conePts.map((p, i) => (
+            <line
+              key={`build-c-${NAMES_C[i]}`}
+              x1={apex.x}
+              y1={apex.y}
+              x2={p.x}
+              y2={p.y}
+              stroke="var(--color-border-strong)"
+              strokeWidth={0.6}
+              strokeDasharray="2 3"
+            />
+          ))}
+        </g>
+      ) : null}
 
       {/* ── профиль брони чаши ── */}
-      <path d={pathFrom(bowlPts)} fill="none" stroke="var(--color-text)" strokeWidth={1.6} strokeLinejoin="round">
-        <title>Броня чаши — неподвижный профиль камеры</title>
-      </path>
-      {SEGMENT_LABELS.map((label, i) => {
-        const a = bowlPts[i];
-        const b = bowlPts[i + 1];
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = dy / len;
-        const ny = -dx / len;
-        const off = 20;
-        const mid = { x: (a.x + b.x) / 2 - nx * off, y: (a.y + b.y) / 2 - ny * off };
-        return (
-          <text
-            key={label}
-            x={mid.x}
-            y={mid.y}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize={11.5}
-            fontStyle="italic"
-            fill="var(--color-text-muted)"
-          >
-            {label}
-          </text>
-        );
-      })}
+      {L.bowl ? (
+        <>
+          <path d={pathFrom(bowlPts)} fill="none" stroke="var(--color-text)" strokeWidth={1.6} strokeLinejoin="round">
+            <title>Броня чаши — неподвижный профиль камеры</title>
+          </path>
+          {SEGMENT_LABELS.map((label, i) => {
+            const a = bowlPts[i];
+            const b = bowlPts[i + 1];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const nx = dy / len;
+            const ny = -dx / len;
+            const off = 20;
+            const mid = { x: (a.x + b.x) / 2 - nx * off, y: (a.y + b.y) / 2 - ny * off };
+            return (
+              <text
+                key={label}
+                x={mid.x}
+                y={mid.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fontSize={11.5}
+                fontStyle="italic"
+                fill="var(--color-text-muted)"
+              >
+                {label}
+              </text>
+            );
+          })}
+        </>
+      ) : null}
 
       {/* ── профиль брони конуса ── */}
-      <path d={pathFrom(conePts)} fill="none" stroke="var(--color-text)" strokeWidth={1.6} strokeLinejoin="round">
-        <title>Броня конуса — гирационный профиль камеры</title>
-      </path>
+      {L.cone ? (
+        <path d={pathFrom(conePts)} fill="none" stroke="var(--color-text)" strokeWidth={1.6} strokeLinejoin="round">
+          <title>Броня конуса — гирационный профиль камеры</title>
+        </path>
+      ) : null}
 
       {/* ── зазор S0 в зоне калибровки ── */}
-      <line
-        x1={bowlPts[4].x}
-        y1={bowlPts[4].y}
-        x2={conePts[4].x}
-        y2={conePts[4].y}
-        stroke="var(--color-accent)"
-        strokeWidth={1.8}
-      >
-        <title>S₀ — выходная щель: {fmt(gapRaw)} мм</title>
-      </line>
-      <text
-        x={(bowlPts[4].x + conePts[4].x) / 2 + 10}
-        y={(bowlPts[4].y + conePts[4].y) / 2}
-        fontSize={11.5}
-        fontStyle="italic"
-        fill="var(--color-accent-text)"
-      >
-        S₀
-      </text>
+      {L.gap ? (
+        <>
+          <line
+            x1={bowlPts[4].x}
+            y1={bowlPts[4].y}
+            x2={conePts[4].x}
+            y2={conePts[4].y}
+            stroke="var(--color-accent)"
+            strokeWidth={1.8}
+          >
+            <title>S₀ — выходная щель: {fmt(gapRaw)} мм</title>
+          </line>
+          <text
+            x={(bowlPts[4].x + conePts[4].x) / 2 + 10}
+            y={(bowlPts[4].y + conePts[4].y) / 2}
+            fontSize={11.5}
+            fontStyle="italic"
+            fill="var(--color-accent-text)"
+          >
+            S₀
+          </text>
+        </>
+      ) : null}
 
       {/* ── точки профиля ── */}
-      {bowlPts.map((p, i) => (
-        <g key={`b-${NAMES_B[i]}`}>
-          <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
-          <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
-          <text x={p.x - 9} y={p.y + 3} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
-            {NAMES_B[i]}
-          </text>
-          <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlTrue[i].x, bowlTrue[i].y))} мм · α = ${fmt(phiOf(bowlTrue[i]))}°`}</title>
-        </g>
-      ))}
-      {conePts.map((p, i) => (
-        <g key={`c-${NAMES_C[i]}`}>
-          <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
-          <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
-          <text x={p.x - 8} y={p.y + 14} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
-            {NAMES_C[i]}
-          </text>
-          <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneTrue[i].x, coneTrue[i].y))} мм · α = ${fmt(phiOf(coneTrue[i]))}°`}</title>
-        </g>
-      ))}
+      {L.bowl
+        ? bowlPts.map((p, i) => (
+            <g key={`b-${NAMES_B[i]}`}>
+              <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
+              <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
+              <text x={p.x - 9} y={p.y + 3} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
+                {NAMES_B[i]}
+              </text>
+              <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlTrue[i].x, bowlTrue[i].y))} мм · α = ${fmt(phiOf(bowlTrue[i]))}°`}</title>
+            </g>
+          ))
+        : null}
+      {L.cone
+        ? conePts.map((p, i) => (
+            <g key={`c-${NAMES_C[i]}`}>
+              <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
+              <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
+              <text x={p.x - 8} y={p.y + 14} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
+                {NAMES_C[i]}
+              </text>
+              <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneTrue[i].x, coneTrue[i].y))} мм · α = ${fmt(phiOf(coneTrue[i]))}°`}</title>
+            </g>
+          ))
+        : null}
 
       {/* точка подвеса */}
       <g>
@@ -251,55 +330,59 @@ export function ChamberScheme({ input, calibration, className }: ChamberSchemePr
       </g>
 
       {/* ── размеры D/2 и h ── */}
-      <line
-        x1={apex.x - 58}
-        y1={apex.y}
-        x2={apex.x - 58}
-        y2={conePts[4].y}
-        stroke="var(--color-text-muted)"
-        strokeWidth={1}
-        markerStart="url(#chamber-arrow)"
-        markerEnd="url(#chamber-arrow)"
-      >
-        <title>h = {fmt(heightRaw)} мм</title>
-      </line>
-      <line x1={apex.x} y1={apex.y} x2={apex.x - 66} y2={apex.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-      <line x1={conePts[4].x} y1={conePts[4].y} x2={apex.x - 66} y2={conePts[4].y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-      <text
-        x={apex.x - 64}
-        y={(apex.y + conePts[4].y) / 2}
-        textAnchor="end"
-        dominantBaseline="middle"
-        fontSize={13}
-        fontStyle="italic"
-        fill="var(--color-text-muted)"
-      >
-        h
-      </text>
+      {L.dims ? (
+        <>
+          <line
+            x1={apex.x - 58}
+            y1={apex.y}
+            x2={apex.x - 58}
+            y2={conePts[4].y}
+            stroke="var(--color-text-muted)"
+            strokeWidth={1}
+            markerStart="url(#chamber-arrow)"
+            markerEnd="url(#chamber-arrow)"
+          >
+            <title>h = {fmt(heightRaw)} мм</title>
+          </line>
+          <line x1={apex.x} y1={apex.y} x2={apex.x - 66} y2={apex.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
+          <line x1={conePts[4].x} y1={conePts[4].y} x2={apex.x - 66} y2={conePts[4].y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
+          <text
+            x={apex.x - 64}
+            y={(apex.y + conePts[4].y) / 2}
+            textAnchor="end"
+            dominantBaseline="middle"
+            fontSize={13}
+            fontStyle="italic"
+            fill="var(--color-text-muted)"
+          >
+            h
+          </text>
 
-      <line
-        x1={conePts[4].x}
-        y1={conePts[4].y + 36}
-        x2={apex.x}
-        y2={conePts[4].y + 36}
-        stroke="var(--color-text-muted)"
-        strokeWidth={1}
-        markerStart="url(#chamber-arrow)"
-        markerEnd="url(#chamber-arrow)"
-      >
-        <title>D/2 = {fmt(Math.abs(coneRaw[4].x))} мм</title>
-      </line>
-      <line x1={conePts[4].x} y1={conePts[4].y} x2={conePts[4].x} y2={conePts[4].y + 44} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-      <text
-        x={(conePts[4].x + apex.x) / 2}
-        y={conePts[4].y + 29}
-        textAnchor="middle"
-        fontSize={11.5}
-        fontStyle="italic"
-        fill="var(--color-text-muted)"
-      >
-        D / 2
-      </text>
+          <line
+            x1={conePts[4].x}
+            y1={conePts[4].y + 36}
+            x2={apex.x}
+            y2={conePts[4].y + 36}
+            stroke="var(--color-text-muted)"
+            strokeWidth={1}
+            markerStart="url(#chamber-arrow)"
+            markerEnd="url(#chamber-arrow)"
+          >
+            <title>D/2 = {fmt(Math.abs(coneRaw[4].x))} мм</title>
+          </line>
+          <line x1={conePts[4].x} y1={conePts[4].y} x2={conePts[4].x} y2={conePts[4].y + 44} stroke="var(--color-text-muted)" strokeWidth={0.7} />
+          <text
+            x={(conePts[4].x + apex.x) / 2}
+            y={conePts[4].y + 29}
+            textAnchor="middle"
+            fontSize={11.5}
+            fontStyle="italic"
+            fill="var(--color-text-muted)"
+          >
+            D / 2
+          </text>
+        </>
+      ) : null}
 
       <text x={apex.x + 6} y={top + 14} fontSize={12} fill="var(--color-text-muted)">
         Ось дробилки

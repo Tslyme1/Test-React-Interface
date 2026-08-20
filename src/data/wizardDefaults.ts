@@ -11,6 +11,12 @@ export function defaultWizardData(): WizardData {
       beta10: '18',
       beta40: '22',
       angleUnit: 'deg',
+      zones: '1',
+      beta2: '20',
+      l11: '150',
+      l12: '90',
+      R: '0.65',
+      a: '0.8',
     },
     gran: {
       dMin: '0',

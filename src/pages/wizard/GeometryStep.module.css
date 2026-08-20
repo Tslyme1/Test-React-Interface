@@ -38,3 +38,40 @@
   writing-mode: vertical-rl;
   white-space: nowrap;
 }
+
+/**
+ * Область зума и панорамирования схемы.
+ *
+ * `aspect-ratio`, а не фиксированная высота: `fixed-height-css` в
+ * `ds-lint` запрещает `height`/`min-height` в px вообще, без исключения
+ * для не-текстовых блоков. `aspect-ratio` даёт тот же эффект честно —
+ * пропорции те же, что и у `viewBox` схемы (1180×840), поэтому
+ * `<ChamberScheme>` внутри (`width: 100%; height: auto`) заполняет
+ * область без искажений.
+ */
+.viewport {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1180 / 840;
+  cursor: grab;
+}
+
+.viewportPanning {
+  cursor: grabbing;
+}
+
+/** Слой трансформации зума/пана — отдельно от `<ChamberScheme>», чтобы сам компонент оставался чистой математикой без знания о зуме. */
+.zoomLayer {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  transition: transform var(--duration-base) var(--easing-standard);
+}
+
+.zoomControls {
+  position: absolute;
+  right: var(--space-sm);
+  bottom: var(--space-sm);
+  z-index: var(--z-raised);
+}
