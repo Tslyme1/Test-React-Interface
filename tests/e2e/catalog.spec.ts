@@ -72,6 +72,79 @@ test.describe('Выбор дробилки из каталога', () => {
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toBeVisible();
   });
 
+  /**
+   * Отбор по характеристикам — тот же набор колонок, что в таблице. Проверяется
+   * на пересечении: у КСД-1750Т9 щель «5-15», и по запросу «S не менее 12»
+   * машина обязана остаться — её диапазон в запрошенный заходит, хотя целиком
+   * в него не укладывается.
+   */
+  test('отбор по характеристике сужает каталог и применяется по «Готово»', async ({ page }) => {
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+    await dialog.getByRole('button', { name: 'Фильтры' }).click();
+
+    const filters = page.getByRole('dialog', { name: 'Фильтры' });
+    await filters.getByLabel('D, мм: не менее').fill('2000');
+
+    // Окно ещё открыто — каталог под ним не пересобран.
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toBeVisible();
+
+    await filters.getByRole('button', { name: 'Готово' }).click();
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toBeVisible();
+
+    // Счётчик на кнопке: условия спрятаны под ней, и сколько их — иначе не видно.
+    await expect(dialog.getByRole('button', { name: 'Фильтры: 1' })).toBeVisible();
+
+    // Второе условие складывается с первым, а не заменяет его. Счёт идёт
+    // по колонкам: пара «от — до» одной характеристики — одно условие.
+    await dialog.getByRole('button', { name: 'Фильтры: 1' }).click();
+    await filters.getByLabel('m, т: не более').fill('80');
+    await filters.getByRole('button', { name: 'Готово' }).click();
+
+    await expect(page.getByRole('button', { name: 'КМД-2100Т', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Фильтры: 2' })).toBeVisible();
+  });
+
+  /**
+   * Значение в ячейке само бывает диапазоном, поэтому условие — пересечение,
+   * а не попадание целиком: машина со щелью 9-27 по запросу «не менее 25»
+   * подходит, и прятать её значило бы прятать ровно то, что искали.
+   */
+  test('условие по диапазону — пересечение, а не попадание целиком', async ({ page }) => {
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+    const filters = page.getByRole('dialog', { name: 'Фильтры' });
+
+    await dialog.getByRole('button', { name: 'Фильтры' }).click();
+    await filters.getByLabel('S, мм: не менее').fill('25');
+    await filters.getByRole('button', { name: 'Готово' }).click();
+
+    // Щель 9-27 верхним краем в запрошенное заходит.
+    await expect(page.getByRole('button', { name: 'КМД-3200Т', exact: true })).toBeVisible();
+    // А 8-24 не дотягивает целиком.
+    await expect(page.getByRole('button', { name: 'КМД-2800Т', exact: true })).toHaveCount(0);
+  });
+
+  test('сброс очищает черновик фильтров, а применённое держится до «Готово»', async ({ page }) => {
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+    const filters = page.getByRole('dialog', { name: 'Фильтры' });
+
+    await dialog.getByRole('button', { name: 'Фильтры' }).click();
+    await filters.getByLabel('D, мм: не менее').fill('2000');
+    await filters.getByRole('button', { name: 'Готово' }).click();
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
+
+    // Сброс правит черновик: пока окно не закрыто по «Готово», отбор держится.
+    await dialog.getByRole('button', { name: 'Фильтры: 1' }).click();
+    await filters.getByRole('button', { name: 'Сбросить' }).click();
+    await expect(filters.getByLabel('D, мм: не менее')).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
+
+    await filters.getByRole('button', { name: 'Готово' }).click();
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Фильтры', exact: true })).toBeVisible();
+  });
+
   test('по умолчанию отсортировано по диаметру, а не по порядку файла', async ({ page }) => {
     // Самая маленькая машина каталога — КСД-900Т, D = 900.
     const firstRow = page.getByRole('row').nth(1);

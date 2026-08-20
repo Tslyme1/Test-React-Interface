@@ -38,6 +38,28 @@ test.describe('Список проектов', () => {
     await expect(submit).toBeEnabled();
   });
 
+  /**
+   * Заказчик — список подсказок, а не закрытый справочник: новых заводят
+   * на месте. Проверяется здесь, потому что дефект был не в приложении:
+   * `Select` рисовал поле ввода только под `searchable`, и `allowCustom`
+   * обещал свободное значение, которое некуда было ввести.
+   */
+  test('заказчика можно ввести своего, а не только выбрать из списка', async ({ page }) => {
+    await page.getByRole('button', { name: 'Новый проект' }).first().click();
+
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+    await dialog.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await dialog.getByRole('button', { name: /Заказчик/ }).click();
+
+    await page.getByLabel('Поиск или новое значение').fill('Ковдорский ГОК');
+    await page.keyboard.press('Enter');
+
+    // Имя триггера — подпись поля («Заказчик»), поэтому значение проверяется
+    // по тексту внутри него, а не по доступному имени.
+    await expect(dialog.getByRole('button', { name: /Заказчик/ })).toContainText('Ковдорский ГОК');
+    await expect(page.getByRole('button', { name: 'Продолжить' })).toBeEnabled();
+  });
+
   test('созданный проект появляется в таблице со своими данными', async ({ page }) => {
     const console_ = watchConsole(page);
 

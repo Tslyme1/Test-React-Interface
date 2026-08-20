@@ -29,9 +29,36 @@ export type CatalogPickerProps = {
   onFiltersApply?: () => void;
   /** Окно фильтров закрыто мимо «Готово»: черновик пора вернуть к применённому. */
   onFiltersCancel?: () => void;
+  /** «Сбросить» в окне фильтров: внешний черновик пора очистить. */
+  onFiltersReset?: () => void;
+  /**
+   * Сколько условий из `filter` применено сейчас. Нужен только для счётчика
+   * на кнопке: свои условия — диапазоны характеристик — каталог считает сам,
+   * а что означает содержимое чужого слота, знает лишь тот, кто его передал.
+   */
+  filterCount?: number;
+  /** То же для черновика: по нему «Сбросить» понимает, есть ли что сбрасывать. */
+  filterDraftCount?: number;
   /** Уже отфильтрованный снаружи набор имён. Пусто — показываются все. */
   visibleNames?: string[];
 };
+
+/** Введённые границы одного диапазона. Строки, а не числа: пустая строка — «не задано». */
+type Range = { from: string; to: string };
+
+/** Границы по короткой подписи колонки. */
+type RangeMap = Record<string, Range>;
+
+/** Колонка, пригодная для отбора диапазоном, и шкала её значений в справочнике. */
+type RangeSpec = { spec: SpecColumn; min: number; max: number };
+
+/** Разобранное условие: `null` — граница не задана. */
+type Bound = { key: string; from: number | null; to: number | null };
+
+const EMPTY_RANGE: Range = { from: '', to: '' };
+
+/** Прочерк в справочнике: величина не измерялась. */
+const DASH = '—';
 
 /**
  * Выбор позиции справочника таблицей характеристик.
@@ -53,10 +80,24 @@ export function CatalogPicker({
   filter,
   onFiltersApply,
   onFiltersCancel,
+  onFiltersReset,
+  filterCount = 0,
+  filterDraftCount = 0,
   visibleNames,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  /**
+   * Диапазоны характеристик: применённые и черновик окна фильтров.
+   *
+   * Ключ — короткая подпись колонки, значение — границы как их ввели,
+   * строками: пустая строка означает «граница не задана», а не ноль.
+   * Черновик заводится при открытии окна и применяется по «Готово» —
+   * тем же правилом, что и условия снаружи.
+   */
+  const [ranges, setRanges] = useState<RangeMap>({});
+  const [rangeDraft, setRangeDraft] = useState<RangeMap>({});
 
   /**
    * Esc закрывает только верхнее окно.
@@ -82,12 +123,16 @@ export function CatalogPicker({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.stopPropagation();
+      /* Тот же путь, что у крестика и клика по фону: Esc — это отказ,
+         и черновик он обязан отбросить. Раньше здесь стояло голое
+         закрытие, и невзятое условие доживало до следующего открытия. */
+      onFiltersCancel?.();
       setFiltersOpen(false);
     };
 
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [filtersOpen]);
+  }, [filtersOpen, onFiltersCancel]);
 
   /**
    * Сортировка по первой характеристике — у дробилок это диаметр конуса,
@@ -99,12 +144,44 @@ export function CatalogPicker({
     specs.length > 0 ? { key: specs[0].short, direction: 'asc' } : null
   );
 
+  /**
+   * Колонки, по которым можно отбирать диапазоном.
+   *
+   * Не все: у дробилок значения числовые целиком («2200», «5-15», «160/250»),
+   * а у проб руды половина колонок — словесные («до 170», «X (очень крепкие)»,
+   * «высокоабраз. Ка=3.16»). Поле «от — до» над такой колонкой обещало бы
+   * отбор, которого не выйдет: сравнивать там нечего. Поэтому набор фильтров
+   * выводится из самих значений, а не из списка колонок.
+   *
+   * Границы шкалы берутся по всему справочнику, а не по текущей выборке:
+   * подсказка «от 900» не должна ездить вслед за уже применённым фильтром.
+   */
+  const rangeSpecs = useMemo<RangeSpec[]>(() => {
+    const out: RangeSpec[] = [];
+
+    for (const spec of specs) {
+      const values = items.map((item) => item.values[spec.short] ?? '').filter((v) => v && v !== DASH);
+      if (values.length === 0 || !values.every(isNumericValue)) continue;
+
+      const numbers = values.flatMap(numbersIn);
+      if (numbers.length === 0) continue;
+
+      out.push({ spec, min: Math.min(...numbers), max: Math.max(...numbers) });
+    }
+
+    return out;
+  }, [specs, items]);
+
+  const activeBounds = useMemo(() => toBounds(rangeSpecs, ranges), [rangeSpecs, ranges]);
+  const draftBounds = useMemo(() => toBounds(rangeSpecs, rangeDraft), [rangeSpecs, rangeDraft]);
+
   const rows = useMemo(() => {
     const allowed = visibleNames ? new Set(visibleNames) : null;
     const query = search.trim().toLowerCase();
 
     const filtered = items.filter((item) => {
       if (allowed && !allowed.has(item.name)) return false;
+      if (!withinBounds(item, activeBounds)) return false;
       if (!query) return true;
       // Ищем и по названию, и по значениям: инженер помнит «2200», а не имя целиком.
       return (
@@ -122,11 +199,47 @@ export function CatalogPicker({
     });
 
     return sort.direction === 'desc' ? sorted.reverse() : sorted;
-  }, [items, visibleNames, search, sort]);
+  }, [items, visibleNames, search, sort, activeBounds]);
 
   /* Нажатие по выбранной строке снимает выбор. Иначе передумать нельзя:
      раз отметив машину, снять отметку было нечем — только выбрать другую. */
   const toggle = (name: string) => onPick(name === value ? null : name);
+
+  const hasFilters = Boolean(filter) || rangeSpecs.length > 0;
+
+  /* Счёт, а не «да/нет»: кнопка прячет условия под собой, и сколько их
+     применено, из панели над таблицей не видно. */
+  const activeCount = activeBounds.length + filterCount;
+  const draftCount = draftBounds.length + filterDraftCount;
+
+  const openFilters = () => {
+    /* Черновик заводится от применённого при каждом открытии — поэтому
+       отброшенный прошлый раз не всплывает в следующий. */
+    setRangeDraft(ranges);
+    setFiltersOpen(true);
+  };
+
+  const closeFilters = () => {
+    onFiltersCancel?.();
+    setFiltersOpen(false);
+  };
+
+  const applyFilters = () => {
+    setRanges(rangeDraft);
+    onFiltersApply?.();
+    setFiltersOpen(false);
+  };
+
+  const resetFilters = () => {
+    setRangeDraft({});
+    onFiltersReset?.();
+  };
+
+  const setBound = (key: string, edge: 'from' | 'to', input: string) =>
+    setRangeDraft((current) => ({
+      ...current,
+      [key]: { ...(current[key] ?? EMPTY_RANGE), [edge]: input },
+    }));
 
   const columns: TableColumn<CatalogItem>[] = [
     {
@@ -193,9 +306,9 @@ export function CatalogPicker({
           />
         </div>
 
-        {filter ? (
-          <Button variant="secondary" iconStart="filter" onClick={() => setFiltersOpen(true)}>
-            Фильтры
+        {hasFilters ? (
+          <Button variant="secondary" iconStart="filter" onClick={openFilters}>
+            {activeCount > 0 ? `Фильтры: ${activeCount}` : 'Фильтры'}
           </Button>
         ) : null}
       </div>
@@ -238,21 +351,17 @@ export function CatalogPicker({
           не применить. */}
       <Modal
         open={filtersOpen}
-        onClose={() => {
-          onFiltersCancel?.();
-          setFiltersOpen(false);
-        }}
+        onClose={closeFilters}
         title="Фильтры"
         size="sm"
         footer={
           <Modal.Footer>
-            <Button
-              variant="primary"
-              onClick={() => {
-                onFiltersApply?.();
-                setFiltersOpen(false);
-              }}
-            >
+            {/* Сброс правит черновик, а не применённое: иначе одна кнопка
+                окна действовала бы сразу, а остальные — по «Готово». */}
+            <Button variant="secondary" disabled={draftCount === 0} onClick={resetFilters}>
+              Сбросить
+            </Button>
+            <Button variant="primary" onClick={applyFilters}>
               Готово
             </Button>
           </Modal.Footer>
@@ -260,6 +369,66 @@ export function CatalogPicker({
       >
         <Stack gap="lg" direction="column">
           {filter}
+
+          {/* Отбор по характеристикам — теми же колонками, что стоят в таблице.
+              Иначе сравнение упирается в глаза: тридцать машин по девяти
+              величинам сужаются только прокруткой, а вопрос у инженера
+              обычно поставлен диапазоном — «от 200 кВт», «до 60 т».
+
+              Условие — пересечение, а не попадание целиком: значение в ячейке
+              само бывает диапазоном («5-15», «160/250»), и машина с щелью
+              5-15 обязана найтись по запросу «от 10». Требовать, чтобы весь
+              её диапазон уложился в запрошенный, значило бы прятать ровно
+              те машины, которые подходят. */}
+          {rangeSpecs.length > 0 ? (
+            <Stack gap="sm" direction="column">
+              <Text variant="label">Характеристики</Text>
+
+              <Stack gap="xs" direction="column">
+                {rangeSpecs.map(({ spec, min, max }) => {
+                  const draft = rangeDraft[spec.short] ?? EMPTY_RANGE;
+
+                  return (
+                    <div key={spec.short} className={styles.range}>
+                      {/* Подпись — короткая, как в шапке таблицы: тот же
+                          столбец пользователь только что читал глазами.
+                          Полная остаётся в `title`, как и в шапке. */}
+                      <span className={styles.rangeName} title={spec.label}>
+                        <Text variant="bodySm" color="textMuted" truncate>
+                          {spec.short}
+                        </Text>
+                      </span>
+
+                      {/* Подписи над парой полей нет намеренно: назначение
+                          написано в самом поле («от 900») и уходит в
+                          `aria-label` — девять подписанных пар удвоили бы
+                          высоту окна, повторяя одно слово. */}
+                      <Input
+                        fullWidth
+                        size="sm"
+                        type="number"
+                        inputMode="decimal"
+                        aria-label={`${spec.short}: не менее`}
+                        placeholder={`от ${formatBound(min)}`}
+                        value={draft.from}
+                        onChange={(e) => setBound(spec.short, 'from', e.target.value)}
+                      />
+                      <Input
+                        fullWidth
+                        size="sm"
+                        type="number"
+                        inputMode="decimal"
+                        aria-label={`${spec.short}: не более`}
+                        placeholder={`до ${formatBound(max)}`}
+                        value={draft.to}
+                        onChange={(e) => setBound(spec.short, 'to', e.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+              </Stack>
+            </Stack>
+          ) : null}
         </Stack>
       </Modal>
     </Stack>
@@ -290,4 +459,71 @@ function compareSpecValues(a: string, b: string): number {
 function leadingNumber(value: string): number | null {
   const match = value.replace(',', '.').match(/-?\d+(?:\.\d+)?/);
   return match ? Number(match[0]) : null;
+}
+
+/**
+ * Годится ли колонка для отбора диапазоном.
+ *
+ * Годится, когда каждое её значение состоит из чисел и разделителей —
+ * «2200», «5-15», «160/250», «16.8 (15-18)». Любая буква означает словесную
+ * величину («до 170», «высокоабраз. Ка=3.16»), а её нельзя ни сравнить,
+ * ни отобрать по границам; предложить над такой колонкой поле «от — до»
+ * значило бы пообещать отбор, которого не выйдет.
+ *
+ * Классы записаны через 0-9, а не через сокращения: в них не должно
+ * оказаться ни букв, ни знаков, которых мы не разбираем.
+ */
+function isNumericValue(value: string): boolean {
+  return /[0-9]/.test(value) && /^[0-9 .,()/–—-]+$/.test(value);
+}
+
+/** Все числа значения по порядку. Знак не разбирается: отрицательных величин в справочниках нет. */
+function numbersIn(value: string): number[] {
+  return [...value.matchAll(/[0-9]+(?:[.,][0-9]+)?/g)].map((m) => Number(m[0].replace(',', '.')));
+}
+
+/**
+ * Отрезок, который занимает значение ячейки: «5-15» — это [5, 15], «2200» —
+ * точка [2200, 2200]. Прочерк отрезка не даёт: неизмеренная величина
+ * ни в какие границы не попадает.
+ */
+function spanOf(value: string | undefined): { lo: number; hi: number } | null {
+  if (!value || value === DASH) return null;
+  const numbers = numbersIn(value);
+  if (numbers.length === 0) return null;
+  return { lo: Math.min(...numbers), hi: Math.max(...numbers) };
+}
+
+/** Введённая граница. Пустая строка и нечисло — «не задано», а не ноль. */
+function parseBound(input: string): number | null {
+  const raw = input.trim().replace(',', '.');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Условия, которые действительно что-то ограничивают: пустая пара полей условием не является. */
+function toBounds(rangeSpecs: RangeSpec[], map: RangeMap): Bound[] {
+  return rangeSpecs
+    .map(({ spec }) => {
+      const range = map[spec.short] ?? EMPTY_RANGE;
+      return { key: spec.short, from: parseBound(range.from), to: parseBound(range.to) };
+    })
+    .filter((bound) => bound.from !== null || bound.to !== null);
+}
+
+/** Пересекается ли значение строки с запрошенными границами — по каждому условию. */
+function withinBounds(item: CatalogItem, bounds: Bound[]): boolean {
+  return bounds.every((bound) => {
+    const span = spanOf(item.values[bound.key]);
+    if (!span) return false;
+    if (bound.from !== null && span.hi < bound.from) return false;
+    if (bound.to !== null && span.lo > bound.to) return false;
+    return true;
+  });
+}
+
+/** Подсказка в поле: целое — без хвоста, дробное — с запятой, как в справочнике. */
+function formatBound(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
 }

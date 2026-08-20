@@ -148,6 +148,12 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         visibleNames={visibleCrushers}
         onFiltersApply={() => setFamily(familyDraft)}
         onFiltersCancel={() => setFamilyDraft(family)}
+        onFiltersReset={() => setFamilyDraft('all')}
+        /* Отбор по характеристикам каталог ведёт сам — он же знает колонки.
+           Отсюда приходит только семейство: «КМД или КСД» из имени машины,
+           а не из значения характеристики, и вывести его из таблицы нельзя. */
+        filterCount={family === 'all' ? 0 : 1}
+        filterDraftCount={familyDraft === 'all' ? 0 : 1}
         filter={
           /* Подписи над переключателем нет: он стоит в панели фильтров, где
              назначение читается из самих вариантов, а `legend` остаётся
