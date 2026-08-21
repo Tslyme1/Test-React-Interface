@@ -18,7 +18,7 @@ test('окно фильтров внутри окна каталога: Esc за
   await page.getByRole('button', { name: 'Фильтры' }).click();
   await expect(page.getByRole('heading', { name: 'Фильтры' })).toBeVisible();
 
-  await page.getByRole('radio', { name: 'КСД' }).check();
+  await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'КСД' }).check();
   await page.getByRole('button', { name: 'Готово' }).click();
   await expect(page.getByRole('heading', { name: 'Фильтры' })).toHaveCount(0);
   // Окно каталога должно остаться открытым, фильтр — применённым.
@@ -54,7 +54,7 @@ test('семейство применяется только по «Готово
   await expect(page.getByRole('table')).toBeVisible();
 
   await page.getByRole('dialog', { name: 'Новый проект' }).getByRole('button', { name: 'Фильтры' }).click();
-  await page.getByRole('radio', { name: 'КСД' }).check();
+  await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'КСД' }).check();
 
   // Окно фильтров ещё открыто — каталог под ним не пересобран.
   await expect(page.getByRole('row').filter({ hasText: 'КМД-3000Т2' })).toHaveCount(1);
@@ -89,7 +89,7 @@ test('колонка названия не меняет ширину при см
   const before = (await nameHead.boundingBox())!.width;
 
   await page.getByRole('dialog', { name: 'Новый проект' }).getByRole('button', { name: 'Фильтры' }).click();
-  await page.getByRole('radio', { name: 'КСД' }).check();
+  await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'КСД' }).check();
   await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('button', { name: 'Готово' }).click();
   await expect(page.getByRole('row').filter({ hasText: 'КМД-3000Т2' })).toHaveCount(0);
 

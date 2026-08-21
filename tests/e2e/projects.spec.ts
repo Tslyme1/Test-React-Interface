@@ -64,7 +64,7 @@ test.describe('Список проектов', () => {
     const console_ = watchConsole(page);
 
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     const row = page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher });
     await expect(row).toBeVisible();
@@ -86,7 +86,7 @@ test.describe('Список проектов', () => {
     await page.getByRole('button', { name: /Грансостав/ }).click();
     await pickOre(page);
 
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     const row = page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher });
     await expect(row).toContainText(SAMPLE_PROJECT.ore);
@@ -94,7 +94,7 @@ test.describe('Список проектов', () => {
 
   test('поиск фильтрует строки и показывает пустой результат', async ({ page }) => {
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     const search = page.getByLabel('Поиск по проектам');
 
@@ -110,7 +110,7 @@ test.describe('Список проектов', () => {
 
   test('удаление убирает проект и возвращает пустое состояние', async ({ page }) => {
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await removeFirstProject(page);
 
@@ -119,7 +119,7 @@ test.describe('Список проектов', () => {
 
   test('проекты переживают перезагрузку страницы', async ({ page }) => {
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toBeVisible();
 
     await page.reload();
@@ -130,7 +130,7 @@ test.describe('Список проектов', () => {
 
   test('удаление проекта тоже сохраняется', async ({ page }) => {
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
     await removeFirstProject(page);
     await expect(page.getByText('Проектов пока нет')).toBeVisible();
 
@@ -141,7 +141,7 @@ test.describe('Список проектов', () => {
 
   test('открытие проекта из таблицы ведёт в визард', async ({ page }) => {
     await createProject(page);
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 

@@ -32,6 +32,18 @@ export type CatalogPickerProps = {
   /** «Сбросить» в окне фильтров: внешний черновик пора очистить. */
   onFiltersReset?: () => void;
   /**
+   * Условие, вынесенное в строку над таблицей. Применяется сразу, поэтому
+   * привязывать его надо к применённому значению, а не к черновику окна:
+   * оно на виду, и результат виден в тот же момент.
+   */
+  inlineFilter?: ReactNode;
+  /**
+   * Какие характеристики вынести в ту же строку — по коротким подписям
+   * колонок. Выбор за вызывающим: какая величина в справочнике главная,
+   * знает он, а не каталог. Остальные остаются в окне фильтров.
+   */
+  inlineSpecs?: string[];
+  /**
    * Сколько условий из `filter` применено сейчас. Нужен только для счётчика
    * на кнопке: свои условия — диапазоны характеристик — каталог считает сам,
    * а что означает содержимое чужого слота, знает лишь тот, кто его передал.
@@ -83,6 +95,8 @@ export function CatalogPicker({
   onFiltersReset,
   filterCount = 0,
   filterDraftCount = 0,
+  inlineFilter,
+  inlineSpecs,
   visibleNames,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
@@ -172,6 +186,13 @@ export function CatalogPicker({
     return out;
   }, [specs, items]);
 
+  /* Порядок — как в справочнике, а не как в списке вызывающего: строка
+     фильтров обязана читаться в том же порядке, что и колонки таблицы. */
+  const inlineRangeSpecs = useMemo(
+    () => (inlineSpecs ? rangeSpecs.filter(({ spec }) => inlineSpecs.includes(spec.short)) : []),
+    [rangeSpecs, inlineSpecs]
+  );
+
   const activeBounds = useMemo(() => toBounds(rangeSpecs, ranges), [rangeSpecs, ranges]);
   const draftBounds = useMemo(() => toBounds(rangeSpecs, rangeDraft), [rangeSpecs, rangeDraft]);
 
@@ -241,6 +262,14 @@ export function CatalogPicker({
       [key]: { ...(current[key] ?? EMPTY_RANGE), [edge]: input },
     }));
 
+  /* Условие из строки применяется сразу — в отличие от окна, где оно ждёт
+     «Готово»: строка на виду, и выборка под ней меняется на глазах. */
+  const setAppliedBound = (key: string, edge: 'from' | 'to', input: string) =>
+    setRanges((current) => ({
+      ...current,
+      [key]: { ...(current[key] ?? EMPTY_RANGE), [edge]: input },
+    }));
+
   const columns: TableColumn<CatalogItem>[] = [
     {
       /* Флажок стоит первым — там, где его ищут глазами. Кнопку строки
@@ -305,6 +334,39 @@ export function CatalogPicker({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        {inlineFilter ? <div className={styles.inlineFilter}>{inlineFilter}</div> : null}
+
+        {/* Пара границ на характеристику. Подписи над полями нет: назначение
+            написано в самом поле («D, мм от»), полное имя уходит в
+            `aria-label` — подписи над шестью полями удвоили бы высоту
+            полосы, отняв её у таблицы. */}
+        {inlineRangeSpecs.map(({ spec }) => {
+          const applied = ranges[spec.short] ?? EMPTY_RANGE;
+
+          return (
+            <div key={spec.short} className={styles.inlineRange}>
+              <Input
+                size="sm"
+                type="number"
+                inputMode="decimal"
+                aria-label={`${spec.short}: не менее`}
+                placeholder={`${spec.short} от`}
+                value={applied.from}
+                onChange={(e) => setAppliedBound(spec.short, 'from', e.target.value)}
+              />
+              <Input
+                size="sm"
+                type="number"
+                inputMode="decimal"
+                aria-label={`${spec.short}: не более`}
+                placeholder="до"
+                value={applied.to}
+                onChange={(e) => setAppliedBound(spec.short, 'to', e.target.value)}
+              />
+            </div>
+          );
+        })}
 
         {hasFilters ? (
           <Button variant="secondary" iconStart="filter" onClick={openFilters}>

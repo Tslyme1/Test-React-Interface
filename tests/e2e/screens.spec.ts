@@ -82,7 +82,7 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`08 список с проектом @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Проекты' }).click();
+      await page.getByRole('button', { name: 'УЗТМ' }).click();
       await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `08-projects-list-${scheme}`);
     });

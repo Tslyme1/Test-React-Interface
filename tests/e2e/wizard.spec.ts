@@ -101,7 +101,7 @@ test.describe('Инженерный визард', () => {
     const field = page.getByLabel('Диаметр основания D, мм');
     await field.fill('1900');
 
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
@@ -125,7 +125,7 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();

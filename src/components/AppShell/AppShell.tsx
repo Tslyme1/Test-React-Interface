@@ -60,12 +60,9 @@ export function AppShell({
         </AppHeader.Left>
 
         <AppHeader.Right>
-          {/* Подпись без иконки: «домой» теперь рисует знак слева, и вторая
-              иконка дома в одной полосе читалась бы как второй дом. */}
-          <HeaderButton active={!currentProjectName} onClick={onGoProjects}>
-            Проекты
-          </HeaderButton>
-
+          {/* Ячейки «Проекты» здесь нет: на главную ведёт знак слева, и
+              вторая точка входа в то же место стояла в полосе просто так —
+              из неё нельзя было понять, чем она отличается от знака. */}
           <Popover
             open={menuOpen}
             onClose={() => setMenuOpen(false)}

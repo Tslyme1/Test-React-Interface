@@ -59,14 +59,14 @@ test.describe('Выбор дробилки из каталога', () => {
     };
 
     await openFilters();
-    await page.getByRole('radio', { name: 'КСД' }).check();
+    await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'КСД' }).check();
     await apply();
 
     await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toHaveCount(0);
 
     await openFilters();
-    await page.getByRole('radio', { name: 'Все' }).check();
+    await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'Все' }).check();
     await apply();
 
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toBeVisible();
@@ -111,6 +111,30 @@ test.describe('Выбор дробилки из каталога', () => {
    * а не попадание целиком: машина со щелью 9-27 по запросу «не менее 25»
    * подходит, и прятать её значило бы прятать ровно то, что искали.
    */
+  /**
+   * Часть условий вынесена в полосу поиска и применяется сразу — в отличие
+   * от окна фильтров, которое ждёт «Готово». Значение при этом одно и то же:
+   * введённое в полосе видно в окне.
+   */
+  test('условие из полосы над таблицей применяется сразу', async ({ page }) => {
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+
+    await dialog.getByLabel('D, мм: не менее').fill('2000');
+    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toBeVisible();
+
+    // Семейство — там же и тоже сразу.
+    await dialog.getByRole('radio', { name: 'КСД' }).check();
+    await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
+
+    // Окно фильтров показывает то же самое условие, а не пустые поля.
+    await dialog.getByRole('button', { name: /^Фильтры/ }).click();
+    const filters = page.getByRole('dialog', { name: 'Фильтры' });
+    await expect(filters.getByLabel('D, мм: не менее')).toHaveValue('2000');
+    await expect(filters.getByRole('radio', { name: 'КСД' })).toBeChecked();
+  });
+
   test('условие по диапазону — пересечение, а не попадание целиком', async ({ page }) => {
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     const filters = page.getByRole('dialog', { name: 'Фильтры' });

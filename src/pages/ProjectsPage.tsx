@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Badge,
   Box,
   Button,
   Cell,
+  DatePicker,
   EmptyState,
   Field,
   Icon,
@@ -18,11 +18,12 @@ import {
   Tag,
   Text,
 } from '@uralmash/design-system';
-import type { SelectOption, TableColumn, TableSort } from '@uralmash/design-system';
+import type { SelectOption, TableColumn, TableSort, TagColorToken } from '@uralmash/design-system';
 import type { Project } from '@/types';
 import { oreTypeOf } from '@/data/oreSamples';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_LABELS } from '@/domain/steps';
+import { TAG_COLORS, useTags } from '@/state/useTags';
 import styles from './ProjectsPage.module.css';
 
 /**
@@ -78,6 +79,10 @@ export function ProjectsPage({
   onPurgeProject,
   onNewProject,
 }: ProjectsPageProps) {
+  /* Теги и их цвета живут отдельно от проектов: цвет заводят один раз,
+     и он не должен пропадать вместе с последним проектом, где тег стоял. */
+  const { tags, colorOf, addTag } = useTags();
+
   const [search, setSearch] = useState('');
   const [crusher, setCrusher] = useState<string>(ANY);
   const [customer, setCustomer] = useState<string>(ANY);
@@ -111,7 +116,26 @@ export function ProjectsPage({
     () => toOptions(uniqueSorted(projects.map((p) => p.customer)), 'Заказчик'),
     [projects]
   );
-  const tagOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.tag)), 'Тег'), [projects]);
+  /**
+   * Теги показываются тегами — теми же, что стоят в таблице. Список слов
+   * заставлял держать в голове, какой из них какого цвета: цвет тега виден
+   * в строке, а выбирают тег в списке, где цвета не было.
+   *
+   * В списке и те теги, которых пока нет ни у одного проекта: заведённый
+   * тег обязан быть виден там, где теги выбирают, иначе непонятно, завёлся
+   * ли он вообще.
+   */
+  const tagOptions = useMemo<SelectOption[]>(() => {
+    const names = uniqueSorted([...projects.map((p) => p.tag), ...tags.map((t) => t.name)]);
+    return [
+      { value: ANY, label: 'Тег' },
+      ...names.map((name) => ({
+        value: name,
+        label: name,
+        content: <Tag color={colorOf(name)}>{name}</Tag>,
+      })),
+    ];
+  }, [projects, tags, colorOf]);
   const executorOptions = useMemo(
     () => toOptions(uniqueSorted(projects.map((p) => p.executor)), 'Исполнитель'),
     [projects]
@@ -208,6 +232,11 @@ export function ProjectsPage({
           options={tagOptions}
           value={values.tag}
           onChange={(v) => set('tag', v as string)}
+          /* Закреплённая строка внизу списка — место для «добавить»,
+             оговорённое системой. Новый тег заводят там же, где теги
+             выбирают: отдельный экран управления тегами ради одного
+             поля и шести цветов был бы дороже самой задачи. */
+          footer={<NewTagButton onCreate={addTag} />}
         />
       ),
     },
@@ -216,13 +245,12 @@ export function ProjectsPage({
       label: 'Дата проекта',
       priority: 4,
       render: (props) => (
-        <Input
+        <DatePicker
           {...props}
           fullWidth
-          type="date"
           aria-label="Дата проекта"
-          value={values.date}
-          onChange={(e) => set('date', e.target.value)}
+          value={values.date || null}
+          onChange={(next) => set('date', next ?? '')}
         />
       ),
     },
@@ -293,7 +321,7 @@ export function ProjectsPage({
     {
       key: 'tag',
       title: 'Тег',
-      render: (row) => (row.tag ? <Tag color={row.tag === 'Черновик' ? 'amber' : 'steel'}>{row.tag}</Tag> : null),
+      render: (row) => (row.tag ? <Tag color={colorOf(row.tag)}>{row.tag}</Tag> : null),
     },
     { key: 'oreType', title: 'Руда', render: (row) => oreTypeOf(row.ore) },
     { key: 'ore', title: 'Месторождение', sortable: true },
@@ -306,7 +334,11 @@ export function ProjectsPage({
       key: 'actions',
       title: '',
       align: 'end',
+      /* Обёртка нужна ради высоты строки: поповер строчный, и под ним
+         оставалось место под выносные элементы — строка с меню стояла
+         на два пикселя выше соседних таблиц системы. */
       render: (row) => (
+        <div className={styles.rowMenu}>
         <Popover
           open={menuFor === row.id}
           onClose={() => setMenuFor(null)}
@@ -393,6 +425,7 @@ export function ProjectsPage({
             </Stack>
           </div>
         </Popover>
+        </div>
       ),
     },
   ];
@@ -569,7 +602,17 @@ export function ProjectsPage({
               aria-label={`Корзина: ${trash.length}`}
               onClick={() => setTrashOpen(true)}
             />
-            {trash.length > 0 ? <Badge tone="neutral">{String(trash.length)}</Badge> : null}
+            {/* Число — типографикой, без оболочки: бейдж означает статус,
+                а здесь просто счёт того, что лежит в корзине. Обводка вокруг
+                цифры рядом со значком делала из пары «значок + число» два
+                разных предмета. */}
+            {trash.length > 0 ? (
+              <Box paddingX="2xs">
+                <Text variant="label" color="textMuted">
+                  {trash.length}
+                </Text>
+              </Box>
+            ) : null}
           </Stack>
         </Surface>
       </div>
@@ -626,5 +669,105 @@ export function ProjectsPage({
         />
       </Modal>
     </>
+  );
+}
+
+/**
+ * Сбор нового тега — поповер внутри списка тегов.
+ *
+ * Именно поповер, а не окно: заводят тег там же, где выбирают, и уводить
+ * ради двух полей на модальный слой значило бы закрыть собой список,
+ * из которого пришли. Поповер внутри поповера держит система — панели
+ * собраны в дерево слоёв, и нажатие внутри дочерней панели не считается
+ * для родителя кликом снаружи.
+ */
+function NewTagButton({ onCreate }: { onCreate: (name: string, color: TagColorToken) => boolean }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [color, setColor] = useState<TagColorToken>(TAG_COLORS[0]);
+  const [error, setError] = useState<string | null>(null);
+
+  const close = () => {
+    setOpen(false);
+    setName('');
+    setError(null);
+  };
+
+  const submit = () => {
+    if (!name.trim()) {
+      setError('Без названия тег не отличить от других.');
+      return;
+    }
+
+    if (!onCreate(name, color)) {
+      setError('Такой тег уже есть.');
+      return;
+    }
+
+    close();
+  };
+
+  return (
+    <Popover
+      open={open}
+      onClose={close}
+      placement="bottom-start"
+      width="sm"
+      trigger={
+        <Button variant="ghost" size="sm" iconStart="plus" fullWidth onClick={() => setOpen((v) => !v)}>
+          Новый тег
+        </Button>
+      }
+    >
+      <Stack gap="md" direction="column">
+        <Field label="Название тега" error={error ?? undefined} fullWidth>
+          {(props) => (
+            <Input
+              {...props}
+              fullWidth
+              size="sm"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  /* Иначе нажатие доигрывается дальше и достаётся тому,
+                     что окажется под фокусом, когда панель закроется. */
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+            />
+          )}
+        </Field>
+
+        <Stack gap="xs" direction="column">
+          <Text variant="label">Цвет</Text>
+          {/* Образец — сам тег, а не цветной квадрат: выбирают то, что
+              будет стоять в таблице, и показывать это чем-то другим
+              значит показывать не то. */}
+          <Stack direction="row" gap="xs" wrap>
+            {TAG_COLORS.map((swatch) => (
+              <button
+                key={swatch}
+                type="button"
+                className={styles.swatch}
+                aria-pressed={swatch === color}
+                aria-label={`Цвет тега: ${swatch}`}
+                onClick={() => setColor(swatch)}
+              >
+                <Tag color={swatch}>{name.trim() || 'Тег'}</Tag>
+              </button>
+            ))}
+          </Stack>
+        </Stack>
+
+        <Button variant="primary" size="sm" fullWidth onClick={submit}>
+          Добавить
+        </Button>
+      </Stack>
+    </Popover>
   );
 }

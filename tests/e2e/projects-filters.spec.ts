@@ -89,6 +89,78 @@ test.describe('Главный экран со списком проектов', 
     await expect(drawer.getByRole('button', { name: 'Сбросить' })).toBeEnabled();
   });
 
+  /**
+   * Теги в списке нарисованы тегами: цвет тега виден в строке таблицы,
+   * а выбирают тег в списке — и там цвета не было. Проверяется по самому
+   * тегу внутри варианта, а не по подписи: подпись была и раньше.
+   */
+  test('в списке тегов стоят теги, а не подписи', async ({ page }) => {
+    await page.getByRole('button', { name: 'Тег', exact: true }).click();
+
+    const option = page.getByRole('option', { name: 'Рабочий' });
+    await expect(option).toBeVisible();
+    // Тег системы — элемент со своим фоном; подпись сама по себе фона не имеет.
+    const background = await option
+      .locator('span[class*="tag"]')
+      .first()
+      .evaluate((node) => getComputedStyle(node).backgroundColor);
+    expect(background).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
+  /**
+   * Новый тег заводится там же, где теги выбирают. Заодно проверяется
+   * вложенность слоёв: поповер сбора открывается внутри меню, и меню
+   * при этом обязано остаться на месте — раньше нажатие внутри дочерней
+   * панели читалось родителем как клик снаружи.
+   */
+  test('новый тег заводится прямо из списка тегов', async ({ page }) => {
+    await page.getByRole('button', { name: 'Тег', exact: true }).click();
+    await page.getByRole('button', { name: 'Новый тег' }).click();
+
+    // Меню под поповером сбора не закрылось.
+    await expect(page.getByRole('option', { name: 'Рабочий' })).toBeVisible();
+
+    await page.getByLabel('Название тега').fill('Срочный');
+    await page.getByRole('button', { name: 'Цвет тега: violet' }).click();
+    await page.getByRole('button', { name: 'Добавить' }).click();
+
+    await expect(page.getByRole('option', { name: 'Срочный' })).toBeVisible();
+  });
+
+  test('тег с занятым именем не заводится дважды', async ({ page }) => {
+    await page.getByRole('button', { name: 'Тег', exact: true }).click();
+    await page.getByRole('button', { name: 'Новый тег' }).click();
+
+    await page.getByLabel('Название тега').fill('Рабочий');
+    await page.getByRole('button', { name: 'Добавить' }).click();
+
+    await expect(page.getByText('Такой тег уже есть.')).toBeVisible();
+  });
+
+  /**
+   * Дата отбирается своим календарём, а не нативным полем браузера.
+   * «Сегодня» — крайний случай с понятным ответом: проектов сегодняшним
+   * числом в примерах нет, и выборка обязана опустеть.
+   */
+  test('дата отбирается календарём, «Очистить» возвращает всё', async ({ page }) => {
+    await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
+
+    await page.getByLabel('Дата проекта').first().click();
+    await page.getByRole('button', { name: 'Сегодня' }).click();
+    await expect(page.getByText(/Проекты: 0 из 18/)).toBeVisible();
+
+    await page.getByLabel('Дата проекта').first().click();
+    await page.getByRole('button', { name: 'Очистить' }).click();
+    await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
+  });
+
+  test('в полосе шапки нет второй точки входа на главную', async ({ page }) => {
+    // На главную ведёт знак УЗТМ слева; ячейка «Проекты» справа была тем же
+    // переходом, и по полосе нельзя было понять, чем они отличаются.
+    await expect(page.getByRole('button', { name: 'Проекты', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'УЗТМ' })).toBeVisible();
+  });
+
   test('кнопка «Фильтры» показывает, сколько условий применено', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Фильтры', exact: true })).toBeVisible();
 
@@ -213,7 +285,7 @@ test.describe('Печать по шагам из меню строки', () => {
   });
 
   test('пункт печати появляется только для посчитанных шагов', async ({ page }) => {
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: /^Действия:/ }).first().click();
     await expect(page.getByRole('button', { name: /^Печать:/ })).toHaveCount(0);
@@ -221,7 +293,7 @@ test.describe('Печать по шагам из меню строки', () => {
 
   test('печать открывает отчёт с таблицей посчитанного шага', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: 'Проекты' }).click();
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: /^Действия:/ }).first().click();
     // Посчитан только первый шаг — пункт печати ровно один.

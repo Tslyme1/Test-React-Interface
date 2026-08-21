@@ -58,7 +58,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Проекты' }).click();
+      await page.getByRole('button', { name: 'УЗТМ' }).click();
       await expect(page.getByRole('table')).toBeVisible();
     },
   },
