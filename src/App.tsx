@@ -17,7 +17,20 @@ export function App() {
     useProjects();
   const { message, showToast } = useToast();
 
+  /**
+   * Открытый проект и то, показан ли он сейчас, — два разных состояния.
+   *
+   * Возврат на главную закрывал проект: вкладка исчезала из шапки, и всё,
+   * что человек считал открытым, приходилось открывать заново. Уход
+   * на список — это переключение, а не закрытие; закрывает проект только
+   * крестик на его вкладке.
+   *
+   * В памяти, а не в хранилище: перезагрузка страницы — это начало сеанса
+   * заново, и восстанавливать поверх неё открытую вкладку значило бы решать
+   * за пользователя, где он остановился.
+   */
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectShown, setProjectShown] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   if (!user) {
@@ -35,20 +48,34 @@ export function App() {
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
 
-  const openProject = (project: Project) => setActiveProjectId(project.id);
-  const goProjects = () => setActiveProjectId(null);
+  const openProject = (project: Project) => {
+    setActiveProjectId(project.id);
+    setProjectShown(true);
+  };
+
+  /** Уход на список. Проект остаётся открытым — его вкладка никуда не девается. */
+  const goProjects = () => setProjectShown(false);
+
+  const closeProject = () => {
+    setActiveProjectId(null);
+    setProjectShown(false);
+  };
 
   return (
     <>
       <AppShell
         user={user}
-        currentProjectName={activeProject?.name}
+        project={activeProject ? { name: activeProject.name, active: projectShown } : null}
         onGoProjects={goProjects}
+        onOpenProject={() => setProjectShown(true)}
+        onCloseProject={activeProject ? closeProject : undefined}
+        onRenameProject={
+          activeProject ? (name) => updateProject(activeProject.id, { name }) : undefined
+        }
         onNewProject={() => setNewProjectOpen(true)}
-        onCloseProject={activeProject ? goProjects : undefined}
         onLogout={logout}
       >
-        {activeProject ? (
+        {activeProject && projectShown ? (
           <WizardPage project={activeProject} onUpdateProject={updateProject} showToast={showToast} />
         ) : (
           <ProjectsPage
@@ -56,7 +83,9 @@ export function App() {
             trash={trash}
             onOpenProject={openProject}
             onRemoveProject={(id) => {
-              if (id === activeProjectId) setActiveProjectId(null);
+              /* Удалённый проект не может остаться открытым: вкладка вела бы
+                 в корзину. */
+              if (id === activeProjectId) closeProject();
               removeProject(id);
             }}
             onRestoreProject={restoreProject}
@@ -73,7 +102,7 @@ export function App() {
         onCreate={(input) => {
           const project = createProject({ ...input, data: defaultWizardData() });
           setNewProjectOpen(false);
-          setActiveProjectId(project.id);
+          openProject(project);
           showToast(`Проект «${project.name}» создан`);
           // Проба руды здесь не спрашивается — её выбирают на шаге «Грансостав».
         }}

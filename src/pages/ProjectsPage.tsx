@@ -57,8 +57,16 @@ export type ProjectsPageProps = {
   onNewProject: () => void;
 };
 
-/** Пустое значение фильтра. `Select` не различает «не выбрано» и «выбрано пустое». */
-const ANY = '__any__';
+/**
+ * Пустое значение фильтра.
+ *
+ * Пустая строка, а не подставной вариант «Дробилка» первой строкой списка.
+ * Такой вариант выглядел выбранным с самого начала — галочка стояла против
+ * него, и «не отобрано» читалось как «отобрано вот это». Пустое состояние
+ * поля система выражает плейсхолдером, а снять выбор умеет повторным
+ * нажатием по варианту.
+ */
+const NONE = '';
 
 function uniqueSorted(values: (string | null)[]): string[] {
   return [...new Set(values.filter((v): v is string => Boolean(v) && v !== '—'))].sort((a, b) =>
@@ -66,8 +74,8 @@ function uniqueSorted(values: (string | null)[]): string[] {
   );
 }
 
-function toOptions(values: string[], anyLabel: string): SelectOption[] {
-  return [{ value: ANY, label: anyLabel }, ...values.map((v) => ({ value: v, label: v }))];
+function toOptions(values: string[]): SelectOption[] {
+  return values.map((v) => ({ value: v, label: v }));
 }
 
 export function ProjectsPage({
@@ -84,10 +92,10 @@ export function ProjectsPage({
   const { tags, colorOf, addTag } = useTags();
 
   const [search, setSearch] = useState('');
-  const [crusher, setCrusher] = useState<string>(ANY);
-  const [customer, setCustomer] = useState<string>(ANY);
-  const [tag, setTag] = useState<string>(ANY);
-  const [executor, setExecutor] = useState<string>(ANY);
+  const [crusher, setCrusher] = useState<string>(NONE);
+  const [customer, setCustomer] = useState<string>(NONE);
+  const [tag, setTag] = useState<string>(NONE);
+  const [executor, setExecutor] = useState<string>(NONE);
   const [date, setDate] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -108,14 +116,8 @@ export function ProjectsPage({
 
   // Варианты фильтров выводятся из самих проектов: показывать в списке то,
   // чего в таблице нет, — обещать результат, которого не будет.
-  const crusherOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.crusherName)), 'Дробилка'),
-    [projects]
-  );
-  const customerOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.customer)), 'Заказчик'),
-    [projects]
-  );
+  const crusherOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.crusherName))), [projects]);
+  const customerOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.customer))), [projects]);
   /**
    * Теги показываются тегами — теми же, что стоят в таблице. Список слов
    * заставлял держать в голове, какой из них какого цвета: цвет тега виден
@@ -127,24 +129,18 @@ export function ProjectsPage({
    */
   const tagOptions = useMemo<SelectOption[]>(() => {
     const names = uniqueSorted([...projects.map((p) => p.tag), ...tags.map((t) => t.name)]);
-    return [
-      { value: ANY, label: 'Тег' },
-      ...names.map((name) => ({
-        value: name,
-        label: name,
-        content: <Tag color={colorOf(name)}>{name}</Tag>,
-      })),
-    ];
+    return names.map((name) => ({
+      value: name,
+      label: name,
+      content: <Tag color={colorOf(name)}>{name}</Tag>,
+    }));
   }, [projects, tags, colorOf]);
-  const executorOptions = useMemo(
-    () => toOptions(uniqueSorted(projects.map((p) => p.executor)), 'Исполнитель'),
-    [projects]
-  );
+  const executorOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.executor))), [projects]);
 
   /** Применённые условия одним объектом — их же вид принимает черновик панели. */
   const applied: FilterValues = { crusher, customer, tag, executor, date, search };
 
-  const EMPTY: FilterValues = { crusher: ANY, customer: ANY, tag: ANY, executor: ANY, date: '', search: '' };
+  const EMPTY: FilterValues = { crusher: NONE, customer: NONE, tag: NONE, executor: NONE, date: '', search: '' };
 
   const setters: Record<keyof FilterValues, (value: string) => void> = {
     crusher: setCrusher,
@@ -160,7 +156,7 @@ export function ProjectsPage({
   };
 
   const countActive = (values: FilterValues) =>
-    [values.crusher, values.customer, values.tag, values.executor].filter((v) => v !== ANY).length +
+    [values.crusher, values.customer, values.tag, values.executor].filter((v) => v !== NONE).length +
     (values.date ? 1 : 0) +
     (values.search.trim() ? 1 : 0);
 
@@ -201,8 +197,9 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={crusherOptions}
-          value={values.crusher}
-          onChange={(v) => set('crusher', v as string)}
+          placeholder="Дробилка"
+          value={values.crusher || null}
+          onChange={(v) => set('crusher', (v as string | null) ?? NONE)}
           searchable
         />
       ),
@@ -216,8 +213,9 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={customerOptions}
-          value={values.customer}
-          onChange={(v) => set('customer', v as string)}
+          placeholder="Заказчик"
+          value={values.customer || null}
+          onChange={(v) => set('customer', (v as string | null) ?? NONE)}
         />
       ),
     },
@@ -230,8 +228,9 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={tagOptions}
-          value={values.tag}
-          onChange={(v) => set('tag', v as string)}
+          placeholder="Тег"
+          value={values.tag || null}
+          onChange={(v) => set('tag', (v as string | null) ?? NONE)}
           /* Закреплённая строка внизу списка — место для «добавить»,
              оговорённое системой. Новый тег заводят там же, где теги
              выбирают: отдельный экран управления тегами ради одного
@@ -263,8 +262,9 @@ export function ProjectsPage({
           {...props}
           fullWidth
           options={executorOptions}
-          value={values.executor}
-          onChange={(v) => set('executor', v as string)}
+          placeholder="Исполнитель"
+          value={values.executor || null}
+          onChange={(v) => set('executor', (v as string | null) ?? NONE)}
           searchable
         />
       ),
@@ -282,10 +282,10 @@ export function ProjectsPage({
 
   const resetFilters = () => {
     setSearch('');
-    setCrusher(ANY);
-    setCustomer(ANY);
-    setTag(ANY);
-    setExecutor(ANY);
+    setCrusher(NONE);
+    setCustomer(NONE);
+    setTag(NONE);
+    setExecutor(NONE);
     setDate('');
   };
 
@@ -293,10 +293,10 @@ export function ProjectsPage({
     const query = search.trim().toLowerCase();
 
     const filtered = projects.filter((p) => {
-      if (crusher !== ANY && p.crusherName !== crusher) return false;
-      if (customer !== ANY && p.customer !== customer) return false;
-      if (tag !== ANY && p.tag !== tag) return false;
-      if (executor !== ANY && p.executor !== executor) return false;
+      if (crusher !== NONE && p.crusherName !== crusher) return false;
+      if (customer !== NONE && p.customer !== customer) return false;
+      if (tag !== NONE && p.tag !== tag) return false;
+      if (executor !== NONE && p.executor !== executor) return false;
       // `p.date` несёт минуты («24.07.2026 14:32»), фильтр — только календарный день.
       if (date && p.date.split(' ')[0] !== new Date(date).toLocaleDateString('ru-RU')) return false;
       if (!query) return true;

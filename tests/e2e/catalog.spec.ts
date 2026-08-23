@@ -49,24 +49,27 @@ test.describe('Выбор дробилки из каталога', () => {
    * отнимало бы у него ширину.
    */
   test('фильтр по семейству сужает список', async ({ page }) => {
+    const filters = page.getByRole('dialog', { name: 'Фильтры' });
     const openFilters = async () => {
       await page.getByRole('button', { name: 'Фильтры' }).click();
       await expect(page.getByRole('heading', { name: 'Фильтры' })).toBeVisible();
     };
     const apply = async () => {
-      await page.getByRole('button', { name: 'Готово' }).click();
+      await filters.getByRole('button', { name: 'Готово' }).click();
       await expect(page.getByRole('heading', { name: 'Фильтры' })).toHaveCount(0);
     };
 
     await openFilters();
-    await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'КСД' }).check();
+    await filters.getByRole('button', { name: 'Семейство' }).click();
+    await page.getByRole('option', { name: 'КСД' }).click();
     await apply();
 
     await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toHaveCount(0);
 
     await openFilters();
-    await page.getByRole('dialog', { name: 'Фильтры' }).getByRole('radio', { name: 'Все' }).check();
+    await filters.getByRole('button', { name: /КСД/ }).click();
+    await page.getByRole('option', { name: 'КСД' }).click();
     await apply();
 
     await expect(page.getByRole('button', { name: 'КМД-3000Т2', exact: true })).toBeVisible();
@@ -83,11 +86,17 @@ test.describe('Выбор дробилки из каталога', () => {
     await dialog.getByRole('button', { name: 'Фильтры' }).click();
 
     const filters = page.getByRole('dialog', { name: 'Фильтры' });
-    await filters.getByLabel('D, мм: не менее').fill('2000');
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    await page.getByLabel('D, мм: не менее').fill('2000');
 
-    // Окно ещё открыто — каталог под ним не пересобран.
+    // Панель поля ещё открыта — каталог под ней не пересобран.
     await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toBeVisible();
 
+    // «Готово» здесь — своё, у панели поля D, мм, а не у окна фильтров.
+    await page.getByRole('button', { name: 'Готово' }).last().click();
+    // Панель поля закрывается с анимацией — ждём, пока в разметке останется
+    // только «Готово» самого окна фильтров.
+    await expect(page.getByRole('button', { name: 'Готово' })).toHaveCount(1);
     await filters.getByRole('button', { name: 'Готово' }).click();
     await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toBeVisible();
@@ -96,9 +105,12 @@ test.describe('Выбор дробилки из каталога', () => {
     await expect(dialog.getByRole('button', { name: 'Фильтры: 1' })).toBeVisible();
 
     // Второе условие складывается с первым, а не заменяет его. Счёт идёт
-    // по колонкам: пара «от — до» одной характеристики — одно условие.
+    // по колонкам: диапазон одной характеристики — одно условие.
     await dialog.getByRole('button', { name: 'Фильтры: 1' }).click();
-    await filters.getByLabel('m, т: не более').fill('80');
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'm, т' }).click();
+    await page.getByLabel('m, т: не более').fill('80');
+    await page.getByRole('button', { name: 'Готово' }).last().click();
+    await expect(page.getByRole('button', { name: 'Готово' })).toHaveCount(1);
     await filters.getByRole('button', { name: 'Готово' }).click();
 
     await expect(page.getByRole('button', { name: 'КМД-2100Т', exact: true })).toBeVisible();
@@ -119,20 +131,28 @@ test.describe('Выбор дробилки из каталога', () => {
   test('условие из полосы над таблицей применяется сразу', async ({ page }) => {
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
 
-    await dialog.getByLabel('D, мм: не менее').fill('2000');
+    // «D, мм» стоит в полосе поиска: одна кнопка на характеристику, а не
+    // пара — открывает панель с границами.
+    await dialog.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    await page.getByLabel('D, мм: не менее').fill('2000');
+    await page.getByRole('button', { name: 'Готово' }).click();
+
     await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toBeVisible();
 
     // Семейство — там же и тоже сразу.
-    await dialog.getByRole('radio', { name: 'КСД' }).check();
+    await dialog.getByRole('button', { name: 'Семейство' }).click();
+    await page.getByRole('option', { name: 'КСД' }).click();
     await expect(page.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'КСД-2200Т', exact: true })).toBeVisible();
 
     // Окно фильтров показывает то же самое условие, а не пустые поля.
     await dialog.getByRole('button', { name: /^Фильтры/ }).click();
     const filters = page.getByRole('dialog', { name: 'Фильтры' });
-    await expect(filters.getByLabel('D, мм: не менее')).toHaveValue('2000');
-    await expect(filters.getByRole('radio', { name: 'КСД' })).toBeChecked();
+    await expect(filters.getByRole('button', { name: /КСД/ })).toBeVisible();
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    await expect(page.getByLabel('D, мм: не менее')).toHaveValue('2000');
+    await page.keyboard.press('Escape');
   });
 
   test('условие по диапазону — пересечение, а не попадание целиком', async ({ page }) => {
@@ -140,7 +160,10 @@ test.describe('Выбор дробилки из каталога', () => {
     const filters = page.getByRole('dialog', { name: 'Фильтры' });
 
     await dialog.getByRole('button', { name: 'Фильтры' }).click();
-    await filters.getByLabel('S, мм: не менее').fill('25');
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'S, мм' }).click();
+    await page.getByLabel('S, мм: не менее').fill('25');
+    await page.getByRole('button', { name: 'Готово' }).last().click();
+    await expect(page.getByRole('button', { name: 'Готово' })).toHaveCount(1);
     await filters.getByRole('button', { name: 'Готово' }).click();
 
     // Щель 9-27 верхним краем в запрошенное заходит.
@@ -149,22 +172,32 @@ test.describe('Выбор дробилки из каталога', () => {
     await expect(page.getByRole('button', { name: 'КМД-2800Т', exact: true })).toHaveCount(0);
   });
 
-  test('сброс очищает черновик фильтров, а применённое держится до «Готово»', async ({ page }) => {
+  /**
+   * Сброс правит черновик своей панели «D, мм», а не окно фильтров целиком:
+   * у диапазона внутри окна теперь своё «Готово», и общий сброс окна ему
+   * не хозяин.
+   */
+  test('сброс диапазона очищает поле, а применённое держится до его «Готово»', async ({ page }) => {
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     const filters = page.getByRole('dialog', { name: 'Фильтры' });
 
     await dialog.getByRole('button', { name: 'Фильтры' }).click();
-    await filters.getByLabel('D, мм: не менее').fill('2000');
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    await page.getByLabel('D, мм: не менее').fill('2000');
+    await page.getByRole('button', { name: 'Готово' }).last().click();
+    await expect(page.getByRole('button', { name: 'Готово' })).toHaveCount(1);
     await filters.getByRole('button', { name: 'Готово' }).click();
     await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
 
-    // Сброс правит черновик: пока окно не закрыто по «Готово», отбор держится.
+    // Открытие снова — черновик панели заведён от применённого.
     await dialog.getByRole('button', { name: 'Фильтры: 1' }).click();
-    await filters.getByRole('button', { name: 'Сбросить' }).click();
-    await expect(filters.getByLabel('D, мм: не менее')).toHaveValue('');
-    await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toHaveCount(0);
-
+    await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    await page.getByRole('button', { name: 'Сбросить' }).last().click();
+    await expect(page.getByLabel('D, мм: не менее')).toHaveValue('');
+    await page.getByRole('button', { name: 'Готово' }).last().click();
+    await expect(page.getByRole('button', { name: 'Готово' })).toHaveCount(1);
     await filters.getByRole('button', { name: 'Готово' }).click();
+
     await expect(page.getByRole('button', { name: 'КСД-900Т', exact: true })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Фильтры', exact: true })).toBeVisible();
   });
@@ -176,7 +209,7 @@ test.describe('Выбор дробилки из каталога', () => {
   });
 
   test('сортировка по характеристике учитывает числа, а не строки', async ({ page }) => {
-    await page.getByRole('button', { name: /D, мм/ }).click();
+    await page.getByRole('columnheader', { name: 'D, мм' }).getByRole('button').click();
 
     // По убыванию первым должен идти 3500, а не «900» как старшая строка.
     const firstRow = page.getByRole('row').nth(1);

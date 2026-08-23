@@ -131,6 +131,50 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
   });
 
+  /**
+   * Уход на главную — переключение, а не закрытие: вкладка проекта обязана
+   * остаться в шапке, и вернуться в проект можно нажатием по ней самой,
+   * без повторного поиска строки в таблице.
+   */
+  test('проект остаётся открытым, пока его не закрыли крестиком', async ({ page }) => {
+    const tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
+    await expect(tab).toBeVisible();
+
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
+    await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+    // Вкладка не исчезла вместе с уходом на список.
+    await expect(tab).toBeVisible();
+
+    await tab.click();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+
+    // Закрывает проект только крестик на его вкладке.
+    await page.getByRole('button', { name: 'Закрыть проект' }).click();
+    await expect(tab).toHaveCount(0);
+  });
+
+  /**
+   * Переименование — поповер у шеврона внутри вкладки, без ухода на модальный
+   * слой. Новое имя держится: возврат на главную и обратно не откатывает его.
+   */
+  test('переименование проекта держится после ухода на главную и обратно', async ({ page }) => {
+    // Действия вкладки проявляются при наведении на неё — до этого они
+    // занимают место в раскладке, но недоступны нажатию.
+    await page.getByRole('button', { name: 'Тестовый проект', exact: true }).hover();
+    await page.getByRole('button', { name: 'Переименовать проект' }).click();
+    await page.getByLabel('Название проекта').fill('Переименованный проект');
+    await page.getByRole('button', { name: 'Сохранить' }).click();
+
+    const tab = page.getByRole('button', { name: 'Переименованный проект', exact: true });
+    await expect(tab).toBeVisible();
+    await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'УЗТМ' }).click();
+    await expect(tab).toBeVisible();
+    await tab.click();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+  });
+
   test('переключение единиц углов — сегментированный контрол работает', async ({ page }) => {
     const radians = page.getByRole('radio', { name: 'Радианы' });
     await radians.check();

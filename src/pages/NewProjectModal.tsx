@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Field, Input, Modal, SegmentedControl, Select } from '@uralmash/design-system';
+import { Button, Field, Input, Modal, Select } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
@@ -12,7 +12,19 @@ export type NewProjectModalProps = {
   onCreate: (input: { name: string; customer: string; crusherName: string; executor: string }) => void;
 };
 
-type Family = 'all' | 'КМД' | 'КСД';
+/**
+ * Семейство машины. `null` — отбора нет.
+ *
+ * Не подставной вариант «Все» первой строкой списка: он выглядел бы
+ * выбранным с самого начала, и «не отобрано» читалось бы как «отобрано
+ * вот это». Пустое состояние поля выражает плейсхолдер.
+ */
+type Family = 'КМД' | 'КСД' | null;
+
+const FAMILY_OPTIONS = [
+  { value: 'КМД', label: 'КМД' },
+  { value: 'КСД', label: 'КСД' },
+];
 
 /**
  * Новый проект начинается с выбора дробилки.
@@ -43,8 +55,8 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
    * пока оно открыто, таблица под ним не должна пересобираться на каждое
    * нажатие. Закрытие мимо «Готово» возвращает черновик к применённому.
    */
-  const [family, setFamily] = useState<Family>('all');
-  const [familyDraft, setFamilyDraft] = useState<Family>('all');
+  const [family, setFamily] = useState<Family>(null);
+  const [familyDraft, setFamilyDraft] = useState<Family>(null);
 
   const canCreate = Boolean(crusherName && name.trim() && customer);
 
@@ -53,8 +65,8 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     setName('');
     setSuggested('');
     setCustomer(null);
-    setFamily('all');
-    setFamilyDraft('all');
+    setFamily(null);
+    setFamilyDraft(null);
   };
 
   const close = () => {
@@ -87,8 +99,9 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     reset();
   };
 
-  const visibleCrushers =
-    family === 'all' ? undefined : CRUSHERS.filter((c) => crusherFamily(c.name) === family).map((c) => c.name);
+  const visibleCrushers = family
+    ? CRUSHERS.filter((c) => crusherFamily(c.name) === family).map((c) => c.name)
+    : undefined;
 
   return (
     <Modal
@@ -148,50 +161,47 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         visibleNames={visibleCrushers}
         onFiltersApply={() => setFamily(familyDraft)}
         onFiltersCancel={() => setFamilyDraft(family)}
-        onFiltersReset={() => setFamilyDraft('all')}
+        onFiltersReset={() => setFamilyDraft(null)}
         /* Отбор по характеристикам каталог ведёт сам — он же знает колонки.
            Отсюда приходит только семейство: «КМД или КСД» из имени машины,
            а не из значения характеристики, и вывести его из таблицы нельзя. */
-        filterCount={family === 'all' ? 0 : 1}
-        filterDraftCount={familyDraft === 'all' ? 0 : 1}
+        filterCount={family ? 1 : 0}
+        filterDraftCount={familyDraft ? 1 : 0}
         /* Три условия вынесены в полосу поиска и применяются сразу: семейство
            машины и две величины, по которым подбор и начинается, — диаметр
            конуса и производительность. Остальные шесть характеристик остаются
            под кнопкой «Фильтры»: в полосу они не помещаются, а вынести часть
            и молчать про остальные хуже, чем показать, где лежит целое. */
         inlineFilter={
-          <SegmentedControl
-            legend="Семейство машины"
+          <Select
             size="sm"
-            options={[
-              { value: 'all', label: 'Все' },
-              { value: 'КМД', label: 'КМД' },
-              { value: 'КСД', label: 'КСД' },
-            ]}
+            options={FAMILY_OPTIONS}
+            placeholder="Семейство"
+            aria-label="Семейство машины"
             value={family}
             onChange={(next) => {
-              setFamily(next);
+              const picked = (next as Family) ?? null;
+              setFamily(picked);
               /* Черновик окна идёт следом: открытое после этого окно
                  обязано показывать то, что уже применено. */
-              setFamilyDraft(next);
+              setFamilyDraft(picked);
             }}
           />
         }
         inlineSpecs={['D, мм', 'Q, т/ч']}
         filter={
-          /* Подписи над переключателем нет: он стоит в панели фильтров, где
-             назначение читается из самих вариантов, а `legend` остаётся
-             доступным именем для скринридера. В `Field` не заворачивается —
-             у SegmentedControl свой fieldset, и id он не принимает. */
-          <SegmentedControl
-            legend="Семейство машины"
-            options={[
-              { value: 'all', label: 'Все' },
-              { value: 'КМД', label: 'КМД' },
-              { value: 'КСД', label: 'КСД' },
-            ]}
+          /* Тем же полем, что и в полосе над таблицей: в окне фильтров
+             стоят рядом семейство и девять характеристик, и переключатель
+             посреди списка полей читался бы как контрол другой природы.
+             Подписи над ним нет — назначение написано в самом поле. */
+          <Select
+            fullWidth
+            size="sm"
+            options={FAMILY_OPTIONS}
+            placeholder="Семейство"
+            aria-label="Семейство машины"
             value={familyDraft}
-            onChange={setFamilyDraft}
+            onChange={(next) => setFamilyDraft((next as Family) ?? null)}
           />
         }
       />

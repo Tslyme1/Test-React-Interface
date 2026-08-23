@@ -154,6 +154,23 @@ test.describe('Главный экран со списком проектов', 
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
   });
 
+  /**
+   * Селекты фильтров не показывают подставной вариант вроде «Все» первой
+   * строкой списка: он выглядел бы выбранным с самого начала, хотя ничего
+   * не отобрано. Пустое состояние поля — плейсхолдер, а не строка списка.
+   */
+  test('в фильтрах нет подставного варианта, выбранного изначально', async ({ page }) => {
+    const drawer = await openFilters(page);
+
+    await expect(drawer.getByRole('button', { name: 'Дробилка', exact: true })).toBeVisible();
+    await drawer.getByRole('button', { name: 'Дробилка', exact: true }).click();
+    await expect(page.getByRole('option').first()).not.toHaveText('Дробилка');
+
+    await page.keyboard.press('Escape');
+    await drawer.getByRole('button', { name: 'Тег', exact: true }).click();
+    await expect(page.getByRole('option').first()).not.toHaveText('Тег');
+  });
+
   test('в полосе шапки нет второй точки входа на главную', async ({ page }) => {
     // На главную ведёт знак УЗТМ слева; ячейка «Проекты» справа была тем же
     // переходом, и по полосе нельзя было понять, чем они отличаются.

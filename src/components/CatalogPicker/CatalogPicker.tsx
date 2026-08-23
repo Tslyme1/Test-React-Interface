@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Checkbox, EmptyState, Input, Modal, Stack, Table, Text } from '@uralmash/design-system';
-import type { TableColumn, TableSort } from '@uralmash/design-system';
+import { Button, Checkbox, EmptyState, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import type { Range, TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
 import styles from './CatalogPicker.module.css';
 
@@ -55,10 +55,12 @@ export type CatalogPickerProps = {
   visibleNames?: string[];
 };
 
-/** Введённые границы одного диапазона. Строки, а не числа: пустая строка — «не задано». */
-type Range = { from: string; to: string };
-
-/** Границы по короткой подписи колонки. */
+/**
+ * Границы по короткой подписи колонки.
+ *
+ * Сам `Range` приходит из системы вместе с `RangeSelect`: поле и хранилище
+ * его значения обязаны говорить об одном и том же одним типом.
+ */
 type RangeMap = Record<string, Range>;
 
 /** Колонка, пригодная для отбора диапазоном, и шкала её значений в справочнике. */
@@ -256,19 +258,11 @@ export function CatalogPicker({
     onFiltersReset?.();
   };
 
-  const setBound = (key: string, edge: 'from' | 'to', input: string) =>
-    setRangeDraft((current) => ({
-      ...current,
-      [key]: { ...(current[key] ?? EMPTY_RANGE), [edge]: input },
-    }));
+  const setDraftRange = (key: string, next: Range) => setRangeDraft((current) => ({ ...current, [key]: next }));
 
-  /* Условие из строки применяется сразу — в отличие от окна, где оно ждёт
-     «Готово»: строка на виду, и выборка под ней меняется на глазах. */
-  const setAppliedBound = (key: string, edge: 'from' | 'to', input: string) =>
-    setRanges((current) => ({
-      ...current,
-      [key]: { ...(current[key] ?? EMPTY_RANGE), [edge]: input },
-    }));
+  /* Условие из полосы применяется сразу: своё «Готово» у поля уже нажали,
+     и ждать второго — от окна, которое даже не открыто, — нечего. */
+  const setAppliedRange = (key: string, next: Range) => setRanges((current) => ({ ...current, [key]: next }));
 
   const columns: TableColumn<CatalogItem>[] = [
     {
@@ -337,36 +331,22 @@ export function CatalogPicker({
 
         {inlineFilter ? <div className={styles.inlineFilter}>{inlineFilter}</div> : null}
 
-        {/* Пара границ на характеристику. Подписи над полями нет: назначение
-            написано в самом поле («D, мм от»), полное имя уходит в
-            `aria-label` — подписи над шестью полями удвоили бы высоту
-            полосы, отняв её у таблицы. */}
-        {inlineRangeSpecs.map(({ spec }) => {
-          const applied = ranges[spec.short] ?? EMPTY_RANGE;
-
-          return (
-            <div key={spec.short} className={styles.inlineRange}>
-              <Input
-                size="sm"
-                type="number"
-                inputMode="decimal"
-                aria-label={`${spec.short}: не менее`}
-                placeholder={`${spec.short} от`}
-                value={applied.from}
-                onChange={(e) => setAppliedBound(spec.short, 'from', e.target.value)}
-              />
-              <Input
-                size="sm"
-                type="number"
-                inputMode="decimal"
-                aria-label={`${spec.short}: не более`}
-                placeholder="до"
-                value={applied.to}
-                onChange={(e) => setAppliedBound(spec.short, 'to', e.target.value)}
-              />
-            </div>
-          );
-        })}
+        {/* Характеристика — одно поле, а не пара: диапазон это одно условие,
+            и двумя контролами он занимал в полосе место двух. Границы
+            вводятся в панели поля и применяются её собственным «Готово». */}
+        {inlineRangeSpecs.map(({ spec, min, max }) => (
+          <div key={spec.short} className={styles.inlineControl}>
+            <RangeSelect
+              fullWidth
+              size="sm"
+              placeholder={spec.short}
+              fromHint={formatBound(min)}
+              toHint={formatBound(max)}
+              value={ranges[spec.short] ?? EMPTY_RANGE}
+              onChange={(next) => setAppliedRange(spec.short, next)}
+            />
+          </div>
+        ))}
 
         {hasFilters ? (
           <Button variant="secondary" iconStart="filter" onClick={openFilters}>
@@ -446,48 +426,23 @@ export function CatalogPicker({
             <Stack gap="sm" direction="column">
               <Text variant="label">Характеристики</Text>
 
+              {/* Все девять — такими же полями, что и в полосе над таблицей:
+                  одно поле на характеристику, границы вводятся в его панели.
+                  Двумя контролами на условие окно превращалось в сетку из
+                  восемнадцати полей, где ни одна пара не читалась как целое. */}
               <Stack gap="xs" direction="column">
-                {rangeSpecs.map(({ spec, min, max }) => {
-                  const draft = rangeDraft[spec.short] ?? EMPTY_RANGE;
-
-                  return (
-                    <div key={spec.short} className={styles.range}>
-                      {/* Подпись — короткая, как в шапке таблицы: тот же
-                          столбец пользователь только что читал глазами.
-                          Полная остаётся в `title`, как и в шапке. */}
-                      <span className={styles.rangeName} title={spec.label}>
-                        <Text variant="bodySm" color="textMuted" truncate>
-                          {spec.short}
-                        </Text>
-                      </span>
-
-                      {/* Подписи над парой полей нет намеренно: назначение
-                          написано в самом поле («от 900») и уходит в
-                          `aria-label` — девять подписанных пар удвоили бы
-                          высоту окна, повторяя одно слово. */}
-                      <Input
-                        fullWidth
-                        size="sm"
-                        type="number"
-                        inputMode="decimal"
-                        aria-label={`${spec.short}: не менее`}
-                        placeholder={`от ${formatBound(min)}`}
-                        value={draft.from}
-                        onChange={(e) => setBound(spec.short, 'from', e.target.value)}
-                      />
-                      <Input
-                        fullWidth
-                        size="sm"
-                        type="number"
-                        inputMode="decimal"
-                        aria-label={`${spec.short}: не более`}
-                        placeholder={`до ${formatBound(max)}`}
-                        value={draft.to}
-                        onChange={(e) => setBound(spec.short, 'to', e.target.value)}
-                      />
-                    </div>
-                  );
-                })}
+                {rangeSpecs.map(({ spec, min, max }) => (
+                  <RangeSelect
+                    key={spec.short}
+                    fullWidth
+                    size="sm"
+                    placeholder={spec.short}
+                    fromHint={formatBound(min)}
+                    toHint={formatBound(max)}
+                    value={rangeDraft[spec.short] ?? EMPTY_RANGE}
+                    onChange={(next) => setDraftRange(spec.short, next)}
+                  />
+                ))}
               </Stack>
             </Stack>
           ) : null}
