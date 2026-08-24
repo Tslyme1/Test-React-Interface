@@ -102,4 +102,10 @@ export type Project = {
   throughput: string;
   calc: [boolean, boolean, boolean];
   data: WizardData;
+  /**
+   * Значения шага «Геометрия» на момент последнего расчёта — снимок для
+   * режима отображения «Дельта» («было: X» рядом с полем, если его
+   * отредактировали после расчёта). `null`, пока шаг ни разу не считался.
+   */
+  geomBaseline: GeomData | null;
 };

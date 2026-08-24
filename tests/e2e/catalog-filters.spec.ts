@@ -85,6 +85,31 @@ test('повторное нажатие по строке снимает выб�
   await expect(dialog.getByRole('button', { name: 'Продолжить' })).toBeDisabled();
 });
 
+test('условия в полосе поиска каталога — одной ширины', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await page.getByRole('button', { name: 'Новый проект' }).first().click();
+  await expect(page.getByRole('table')).toBeVisible();
+
+  const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+  // `.first()` — в полосе условий над таблицей и в шапке колонки таблицы
+  // подписи совпадают («D, мм», «Q, т/ч» — сортировка по той же величине);
+  // полоса стоит в разметке раньше таблицы.
+  const family = dialog.getByRole('button', { name: 'Семейство' }).first();
+  const diameter = dialog.getByRole('button', { name: 'D, мм' }).first();
+  const throughput = dialog.getByRole('button', { name: 'Q, т/ч' }).first();
+
+  const familyWidth = (await family.boundingBox())!.width;
+  const diameterWidth = (await diameter.boundingBox())!.width;
+  const throughputWidth = (await throughput.boundingBox())!.width;
+
+  // Раньше «Семейство» сидело на `flex: 0 0 auto` — под ширину плейсхолдера —
+  // а диапазоны рядом держал фиксированный базис, и полоса «плавала»:
+  // поля были заметно разной ширины без причины. Теперь все три делят
+  // один базис, как и строка фильтров на списке проектов.
+  expect(Math.abs(familyWidth - diameterWidth), `Семейство: ${familyWidth}, D: ${diameterWidth}`).toBeLessThan(2);
+  expect(Math.abs(diameterWidth - throughputWidth), `D: ${diameterWidth}, Q: ${throughputWidth}`).toBeLessThan(2);
+});
+
 test('колонка названия не меняет ширину при смене выборки', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();

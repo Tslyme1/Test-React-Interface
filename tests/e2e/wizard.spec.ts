@@ -11,8 +11,8 @@ test.describe('Инженерный визард', () => {
     // Недоступный шаг степпер рисует не отключённой кнопкой, а просто текстом:
     // кликабельность, которая ничего не делает, в системе запрещена. Поэтому
     // проверяется отсутствие кнопки, а не её disabled-состояние.
-    await expect(page.getByText('Грансостав', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Грансостав/ })).toHaveCount(0);
+    await expect(page.getByText('Руда', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Руда/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Продукт/ })).toHaveCount(0);
   });
 
@@ -21,9 +21,9 @@ test.describe('Инженерный визард', () => {
 
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
 
-    await expect(page.getByText('Шаг «Геометрия» рассчитан')).toBeVisible();
+    await expect(page.getByText('Шаг «Дробилка» рассчитан')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Грансостав/ })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /Руда/ })).toBeEnabled();
 
     console_.assertClean();
   });
@@ -57,11 +57,11 @@ test.describe('Инженерный визард', () => {
   test('переход по шагам меняет форму', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
 
-    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
     await pickOre(page);
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Геометрия/ }).click();
+    await page.getByRole('button', { name: /Дробилка/ }).click();
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
   });
 
@@ -69,7 +69,7 @@ test.describe('Инженерный визард', () => {
     const console_ = watchConsole(page);
 
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
 
     await expect(page.getByText('Выберите пробу руды')).toBeVisible();
     // Считать нечего, пока руда неизвестна: кнопка расчёта заблокирована,
@@ -87,11 +87,11 @@ test.describe('Инженерный визард', () => {
 
   test('выбранная проба руды переживает уход на другой шаг', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
     await pickOre(page);
 
-    await page.getByRole('button', { name: /Геометрия/ }).click();
-    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await page.getByRole('button', { name: /Дробилка/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
 
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);

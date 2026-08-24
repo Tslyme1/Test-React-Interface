@@ -174,6 +174,7 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
            и молчать про остальные хуже, чем показать, где лежит целое. */
         inlineFilter={
           <Select
+            fullWidth
             size="sm"
             options={FAMILY_OPTIONS}
             placeholder="Семейство"

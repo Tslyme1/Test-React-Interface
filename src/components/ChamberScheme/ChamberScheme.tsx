@@ -23,6 +23,14 @@ export type ChamberSchemeLayers = {
 
 const DEFAULT_LAYERS: Required<ChamberSchemeLayers> = { bowl: true, cone: true, theta: true, gap: true, dims: true };
 
+/**
+ * Параметр формы, за который отвечает участок схемы — соответствие для
+ * подсветки при наведении (режим отображения «Подсветка участка»
+ * на шаге «Геометрия»). Не все поля формы имеют собственный видимый
+ * участок (например, `R`, `a`, число зон) — для них подсветки нет.
+ */
+export type ChamberHighlightKey = 'D' | 'H' | 'S0' | 'theta' | 'beta10' | 'beta40' | 'beta2' | 'l2';
+
 export type ChamberSchemeProps = {
   /** Полный набор параметров профиля — как в `st` прототипа-источника. */
   input: ChamberGeometryInput;
@@ -36,6 +44,8 @@ export type ChamberSchemeProps = {
    * шагнуть на L», которым строится цепочка в `computeChamberGeometry`.
    */
   construction?: boolean;
+  /** Параметр, чей участок сейчас подсвечен наведением на поле формы. */
+  highlight?: ChamberHighlightKey | null;
   className?: string;
 };
 
@@ -69,8 +79,10 @@ function polygonFrom(points: Vec2[]): string {
  * профиль строится как обычное дерево `<path>` / `<circle>` / `<text>` из
  * точек, посчитанных `computeChamberGeometry` (см. `src/domain/chamberGeometry.ts`).
  */
-export function ChamberScheme({ input, calibration, layers, construction, className }: ChamberSchemeProps) {
+export function ChamberScheme({ input, calibration, layers, construction, highlight, className }: ChamberSchemeProps) {
   const L = { ...DEFAULT_LAYERS, ...layers };
+  const accent = 'var(--color-accent)';
+  const accentText = 'var(--color-accent-text)';
   const geometry = useMemo(() => computeChamberGeometry(input), [input]);
   const calibrated = useMemo(() => applyCalibration(geometry, calibration ?? {}), [geometry, calibration]);
 
@@ -175,8 +187,8 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             y1={top}
             x2={coneAxisEnd.x}
             y2={coneAxisEnd.y}
-            stroke="var(--color-text-muted)"
-            strokeWidth={1}
+            stroke={highlight === 'theta' ? accent : 'var(--color-text-muted)'}
+            strokeWidth={highlight === 'theta' ? 2 : 1}
             strokeDasharray="14 4 2 4"
           >
             <title>Ось конуса (наклонена на угол качания θ)</title>
@@ -185,13 +197,20 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             <path
               d={arcPath(apex, (bottom - apex.y) * 0.18, 0, input.theta)}
               fill="none"
-              stroke="var(--color-text-muted)"
-              strokeWidth={1}
+              stroke={highlight === 'theta' ? accent : 'var(--color-text-muted)'}
+              strokeWidth={highlight === 'theta' ? 2 : 1}
             >
               <title>θ — угол качания конуса: {fmt(input.theta)}°</title>
             </path>
           ) : null}
-          <text x={apex.x - 8} y={top + (bottom - top) * 0.18 - 6} textAnchor="end" fontSize={13} fontStyle="italic" fill="var(--color-text-muted)">
+          <text
+            x={apex.x - 8}
+            y={top + (bottom - top) * 0.18 - 6}
+            textAnchor="end"
+            fontSize={13}
+            fontStyle="italic"
+            fill={highlight === 'theta' ? accentText : 'var(--color-text-muted)'}
+          >
             θ
           </text>
         </>
@@ -243,6 +262,9 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             const ny = -dx / len;
             const off = 20;
             const mid = { x: (a.x + b.x) / 2 - nx * off, y: (a.y + b.y) / 2 - ny * off };
+            // Единственный сегмент с полем в форме — l2, последний (4i→3).
+            const isL2 = i === SEGMENT_LABELS.length - 1;
+            const active = isL2 && highlight === 'l2';
             return (
               <text
                 key={label}
@@ -250,9 +272,9 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
                 y={mid.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize={11.5}
+                fontSize={active ? 13 : 11.5}
                 fontStyle="italic"
-                fill="var(--color-text-muted)"
+                fill={active ? accentText : 'var(--color-text-muted)'}
               >
                 {label}
               </text>
@@ -276,17 +298,17 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             y1={bowlPts[4].y}
             x2={conePts[4].x}
             y2={conePts[4].y}
-            stroke="var(--color-accent)"
-            strokeWidth={1.8}
+            stroke={accent}
+            strokeWidth={highlight === 'S0' ? 2.8 : 1.8}
           >
             <title>S₀ — выходная щель: {fmt(gapRaw)} мм</title>
           </line>
           <text
             x={(bowlPts[4].x + conePts[4].x) / 2 + 10}
             y={(bowlPts[4].y + conePts[4].y) / 2}
-            fontSize={11.5}
+            fontSize={highlight === 'S0' ? 13 : 11.5}
             fontStyle="italic"
-            fill="var(--color-accent-text)"
+            fill={accentText}
           >
             S₀
           </text>
@@ -294,29 +316,50 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
       ) : null}
 
       {/* ── точки профиля ── */}
+      {/* β40 — узловой угол точки «40» (первая точка брони чаши), β2 — узловой угол точки «2» (последняя точка брони конуса). */}
       {L.bowl
-        ? bowlPts.map((p, i) => (
-            <g key={`b-${NAMES_B[i]}`}>
-              <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
-              <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
-              <text x={p.x - 9} y={p.y + 3} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
-                {NAMES_B[i]}
-              </text>
-              <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlTrue[i].x, bowlTrue[i].y))} мм · α = ${fmt(phiOf(bowlTrue[i]))}°`}</title>
-            </g>
-          ))
+        ? bowlPts.map((p, i) => {
+            const active = NAMES_B[i] === '40' && highlight === 'beta40';
+            return (
+              <g key={`b-${NAMES_B[i]}`}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={active ? 4.6 : 3.4}
+                  fill="var(--color-surface)"
+                  stroke={active ? accent : 'var(--color-text)'}
+                  strokeWidth={active ? 1.8 : 1.2}
+                />
+                <circle cx={p.x} cy={p.y} r={1.1} fill={active ? accent : 'var(--color-text)'} />
+                <text x={p.x - 9} y={p.y + 3} textAnchor="end" fontSize={10.5} fill={active ? accentText : 'var(--color-text)'}>
+                  {NAMES_B[i]}
+                </text>
+                <title>{`Точка ${NAMES_B[i]} · r = ${fmt(Math.hypot(bowlTrue[i].x, bowlTrue[i].y))} мм · α = ${fmt(phiOf(bowlTrue[i]))}°`}</title>
+              </g>
+            );
+          })
         : null}
       {L.cone
-        ? conePts.map((p, i) => (
-            <g key={`c-${NAMES_C[i]}`}>
-              <circle cx={p.x} cy={p.y} r={3.4} fill="var(--color-surface)" stroke="var(--color-text)" strokeWidth={1.2} />
-              <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
-              <text x={p.x - 8} y={p.y + 14} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
-                {NAMES_C[i]}
-              </text>
-              <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneTrue[i].x, coneTrue[i].y))} мм · α = ${fmt(phiOf(coneTrue[i]))}°`}</title>
-            </g>
-          ))
+        ? conePts.map((p, i) => {
+            const active = (NAMES_C[i] === '10' && highlight === 'beta10') || (NAMES_C[i] === '2' && highlight === 'beta2');
+            return (
+              <g key={`c-${NAMES_C[i]}`}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={active ? 4.6 : 3.4}
+                  fill="var(--color-surface)"
+                  stroke={active ? accent : 'var(--color-text)'}
+                  strokeWidth={active ? 1.8 : 1.2}
+                />
+                <circle cx={p.x} cy={p.y} r={1.1} fill={active ? accent : 'var(--color-text)'} />
+                <text x={p.x - 8} y={p.y + 14} textAnchor="end" fontSize={10.5} fill={active ? accentText : 'var(--color-text)'}>
+                  {NAMES_C[i]}
+                </text>
+                <title>{`Точка ${NAMES_C[i]} · r = ${fmt(Math.hypot(coneTrue[i].x, coneTrue[i].y))} мм · α = ${fmt(phiOf(coneTrue[i]))}°`}</title>
+              </g>
+            );
+          })
         : null}
 
       {/* точка подвеса */}
@@ -337,8 +380,8 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             y1={apex.y}
             x2={apex.x - 58}
             y2={conePts[4].y}
-            stroke="var(--color-text-muted)"
-            strokeWidth={1}
+            stroke={highlight === 'H' ? accent : 'var(--color-text-muted)'}
+            strokeWidth={highlight === 'H' ? 1.8 : 1}
             markerStart="url(#chamber-arrow)"
             markerEnd="url(#chamber-arrow)"
           >
@@ -353,7 +396,7 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             dominantBaseline="middle"
             fontSize={13}
             fontStyle="italic"
-            fill="var(--color-text-muted)"
+            fill={highlight === 'H' ? accentText : 'var(--color-text-muted)'}
           >
             h
           </text>
@@ -363,8 +406,8 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             y1={conePts[4].y + 36}
             x2={apex.x}
             y2={conePts[4].y + 36}
-            stroke="var(--color-text-muted)"
-            strokeWidth={1}
+            stroke={highlight === 'D' ? accent : 'var(--color-text-muted)'}
+            strokeWidth={highlight === 'D' ? 1.8 : 1}
             markerStart="url(#chamber-arrow)"
             markerEnd="url(#chamber-arrow)"
           >
@@ -375,9 +418,9 @@ export function ChamberScheme({ input, calibration, layers, construction, classN
             x={(conePts[4].x + apex.x) / 2}
             y={conePts[4].y + 29}
             textAnchor="middle"
-            fontSize={11.5}
+            fontSize={highlight === 'D' ? 13 : 11.5}
             fontStyle="italic"
-            fill="var(--color-text-muted)"
+            fill={highlight === 'D' ? accentText : 'var(--color-text-muted)'}
           >
             D / 2
           </text>

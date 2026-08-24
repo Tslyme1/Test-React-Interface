@@ -7,7 +7,7 @@ import { createProject, pickOre, seedSession, watchConsole } from './helpers';
  */
 async function goToProdStep(page: Page) {
   await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-  await page.getByRole('button', { name: /Грансостав/ }).click();
+  await page.getByRole('button', { name: /Руда/ }).click();
   // «Грансостав» закрыт заглушкой, пока не выбрана проба руды.
   await pickOre(page);
   await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
@@ -120,7 +120,7 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
     await page.getByLabel('Класс крупности, строка 2').fill('-1+0,5');
     await page.getByLabel('Масса класса, строка 2, г').fill('100');
 
-    await page.getByRole('button', { name: /Геометрия/ }).click();
+    await page.getByRole('button', { name: /Дробилка/ }).click();
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
 
     await page.getByRole('button', { name: /Продукт/ }).click();
@@ -137,7 +137,7 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
 
     // Записанные a₀/Va₀ тоже пережили переход и видны при возврате к прямому вводу.
     await page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' }).click();
-    await page.getByRole('button', { name: /Геометрия/ }).click();
+    await page.getByRole('button', { name: /Дробилка/ }).click();
     await page.getByRole('button', { name: /Продукт/ }).click();
     await page.getByRole('radio', { name: 'Прямой ввод' }).check();
     await expect(page.getByLabel('Среднее относительное длины куска a₀')).toHaveValue('0.563');

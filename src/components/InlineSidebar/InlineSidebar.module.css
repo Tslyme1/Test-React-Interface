@@ -1,0 +1,51 @@
+/**
+ * Рейка и панель — соседи по строке, а не слои друг над другом: рейка
+ * остаётся на месте всегда, меняется только ширина панели рядом с ней.
+ * Липкость — здесь, а не в вызывающем экране: сворачивание и позиция
+ * при прокрутке — одна раскладка, а не две согласованные порознь.
+ */
+.root {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  position: sticky;
+  top: var(--space-xl);
+}
+
+.rail {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/** Подпись рейки читается снизу вверх — на её ширине горизонтальная строка не поместилась бы. */
+.railLabel {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+}
+
+/**
+ * Панель выезжает и заезжает шириной, а не видимостью: `display: none`
+ * не анимируется, а мгновенная смена `grid-template-columns` (прежний
+ * вариант) читалась как скачок, а не как движение.
+ *
+ * Внутреннее содержимое держит собственную минимальную ширину
+ * (`.panelInner`), поэтому при сжатии до нуля оно не переносится
+ * по словам — оно уезжает за левый край целиком, как содержимое выдвижной
+ * панели, а не сминается в столбик.
+ */
+.panel {
+  overflow: hidden;
+  width: min(520px, 44cqi);
+  transition: width var(--duration-slow) var(--easing-standard);
+}
+
+.panel[data-open='false'] {
+  width: 0;
+}
+
+.panelInner {
+  width: min(520px, 44cqi);
+}

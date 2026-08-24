@@ -83,7 +83,7 @@ test.describe('Список проектов', () => {
     await createProject(page);
 
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Грансостав/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
     await pickOre(page);
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();

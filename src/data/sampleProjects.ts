@@ -56,6 +56,10 @@ export function buildSampleProjects(): Project[] {
       throughput: specs['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: calcDone ? [true, true, true] : [true, false, false],
       data: defaultWizardData(),
+      // Шаг «Геометрия» у примеров всегда посчитан (первый элемент `calc`
+      // всегда `true`) — снимок делаем от тех же значений, что и в форме,
+      // поэтому у свежих примеров дельты быть не должно.
+      geomBaseline: defaultWizardData().geom,
     };
   });
 }

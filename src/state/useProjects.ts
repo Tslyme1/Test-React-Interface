@@ -12,12 +12,12 @@ const STORAGE_KEY = 'uztm-projects';
  * Версия 2 добавила параметры формы куска (`a0`, `va0`, `shapeMode`,
  * `sieveRows`), версия 3 — корзину, версия 4 — отметку `seeded`, версия 5 —
  * параметры шага «Геометрия» (`zones`, `beta2`, `l11`, `l12`, `R`, `a`),
- * добавленные при синхронизации вёрстки шага с формой источника. Данные
- * прежних версий не выбрасываются, а дополняются значениями по умолчанию:
- * проекты — это работа пользователя, и терять её из-за того, что мы
- * дописали поле, нельзя.
+ * версия 6 — `geomBaseline`, снимок геометрии на момент расчёта для режима
+ * «Дельта». Данные прежних версий не выбрасываются, а дополняются
+ * значениями по умолчанию: проекты — это работа пользователя, и терять её
+ * из-за того, что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -50,11 +50,26 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
-    if (payload.version === 4) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded });
-    if (payload.version === 3) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded });
-    if (payload.version === 2) return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5), trash, seeded: false });
+    if (payload.version === 5) return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV6), trash, seeded });
+    if (payload.version === 4) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6), trash, seeded });
+    }
+    if (payload.version === 3) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6), trash, seeded });
+    }
+    if (payload.version === 2) {
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6),
+        trash,
+        seeded: false,
+      });
+    }
     if (payload.version === 1) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateFromV1).map(migrateGeomV5), trash, seeded: false });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateFromV1).map(migrateGeomV5).map(migrateBaselineV6),
+        trash,
+        seeded: false,
+      });
     }
 
     // Версия из будущего или мусор — читать нечего.
@@ -102,6 +117,11 @@ function migrateGeomV5(project: Project): Project {
     ...project,
     data: { ...project.data, geom: { ...fallback, ...stored } },
   };
+}
+
+/** До версии 6 у проекта не было `geomBaseline` — записи без него не считались. */
+function migrateBaselineV6(project: Project): Project {
+  return { ...project, geomBaseline: project.geomBaseline ?? null };
 }
 
 function writeState(state: StoredState): void {
@@ -171,6 +191,7 @@ export function useProjects() {
       throughput: specs?.['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: [false, false, false],
       data: input.data,
+      geomBaseline: null,
     };
     setState((prev) => ({ ...prev, projects: [project, ...prev.projects] }));
     return project;

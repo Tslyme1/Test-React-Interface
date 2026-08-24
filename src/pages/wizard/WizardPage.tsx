@@ -9,11 +9,7 @@ import { ResultsDrawer } from './ResultsDrawer';
 import { STEP_KEYS } from '@/domain/steps';
 import styles from './WizardPage.module.css';
 
-const STEP_META: Step[] = [
-  { label: 'Геометрия', description: 'Камера дробления' },
-  { label: 'Грансостав', description: 'Характеристика питания' },
-  { label: 'Продукт', description: 'Грансостав и усилия' },
-];
+const STEP_META: Step[] = [{ label: 'Дробилка' }, { label: 'Руда' }, { label: 'Продукт' }];
 
 export type WizardPageProps = {
   project: Project;
@@ -52,7 +48,13 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
   const runCalc = () => {
     const nextCalc = [...project.calc] as Project['calc'];
     nextCalc[step] = true;
-    onUpdateProject(project.id, { calc: nextCalc });
+    onUpdateProject(project.id, {
+      calc: nextCalc,
+      // Снимок геометрии на момент расчёта — опора для режима отображения
+      // «Дельта» на шаге «Геометрия»: он сравнивает текущие поля с тем,
+      // что было в форме в момент именно этого расчёта.
+      ...(stepKey === 'geom' ? { geomBaseline: { ...project.data.geom } } : {}),
+    });
     showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
 
@@ -64,7 +66,13 @@ export function WizardPage({ project, onUpdateProject, showToast }: WizardPagePr
             гасит сам себя. */}
         <Box paddingX="2xl" paddingY="2xl" fullWidth>
           {stepKey === 'geom' ? (
-            <GeometryStep data={project.data.geom} onChange={patchGeom} />
+            <GeometryStep
+              data={project.data.geom}
+              onChange={patchGeom}
+              baseline={project.geomBaseline}
+              crusherName={project.crusherName}
+              onChangeCrusher={(crusherName) => onUpdateProject(project.id, { crusherName })}
+            />
           ) : stepKey === 'gran' ? (
             <GranStep
               data={project.data.gran}
