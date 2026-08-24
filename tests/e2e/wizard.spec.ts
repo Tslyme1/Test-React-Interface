@@ -175,11 +175,16 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
   });
 
-  test('переключение единиц углов — сегментированный контрол работает', async ({ page }) => {
-    const radians = page.getByRole('radio', { name: 'Радианы' });
-    await radians.check();
-    await expect(radians).toBeChecked();
+  test('переключение единиц углов меняет постфикс у полей угла', async ({ page }) => {
+    await expect(page.getByText('°', { exact: true }).first()).toBeVisible();
 
-    await expect(page.getByText('в единицах: рад')).toBeVisible();
+    await page.getByRole('button', { name: 'Отображение' }).click();
+    const radians = page.getByRole('option', { name: 'Радианы' });
+    await radians.click();
+    await expect(radians).toHaveAttribute('aria-selected', 'true');
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByText('рад', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('°', { exact: true })).toHaveCount(0);
   });
 });

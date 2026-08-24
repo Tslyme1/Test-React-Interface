@@ -82,7 +82,12 @@ test.describe('Схема камеры дробления на шаге «Гео
     const console_ = watchConsole(page);
     const svg = page.getByTestId('chamber-scheme');
 
-    await page.getByRole('radio', { name: 'Радианы' }).check();
+    // Единицы угла переключаются в поповере «Отображение» — строка выбора
+    // там `Cell`, а не именованный нативный `radio` (см. `OptionCell`
+    // в `GeometryStep`).
+    await page.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: 'Радианы' }).click();
+    await page.keyboard.press('Escape');
     // Угол гирации в градусах был 2.5 — в радианах то же самое значение
     // читается уже совсем иначе, схема обязана пересчитаться без ошибок.
     await page.getByLabel('Угол гирации θ').fill('0.05');

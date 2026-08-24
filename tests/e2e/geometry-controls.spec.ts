@@ -67,7 +67,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
 
   test('подсветка участка: наведение на поле D меняет разметку схемы, потеря фокуса — возвращает', async ({ page }) => {
     await page.getByRole('button', { name: 'Отображение' }).click();
-    await page.getByRole('radio', { name: 'Подсветка участка' }).check();
+    await page.getByRole('option', { name: 'Подсветка участка' }).click();
     await page.keyboard.press('Escape');
 
     const svg = page.getByTestId('chamber-scheme');
@@ -107,7 +107,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await expect(page.getByText(/было: 1750/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
-    await page.getByRole('radio', { name: 'Не показывать изменения' }).check();
+    await page.getByRole('option', { name: 'Не показывать изменения' }).click();
     await page.keyboard.press('Escape');
 
     await expect(page.getByText(/было: 1750/)).toHaveCount(0);
@@ -118,5 +118,34 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test('дельта не показывается, пока шаг ни разу не считался', async ({ page }) => {
     await page.getByLabel('Диаметр основания D, мм').fill('1900');
     await expect(page.getByText(/было:/)).toHaveCount(0);
+  });
+});
+
+test.describe('Шаг «Геометрия»: число зон и слои схемы', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+  });
+
+  test('число зон дробления — выпадающий список, вторая зона появляется полем', async ({ page }) => {
+    await expect(page.getByLabel('Длина второй зоны l12, мм')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Число зон дробления' }).click();
+    await page.getByRole('option', { name: '2', exact: true }).click();
+
+    await expect(page.getByLabel('Длина второй зоны l12, мм')).toBeVisible();
+  });
+
+  test('поповер «Слои» — строка сама переключает видимость участка схемы', async ({ page }) => {
+    const svg = page.getByTestId('chamber-scheme');
+    await expect(svg.locator('title', { hasText: 'Броня чаши' })).not.toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Слои' }).click();
+    const bowlOption = page.getByRole('option', { name: 'Броня чаши' });
+    await bowlOption.click();
+    await expect(bowlOption).toHaveAttribute('aria-selected', 'false');
+    await page.keyboard.press('Escape');
+
+    await expect(svg.locator('title', { hasText: 'Броня чаши' })).toHaveCount(0);
   });
 });

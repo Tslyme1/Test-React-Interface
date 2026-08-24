@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode, WheelEvent as ReactWheelEvent } from 'react';
 import {
+  Box,
   Button,
+  Cell,
   Checkbox,
   Chip,
   Field,
@@ -10,13 +12,12 @@ import {
   Modal,
   Popover,
   Radio,
-  RadioGroup,
-  SegmentedControl,
+  Select,
   Stack,
   Surface,
   Text,
 } from '@uralmash/design-system';
-import type { GeomData } from '@/types';
+import type { GeomData, ZoneCount } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
@@ -28,10 +29,6 @@ import styles from './GeometryStep.module.css';
 /** Границы масштаба схемы — те же, что и в прототипе-источнике. */
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 6;
-
-const DIAGRAM_MODE_NAME = 'chamber-diagram-mode';
-const FIELD_MODE_NAME = 'chamber-field-mode';
-const DELTA_MODE_NAME = 'chamber-delta-mode';
 
 /** Режим полей ввода: обычный или с подсветкой участка схемы при наведении. */
 type FieldMode = 'input' | 'highlight';
@@ -83,6 +80,9 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
     if (was === data[key]) return base;
     return base ? `${base} · было: ${was}` : `было: ${was}`;
   };
+
+  /** Постфикс поля угла — говорит, в чём сейчас читать число, не отсылая к отдельной подписи над формой. */
+  const angleUnitSuffix = data.angleUnit === 'рад' ? 'рад' : '°';
 
   // ── меню «Диаграмма» и «Слои» над схемой ──
   const [diagramOpen, setDiagramOpen] = useState(false);
@@ -152,7 +152,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
             <Stack direction="row" align="center" gap="sm">
               <Chip
-                icon="settings"
+                icon="fileText"
                 action={{ icon: 'pencil', label: 'Сменить дробилку', onClick: () => setCrusherPickerOpen(true) }}
               >
                 {crusherName}
@@ -162,69 +162,94 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 open={displayOpen}
                 onClose={() => setDisplayOpen(false)}
                 placement="bottom-end"
-                width="sm"
+                width="md"
                 title="Режим отображения"
                 trigger={
-                  <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
+                  <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
                     Отображение
                   </Button>
                 }
               >
                 <Stack gap="lg" direction="column">
-                  <RadioGroup name={FIELD_MODE_NAME} legend="Поля ввода">
-                    <Radio
-                      name={FIELD_MODE_NAME}
-                      label="Только ввод"
-                      description="Ввод данных без подсветки участков"
-                      checked={fieldMode === 'input'}
-                      onChange={() => setFieldMode('input')}
-                    />
-                    <Radio
-                      name={FIELD_MODE_NAME}
-                      label="Подсветка участка"
-                      description="При наведении на параметры подсвечивается участок схемы"
-                      checked={fieldMode === 'highlight'}
-                      onChange={() => setFieldMode('highlight')}
-                    />
-                  </RadioGroup>
+                  <Stack gap="2xs" direction="column">
+                    <Box paddingX="sm">
+                      <Text variant="label">Поля ввода</Text>
+                    </Box>
+                    <Stack direction="column" gap="none">
+                      <OptionCell
+                        label="Только ввод"
+                        description="Без подсветки участков схемы"
+                        checked={fieldMode === 'input'}
+                        onSelect={() => setFieldMode('input')}
+                      />
+                      <OptionCell
+                        label="Подсветка участка"
+                        description="Наведение подсвечивает участок"
+                        checked={fieldMode === 'highlight'}
+                        onSelect={() => setFieldMode('highlight')}
+                      />
+                    </Stack>
+                  </Stack>
 
-                  <RadioGroup name={DELTA_MODE_NAME} legend="Дельта">
-                    <Radio
-                      name={DELTA_MODE_NAME}
-                      label="Показывать изменения"
-                      description="Отклонение от исходных значений рядом с полем"
-                      checked={deltaMode === 'show'}
-                      onChange={() => setDeltaMode('show')}
-                    />
-                    <Radio
-                      name={DELTA_MODE_NAME}
-                      label="Не показывать изменения"
-                      checked={deltaMode === 'hide'}
-                      onChange={() => setDeltaMode('hide')}
-                    />
-                  </RadioGroup>
+                  <Stack gap="2xs" direction="column">
+                    <Box paddingX="sm">
+                      <Text variant="label">Дельта</Text>
+                    </Box>
+                    <Stack direction="column" gap="none">
+                      <OptionCell
+                        label="Показывать изменения"
+                        description="Отклонение от значений расчёта"
+                        checked={deltaMode === 'show'}
+                        onSelect={() => setDeltaMode('show')}
+                      />
+                      <OptionCell
+                        label="Не показывать изменения"
+                        checked={deltaMode === 'hide'}
+                        onSelect={() => setDeltaMode('hide')}
+                      />
+                    </Stack>
+                  </Stack>
+
+                  <Stack gap="2xs" direction="column">
+                    <Box paddingX="sm">
+                      <Text variant="label">Единицы углов</Text>
+                    </Box>
+                    <Stack direction="column" gap="none">
+                      <OptionCell
+                        label="Градусы"
+                        checked={data.angleUnit === 'deg'}
+                        onSelect={() => onChange({ angleUnit: 'deg' })}
+                      />
+                      <OptionCell
+                        label="Радианы"
+                        checked={data.angleUnit === 'рад'}
+                        onSelect={() => onChange({ angleUnit: 'рад' })}
+                      />
+                    </Stack>
+                  </Stack>
                 </Stack>
               </Popover>
             </Stack>
           </Stack>
 
-          {/* Не `Field`: у SegmentedControl свой fieldset с legend, а id он не принимает —
-              обёртка оставила бы <label for> указывающим в пустоту. Видимая подпись
-              повторяет анатомию Field (gap 2xs + Text label), имя для скринридера
-              даёт сам контрол. */}
           <Surface padding="lg" fullWidth>
-            <Stack gap="2xs" direction="column" align="start">
-              <Text variant="label">Число зон дробления</Text>
-              <SegmentedControl
-                legend="Число зон дробления"
-                options={[
-                  { value: '1', label: '1' },
-                  { value: '2', label: '2' },
-                ]}
-                value={data.zones}
-                onChange={(v) => onChange({ zones: v })}
-              />
-            </Stack>
+            <Grid columns={2} gap="lg" rowGap="md">
+              <Field label="Число зон дробления">
+                {(props) => (
+                  <Select
+                    {...props}
+                    fullWidth
+                    clearable={false}
+                    options={[
+                      { value: '1', label: '1' },
+                      { value: '2', label: '2' },
+                    ]}
+                    value={data.zones}
+                    onChange={(v) => onChange({ zones: v as ZoneCount })}
+                  />
+                )}
+              </Field>
+            </Grid>
           </Surface>
 
           <Surface padding="lg" fullWidth>
@@ -235,7 +260,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                   'beta10',
                   <Field label="Угол конуса β10" hint={hintWithDelta('beta10')}>
                     {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.beta10} onChange={(e) => onChange({ beta10: e.target.value })} />
+                      <div className={styles.angleField}>
+                        <Input {...props} fullWidth type="number" value={data.beta10} onChange={(e) => onChange({ beta10: e.target.value })} />
+                        <Text variant="caption" color="textMuted">
+                          {angleUnitSuffix}
+                        </Text>
+                      </div>
                     )}
                   </Field>
                 )}
@@ -244,7 +274,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                   'beta2',
                   <Field label="Угол на выходе конуса β2" hint={hintWithDelta('beta2')}>
                     {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.beta2} onChange={(e) => onChange({ beta2: e.target.value })} />
+                      <div className={styles.angleField}>
+                        <Input {...props} fullWidth type="number" value={data.beta2} onChange={(e) => onChange({ beta2: e.target.value })} />
+                        <Text variant="caption" color="textMuted">
+                          {angleUnitSuffix}
+                        </Text>
+                      </div>
                     )}
                   </Field>
                 )}
@@ -253,7 +288,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                   'beta40',
                   <Field label="Угол чаши β40" hint={hintWithDelta('beta40')}>
                     {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.beta40} onChange={(e) => onChange({ beta40: e.target.value })} />
+                      <div className={styles.angleField}>
+                        <Input {...props} fullWidth type="number" value={data.beta40} onChange={(e) => onChange({ beta40: e.target.value })} />
+                        <Text variant="caption" color="textMuted">
+                          {angleUnitSuffix}
+                        </Text>
+                      </div>
                     )}
                   </Field>
                 )}
@@ -319,9 +359,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               <Grid columns={2} gap="lg" rowGap="md">
                 {zoned(
                   'theta',
-                  <Field label="Угол гирации θ" hint={hintWithDelta('theta', `в единицах: ${data.angleUnit}`)}>
+                  <Field label="Угол гирации θ" hint={hintWithDelta('theta')}>
                     {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.theta} onChange={(e) => onChange({ theta: e.target.value })} />
+                      <div className={styles.angleField}>
+                        <Input {...props} fullWidth type="number" value={data.theta} onChange={(e) => onChange({ theta: e.target.value })} />
+                        <Text variant="caption" color="textMuted">
+                          {angleUnitSuffix}
+                        </Text>
+                      </div>
                     )}
                   </Field>
                 )}
@@ -366,21 +411,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             </Stack>
           </Surface>
 
-          {/* Не `Field` — см. пояснение выше в этом файле. */}
-          <Surface padding="lg" fullWidth>
-            <Stack gap="2xs" direction="column" align="start">
-              <Text variant="label">Единица измерения углов</Text>
-              <SegmentedControl
-                legend="Единица измерения углов"
-                options={[
-                  { value: 'deg', label: 'Градусы' },
-                  { value: 'рад', label: 'Радианы' },
-                ]}
-                value={data.angleUnit}
-                onChange={(v) => onChange({ angleUnit: v })}
-              />
-            </Stack>
-          </Surface>
         </Stack>
       </div>
 
@@ -394,29 +424,23 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               open={diagramOpen}
               onClose={() => setDiagramOpen(false)}
               placement="bottom-end"
-              width="sm"
+              width="md"
               title="Режим отображения"
               trigger={
-                <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDiagramOpen((o) => !o)}>
+                <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDiagramOpen((o) => !o)}>
                   Диаграмма
                 </Button>
               }
             >
-              <RadioGroup name={DIAGRAM_MODE_NAME} legend="Режим отображения" direction="column">
-                <Radio
-                  name={DIAGRAM_MODE_NAME}
-                  label="Обычный"
-                  checked={diagramMode === 'normal'}
-                  onChange={() => setDiagramMode('normal')}
-                />
-                <Radio
-                  name={DIAGRAM_MODE_NAME}
+              <Stack direction="column" gap="none">
+                <OptionCell label="Обычный" checked={diagramMode === 'normal'} onSelect={() => setDiagramMode('normal')} />
+                <OptionCell
                   label="Линии построения"
-                  description="Лучи от точки подвеса к каждой точке профиля"
+                  description="Лучи от подвеса к точкам профиля"
                   checked={diagramMode === 'build'}
-                  onChange={() => setDiagramMode('build')}
+                  onSelect={() => setDiagramMode('build')}
                 />
-              </RadioGroup>
+              </Stack>
             </Popover>
 
             <Popover
@@ -426,23 +450,23 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               width="sm"
               title="Отображать"
               trigger={
-                <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setLayersOpen((o) => !o)}>
+                <Button variant="secondary" iconEnd="chevronDown" onClick={() => setLayersOpen((o) => !o)}>
                   Слои
                 </Button>
               }
             >
-              <Stack direction="column" gap="2xs">
-                <Checkbox label="Броня чаши" checked={layers.bowl} onChange={() => toggleLayer('bowl')} />
-                <Checkbox label="Броня конуса" checked={layers.cone} onChange={() => toggleLayer('cone')} />
-                <Checkbox label="Угол θ (дуга)" checked={layers.theta} onChange={() => toggleLayer('theta')} />
-                <Checkbox label="Зазор S₀" checked={layers.gap} onChange={() => toggleLayer('gap')} />
-                <Checkbox label="Размеры D/2 и h" checked={layers.dims} onChange={() => toggleLayer('dims')} />
+              <Stack direction="column" gap="none">
+                <OptionCell label="Броня чаши" kind="checkbox" checked={layers.bowl} onSelect={() => toggleLayer('bowl')} />
+                <OptionCell label="Броня конуса" kind="checkbox" checked={layers.cone} onSelect={() => toggleLayer('cone')} />
+                <OptionCell label="Угол θ (дуга)" kind="checkbox" checked={layers.theta} onSelect={() => toggleLayer('theta')} />
+                <OptionCell label="Зазор S₀" kind="checkbox" checked={layers.gap} onSelect={() => toggleLayer('gap')} />
+                <OptionCell label="Размеры D/2 и h" kind="checkbox" checked={layers.dims} onSelect={() => toggleLayer('dims')} />
               </Stack>
             </Popover>
           </>
         }
       >
-        <Surface level="flat" border padding="sm" fullWidth>
+        <Surface level="flat" padding="sm" fullWidth>
           <div
             className={panning ? `${styles.viewport} ${styles.viewportPanning}` : styles.viewport}
             onWheel={handleWheel}
@@ -465,7 +489,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             </div>
 
             <div className={styles.zoomControls}>
-              <Surface level="raised" radius="sm" padding="2xs">
+              <Surface level="raised" radius="sm" padding="2xs" border={false}>
                 <Stack direction="column" gap="2xs">
                   <Button variant="secondary" size="sm" aria-label="Приблизить" onClick={() => zoomBy(1.25)}>
                     +
@@ -479,10 +503,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             </div>
           </div>
         </Surface>
-        <Text variant="caption" color="textMuted">
-          Броня чаши — неподвижный профиль, броня конуса — гирационный. Схема пересчитывается по полям слева; узлы
-          профиля, не вынесенные в форму, взяты из демонстрационных значений методики-источника.
-        </Text>
       </InlineSidebar>
 
       <Modal open={crusherPickerOpen} onClose={() => setCrusherPickerOpen(false)} title="Сменить дробилку" size="lg">
@@ -503,5 +523,49 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
         />
       </Modal>
     </div>
+  );
+}
+
+/**
+ * Строка выбора внутри поповера — тот же ряд, что и вариант `Select`
+ * (`Cell` с флажком или отметкой в правом слоте, а не голый `Checkbox`/`Radio`
+ * посреди панели): высота из шкалы контролов и подсветка при наведении
+ * вместо мелкого контрола без чужого поля вокруг.
+ *
+ * Флажок/переключатель здесь декоративны (`readOnly`, вне табуляции) —
+ * переключает состояние сама строка через `onClick`, как и у `Cell`
+ * с флажком внутри `Select`.
+ */
+function OptionCell({
+  label,
+  description,
+  checked,
+  onSelect,
+  kind = 'radio',
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onSelect: () => void;
+  kind?: 'radio' | 'checkbox';
+}) {
+  return (
+    <Cell
+      size="sm"
+      role="option"
+      aria-selected={checked}
+      selected={checked}
+      description={description}
+      onClick={onSelect}
+      trailing={
+        kind === 'checkbox' ? (
+          <Checkbox checked={checked} readOnly tabIndex={-1} />
+        ) : (
+          <Radio checked={checked} readOnly tabIndex={-1} />
+        )
+      }
+    >
+      {label}
+    </Cell>
   );
 }
