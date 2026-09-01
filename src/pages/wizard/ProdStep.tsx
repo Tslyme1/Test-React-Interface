@@ -1,4 +1,4 @@
-import { Field, Grid, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
+import { Field, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { ProdData } from '@/types';
 import { SieveAnalysis } from './SieveAnalysis';
 
@@ -39,7 +39,7 @@ export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
         />
       </Stack>
 
-      <Grid columns={2} gap="lg" rowGap="md">
+      <Stack direction="column" gap="md">
         <Field label="Минимальная крупность продукта Dmin, мм" required>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
@@ -69,7 +69,7 @@ export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
             <Input {...props} fullWidth type="number" step="0.01" value={data.kpd} onChange={(e) => onChange({ kpd: e.target.value })} />
           )}
         </Field>
-      </Grid>
+      </Stack>
 
       <Stack gap="lg" direction="column">
         <Stack direction="row" justify="between" align="start" gap="md" wrap>
@@ -97,7 +97,7 @@ export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
         </Stack>
 
         {data.shapeMode === 'direct' ? (
-          <Grid columns={2} gap="lg" rowGap="md">
+          <Stack direction="column" gap="md">
             <Field label="Среднее относительное длины куска a₀" hint="d̄ / dmax">
               {(props) => (
                 <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
@@ -116,7 +116,7 @@ export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
                 />
               )}
             </Field>
-          </Grid>
+          </Stack>
         ) : (
           <SieveAnalysis rows={data.sieveRows} onRowsChange={(rows) => onChange({ sieveRows: rows })} onApply={applySieveToParams} />
         )}

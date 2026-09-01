@@ -7,7 +7,6 @@ import {
   Checkbox,
   Chip,
   Field,
-  Grid,
   Input,
   Modal,
   Popover,
@@ -232,184 +231,170 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             </Stack>
           </Stack>
 
-          <Surface padding="lg" fullWidth>
-            <Grid columns={2} gap="lg" rowGap="md">
-              <Field label="Число зон дробления">
+          <Field label="Число зон дробления">
+            {(props) => (
+              <Select
+                {...props}
+                fullWidth
+                clearable={false}
+                options={[
+                  { value: '1', label: '1' },
+                  { value: '2', label: '2' },
+                ]}
+                value={data.zones}
+                onChange={(v) => onChange({ zones: v as ZoneCount })}
+              />
+            )}
+          </Field>
+
+          <Stack gap="sm" direction="column">
+            <Text variant="label">Углы профиля</Text>
+            <Stack direction="column" gap="md">
+              {zoned(
+                'beta10',
+                <Field label="Угол конуса β10" hint={hintWithDelta('beta10')}>
+                  {(props) => (
+                    <div className={styles.angleField}>
+                      <Input {...props} fullWidth type="number" value={data.beta10} onChange={(e) => onChange({ beta10: e.target.value })} />
+                      <Text variant="caption" color="textMuted">
+                        {angleUnitSuffix}
+                      </Text>
+                    </div>
+                  )}
+                </Field>
+              )}
+
+              {zoned(
+                'beta2',
+                <Field label="Угол на выходе конуса β2" hint={hintWithDelta('beta2')}>
+                  {(props) => (
+                    <div className={styles.angleField}>
+                      <Input {...props} fullWidth type="number" value={data.beta2} onChange={(e) => onChange({ beta2: e.target.value })} />
+                      <Text variant="caption" color="textMuted">
+                        {angleUnitSuffix}
+                      </Text>
+                    </div>
+                  )}
+                </Field>
+              )}
+
+              {zoned(
+                'beta40',
+                <Field label="Угол чаши β40" hint={hintWithDelta('beta40')}>
+                  {(props) => (
+                    <div className={styles.angleField}>
+                      <Input {...props} fullWidth type="number" value={data.beta40} onChange={(e) => onChange({ beta40: e.target.value })} />
+                      <Text variant="caption" color="textMuted">
+                        {angleUnitSuffix}
+                      </Text>
+                    </div>
+                  )}
+                </Field>
+              )}
+            </Stack>
+          </Stack>
+
+          <Stack gap="sm" direction="column">
+            <Text variant="label">Геометрия камеры</Text>
+            <Stack direction="column" gap="md">
+              {zoned(
+                'D',
+                <Field label="Диаметр основания D, мм" required hint={hintWithDelta('D')}>
+                  {(props) => (
+                    <Input {...props} fullWidth type="number" value={data.D} onChange={(e) => onChange({ D: e.target.value })} />
+                  )}
+                </Field>
+              )}
+
+              {zoned(
+                'H',
+                <Field label="Высота камеры H, мм" required hint={hintWithDelta('H')}>
+                  {(props) => (
+                    <Input {...props} fullWidth type="number" value={data.H} onChange={(e) => onChange({ H: e.target.value })} />
+                  )}
+                </Field>
+              )}
+
+              {zoned(
+                'l2',
+                <Field label="Длина параллельной зоны l2, мм" hint={hintWithDelta('l2')}>
+                  {(props) => (
+                    <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} />
+                  )}
+                </Field>
+              )}
+
+              {/* R и a — параметры профиля камеры из методики-источника. Прототип
+                  держит их в той же группе «Геометрия камеры», хотя формульно
+                  они относятся к другой части методики (грансостав/усилия) —
+                  `computeChamberGeometry` их не использует, см. комментарий
+                  у `buildChamberSchemeProps`. Здесь они хранятся вместе с
+                  проектом на тех же правах, что и остальные поля шага. */}
+              <Field label="Коэффициент R" hint={hintWithDelta('R')}>
                 {(props) => (
-                  <Select
-                    {...props}
-                    fullWidth
-                    clearable={false}
-                    options={[
-                      { value: '1', label: '1' },
-                      { value: '2', label: '2' },
-                    ]}
-                    value={data.zones}
-                    onChange={(v) => onChange({ zones: v as ZoneCount })}
-                  />
+                  <Input {...props} fullWidth type="number" step="0.01" value={data.R} onChange={(e) => onChange({ R: e.target.value })} />
                 )}
               </Field>
-            </Grid>
-          </Surface>
 
-          <Surface padding="lg" fullWidth>
-            <Stack gap="sm" direction="column">
-              <Text variant="label">Углы профиля</Text>
-              <Grid columns={3} gap="lg" rowGap="md">
-                {zoned(
-                  'beta10',
-                  <Field label="Угол конуса β10" hint={hintWithDelta('beta10')}>
-                    {(props) => (
-                      <div className={styles.angleField}>
-                        <Input {...props} fullWidth type="number" value={data.beta10} onChange={(e) => onChange({ beta10: e.target.value })} />
-                        <Text variant="caption" color="textMuted">
-                          {angleUnitSuffix}
-                        </Text>
-                      </div>
-                    )}
-                  </Field>
+              <Field label="Коэффициент a" hint={hintWithDelta('a')}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" step="0.01" value={data.a} onChange={(e) => onChange({ a: e.target.value })} />
                 )}
-
-                {zoned(
-                  'beta2',
-                  <Field label="Угол на выходе конуса β2" hint={hintWithDelta('beta2')}>
-                    {(props) => (
-                      <div className={styles.angleField}>
-                        <Input {...props} fullWidth type="number" value={data.beta2} onChange={(e) => onChange({ beta2: e.target.value })} />
-                        <Text variant="caption" color="textMuted">
-                          {angleUnitSuffix}
-                        </Text>
-                      </div>
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  'beta40',
-                  <Field label="Угол чаши β40" hint={hintWithDelta('beta40')}>
-                    {(props) => (
-                      <div className={styles.angleField}>
-                        <Input {...props} fullWidth type="number" value={data.beta40} onChange={(e) => onChange({ beta40: e.target.value })} />
-                        <Text variant="caption" color="textMuted">
-                          {angleUnitSuffix}
-                        </Text>
-                      </div>
-                    )}
-                  </Field>
-                )}
-              </Grid>
+              </Field>
             </Stack>
-          </Surface>
+          </Stack>
 
-          <Surface padding="lg" fullWidth>
-            <Stack gap="sm" direction="column">
-              <Text variant="label">Геометрия камеры</Text>
-              <Grid columns={3} gap="lg" rowGap="md">
-                {zoned(
-                  'D',
-                  <Field label="Диаметр основания D, мм" required hint={hintWithDelta('D')}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.D} onChange={(e) => onChange({ D: e.target.value })} />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  'H',
-                  <Field label="Высота камеры H, мм" required hint={hintWithDelta('H')}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.H} onChange={(e) => onChange({ H: e.target.value })} />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  'l2',
-                  <Field label="Длина параллельной зоны l2, мм" hint={hintWithDelta('l2')}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} />
-                    )}
-                  </Field>
-                )}
-
-                {/* R и a — параметры профиля камеры из методики-источника. Прототип
-                    держит их в той же группе «Геометрия камеры», хотя формульно
-                    они относятся к другой части методики (грансостав/усилия) —
-                    `computeChamberGeometry` их не использует, см. комментарий
-                    у `buildChamberSchemeProps`. Здесь они хранятся вместе с
-                    проектом на тех же правах, что и остальные поля шага. */}
-                <Field label="Коэффициент R" hint={hintWithDelta('R')}>
+          <Stack gap="sm" direction="column">
+            <Text variant="label">Угол нутации</Text>
+            <Stack direction="column" gap="md">
+              {zoned(
+                'theta',
+                <Field label="Угол гирации θ" hint={hintWithDelta('theta')}>
                   {(props) => (
-                    <Input {...props} fullWidth type="number" step="0.01" value={data.R} onChange={(e) => onChange({ R: e.target.value })} />
+                    <div className={styles.angleField}>
+                      <Input {...props} fullWidth type="number" value={data.theta} onChange={(e) => onChange({ theta: e.target.value })} />
+                      <Text variant="caption" color="textMuted">
+                        {angleUnitSuffix}
+                      </Text>
+                    </div>
                   )}
                 </Field>
+              )}
+            </Stack>
+          </Stack>
 
-                <Field label="Коэффициент a" hint={hintWithDelta('a')}>
+          <Stack gap="sm" direction="column">
+            <Text variant="label">Разгрузочная щель</Text>
+            <Stack direction="column" gap="md">
+              {zoned(
+                'S0',
+                <Field label="Ширина разгрузочной щели S0, мм" required hint={hintWithDelta('S0')}>
                   {(props) => (
-                    <Input {...props} fullWidth type="number" step="0.01" value={data.a} onChange={(e) => onChange({ a: e.target.value })} />
+                    <Input {...props} fullWidth type="number" value={data.S0} onChange={(e) => onChange({ S0: e.target.value })} />
                   )}
                 </Field>
-              </Grid>
+              )}
             </Stack>
-          </Surface>
+          </Stack>
 
-          <Surface padding="lg" fullWidth>
-            <Stack gap="sm" direction="column">
-              <Text variant="label">Угол нутации</Text>
-              <Grid columns={2} gap="lg" rowGap="md">
-                {zoned(
-                  'theta',
-                  <Field label="Угол гирации θ" hint={hintWithDelta('theta')}>
-                    {(props) => (
-                      <div className={styles.angleField}>
-                        <Input {...props} fullWidth type="number" value={data.theta} onChange={(e) => onChange({ theta: e.target.value })} />
-                        <Text variant="caption" color="textMuted">
-                          {angleUnitSuffix}
-                        </Text>
-                      </div>
-                    )}
-                  </Field>
+          <Stack gap="sm" direction="column">
+            <Text variant="label">Длины зон дробления</Text>
+            <Stack direction="column" gap="md">
+              <Field label="Длина первой зоны l11, мм" hint={hintWithDelta('l11')}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} />
                 )}
-              </Grid>
-            </Stack>
-          </Surface>
+              </Field>
 
-          <Surface padding="lg" fullWidth>
-            <Stack gap="sm" direction="column">
-              <Text variant="label">Разгрузочная щель</Text>
-              <Grid columns={2} gap="lg" rowGap="md">
-                {zoned(
-                  'S0',
-                  <Field label="Ширина разгрузочной щели S0, мм" required hint={hintWithDelta('S0')}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.S0} onChange={(e) => onChange({ S0: e.target.value })} />
-                    )}
-                  </Field>
-                )}
-              </Grid>
-            </Stack>
-          </Surface>
-
-          <Surface padding="lg" fullWidth>
-            <Stack gap="sm" direction="column">
-              <Text variant="label">Длины зон дробления</Text>
-              <Grid columns={2} gap="lg" rowGap="md">
-                <Field label="Длина первой зоны l11, мм" hint={hintWithDelta('l11')}>
+              {hasSecondZone ? (
+                <Field label="Длина второй зоны l12, мм" hint={hintWithDelta('l12')}>
                   {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} />
+                    <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} />
                   )}
                 </Field>
-
-                {hasSecondZone ? (
-                  <Field label="Длина второй зоны l12, мм" hint={hintWithDelta('l12')}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} />
-                    )}
-                  </Field>
-                ) : null}
-              </Grid>
+              ) : null}
             </Stack>
-          </Surface>
+          </Stack>
 
         </Stack>
       </div>

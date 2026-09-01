@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Chip, EmptyState, Field, Grid, Input, Modal, Stack, Text } from '@uralmash/design-system';
+import { Button, Chip, EmptyState, Field, Input, Modal, Stack, Text } from '@uralmash/design-system';
 import type { GranData } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
@@ -47,7 +47,7 @@ export function GranStep({ data, onChange, ore, onPickOre }: GranStepProps) {
             </Chip>
           </Stack>
 
-          <Grid columns={2} gap="lg" rowGap="md">
+          <Stack direction="column" gap="md">
             <Field label="Минимальная крупность Dmin, мм" required>
               {(props) => (
                 <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
@@ -77,7 +77,7 @@ export function GranStep({ data, onChange, ore, onPickOre }: GranStepProps) {
                 <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
               )}
             </Field>
-          </Grid>
+          </Stack>
         </Stack>
       ) : (
         <EmptyState
