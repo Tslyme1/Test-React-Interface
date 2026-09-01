@@ -76,7 +76,7 @@ export function AppShell({
                   <>
                     <RenameProject name={project.name} onRename={onRenameProject} />
                     {onCloseProject ? (
-                      <HeaderButton chrome="close" aria-label="Закрыть проект" onClick={onCloseProject} />
+                      <Button variant="ghost" size="sm" icon="x" aria-label="Закрыть проект" onClick={onCloseProject} />
                     ) : null}
                   </>
                 }
@@ -171,7 +171,9 @@ function RenameProject({ name, onRename }: { name: string; onRename?: (next: str
       placement="bottom-start"
       width="md"
       trigger={
-        <HeaderButton
+        <Button
+          variant="ghost"
+          size="sm"
           icon="chevronDown"
           aria-label="Переименовать проект"
           onClick={() => (open ? setOpen(false) : start())}
