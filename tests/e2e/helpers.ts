@@ -61,7 +61,7 @@ export type SeedOptions = {
 };
 
 /** Версия формата хранилища проектов. Должна совпадать с `useProjects`. */
-const PROJECTS_SCHEMA_VERSION = 7;
+const PROJECTS_SCHEMA_VERSION = 8;
 
 /**
  * Быстрый вход: сессия кладётся в localStorage до загрузки страницы.

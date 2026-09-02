@@ -206,4 +206,26 @@ test.describe('Инженерный визард', () => {
     const after = await panel.boundingBox();
     expect(after!.width).toBeGreaterThan(before.width + 100);
   });
+
+  test('дельта работает на «Грансоставе» и «Продукте», не только на «Геометрии»', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
+    await pickOre(page);
+
+    const z0 = page.getByLabel('Параметр Z0');
+    await expect(page.getByText('было:')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await z0.fill('9.9');
+    // Отредактировано после расчёта этого же шага — подсказка «было: X»
+    // обязана появиться прямо под полем, тем же приёмом, что на «Геометрии».
+    await expect(page.getByText('было: 1.2', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: /Продукт/ }).click();
+    const wk = page.getByLabel('Работа разрушения Wk');
+    const wkBefore = await wk.inputValue();
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await wk.fill(`${Number(wkBefore) + 1}`);
+    await expect(page.getByText(`было: ${wkBefore}`, { exact: true })).toBeVisible();
+  });
 });
