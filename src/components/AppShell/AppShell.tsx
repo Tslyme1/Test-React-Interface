@@ -22,26 +22,35 @@ import logoSrc from '@/uztm-logo.png';
 import styles from './AppShell.module.css';
 
 /**
- * Открытый проект. `active` — показан ли он сейчас: проект остаётся открытым
- * и когда пользователь ушёл на главную, поэтому «проект открыт» и «мы в нём»
- * это два разных состояния.
+ * Открытая вкладка инженерного проекта. Список — потому что открытых
+ * одновременно может быть несколько, как вкладок браузера: закрытие одной
+ * не закрывает остальные, а уход на список не закрывает ни одну из них.
  */
-export type ShellProject = { name: string; active: boolean };
+export type ShellProjectTab = { id: string; name: string };
 
 export type AppShellProps = {
-  project?: ShellProject | null;
+  /** Открытые вкладки, в порядке открытия. Пусто — ни одна не открыта. */
+  projectTabs: ShellProjectTab[];
   /**
-   * Ключ переключаемого содержимого — список проектов и открытый проект
-   * получают разные значения. Смена ключа перемонтирует обёртку и
+   * id вкладки, которая сейчас показана на экране. `null` — показан раздел
+   * приложения (сайдбар и его содержимое), а не открытый проект: вкладка
+   * может оставаться открытой и не быть показанной, поэтому «открыта»
+   * и «показана» — два разных состояния, как и раньше для одного проекта.
+   */
+  shownProjectId: string | null;
+  /**
+   * Ключ переключаемого содержимого — список проектов и каждый открытый
+   * проект получают разные значения. Смена ключа перемонтирует обёртку и
    * проигрывает анимацию входа заново, поэтому и открытие, и закрытие
-   * проекта выглядят одинаково плавным переходом, а не мгновенной подменой.
+   * проекта, и переключение между вкладками выглядят одинаково плавным
+   * переходом, а не мгновенной подменой.
    */
   contentKey: string;
   onGoProjects: () => void;
-  /** Вернуться в открытый проект — нажатие по самой вкладке. */
-  onOpenProject?: () => void;
-  onCloseProject?: () => void;
-  onRenameProject?: (name: string) => void;
+  /** Переключение на вкладку — клик по ней. */
+  onSelectProject: (id: string) => void;
+  onCloseProject: (id: string) => void;
+  onRenameProject: (id: string, name: string) => void;
   onNewProject: () => void;
   /** Раздел приложения — сайдбар слева. Скрыт, пока открытый проект показан на экране: там должен быть виден только он. */
   view: SidebarView;
@@ -53,10 +62,11 @@ export type AppShellProps = {
 };
 
 export function AppShell({
-  project,
+  projectTabs,
+  shownProjectId,
   contentKey,
   onGoProjects,
-  onOpenProject,
+  onSelectProject,
   onCloseProject,
   onRenameProject,
   onNewProject,
@@ -75,31 +85,39 @@ export function AppShell({
         <AppHeader.Left>
           {/* Знак и есть переход на главную. Отдельной ячейки «домой» рядом
               нет — это было бы одно действие двумя элементами подряд. */}
-          <HeaderLogo label="УЗТМ" active={!project?.active} onClick={onGoProjects}>
+          <HeaderLogo label="УЗТМ" active={!shownProjectId} onClick={onGoProjects}>
             <img className={styles.logo} src={logoSrc} alt="" />
           </HeaderLogo>
 
-          {/* Вкладка открытого проекта и действия над ним — одной ячейкой.
-              Создание нового проекта стоит после неё: это следующий проект
-              по счёту, а не действие над открытым, и стоя перед вкладкой
-              оно разрывало бы проект и его же кнопки. */}
-          {project ? (
+          {/* Вкладка проекта и действия над ним — одной ячейкой на каждый
+              открытый проект, как вкладки браузера. Создание нового проекта
+              стоит после всех: это следующий проект по счёту, а не действие
+              над каким-то из открытых, и стоя перед вкладками оно разрывало
+              бы их и их же кнопки. */}
+          {projectTabs.length > 0 ? (
             <>
               <HeaderDivider />
-              <HeaderTab
-                active={project.active}
-                onClick={onOpenProject}
-                actions={
-                  <>
-                    <RenameProject name={project.name} onRename={onRenameProject} />
-                    {onCloseProject ? (
-                      <Button variant="ghost" size="sm" icon="x" aria-label="Закрыть проект" onClick={onCloseProject} />
-                    ) : null}
-                  </>
-                }
-              >
-                {project.name}
-              </HeaderTab>
+              {projectTabs.map((tab) => (
+                <HeaderTab
+                  key={tab.id}
+                  active={tab.id === shownProjectId}
+                  onClick={() => onSelectProject(tab.id)}
+                  actions={
+                    <>
+                      <RenameProject name={tab.name} onRename={(next) => onRenameProject(tab.id, next)} />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="x"
+                        aria-label={`Закрыть проект: ${tab.name}`}
+                        onClick={() => onCloseProject(tab.id)}
+                      />
+                    </>
+                  }
+                >
+                  {tab.name}
+                </HeaderTab>
+              ))}
               <HeaderDivider />
             </>
           ) : null}
@@ -112,7 +130,7 @@ export function AppShell({
         {/* Только раздел приложения — не про открытый проект, поэтому
             прячется, когда проект показан на экране: там должен быть виден
             только он, а не список разделов рядом. */}
-        {!project?.active ? (
+        {!shownProjectId ? (
           <Sidebar view={view} onViewChange={onViewChange} trashCount={trash.length} onOpenTrash={() => setTrashOpen(true)} />
         ) : null}
 
@@ -189,11 +207,9 @@ export function AppShell({
  * вкладка переписывается посреди набора и проходит через пустое имя между
  * стиранием старого и вводом нового.
  */
-function RenameProject({ name, onRename }: { name: string; onRename?: (next: string) => void }) {
+function RenameProject({ name, onRename }: { name: string; onRename: (next: string) => void }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(name);
-
-  if (!onRename) return null;
 
   const start = () => {
     /* Черновик заводится от текущего имени при каждом открытии: брошенная
