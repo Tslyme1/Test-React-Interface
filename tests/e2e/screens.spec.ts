@@ -58,7 +58,6 @@ for (const scheme of ['light', 'dark'] as const) {
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Руда/ }).click();
-      await page.getByRole('button', { name: /Выбрать пробу руды/ }).click();
       await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
       await shot(page, `05-catalog-ore-${scheme}`);
     });

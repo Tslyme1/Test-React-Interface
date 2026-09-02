@@ -44,13 +44,13 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     },
   },
   {
-    name: 'визард — шаг грансостава без пробы руды',
+    name: 'визард — выбор пробы руды поверх шага «Дробилка»',
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Руда/ }).click();
-      await expect(page.getByText('Выберите пробу руды')).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
     },
   },
   {

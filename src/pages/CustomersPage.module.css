@@ -1,0 +1,40 @@
+/**
+ * Тот же приём, что в `ProjectsPage.module.css`: скроллится только таблица,
+ * заголовок и поиск остаются на месте.
+ */
+.root {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.tableWrap {
+  padding: 0 var(--space-2xl) var(--space-2xl);
+}
+
+/** Поиск — той же ширины, что и в панели фильтров списка проектов. */
+.searchBar {
+  max-width: 360px;
+}

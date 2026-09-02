@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { GeomData, ProdData, Project, WizardData } from '@/types';
+import type { GeomData, ProdData, Project, ProjectMode, WizardData } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { CRUSHERS } from '@/data/crushers';
@@ -13,11 +13,14 @@ const STORAGE_KEY = 'uztm-projects';
  * `sieveRows`), версия 3 — корзину, версия 4 — отметку `seeded`, версия 5 —
  * параметры шага «Геометрия» (`zones`, `beta2`, `l11`, `l12`, `R`, `a`),
  * версия 6 — `geomBaseline`, снимок геометрии на момент расчёта для режима
- * «Дельта». Данные прежних версий не выбрасываются, а дополняются
- * значениями по умолчанию: проекты — это работа пользователя, и терять её
- * из-за того, что мы дописали поле, нельзя.
+ * «Дельта». Версия 7 — `mode`, `crusherNames`, `oreNames` для упрощённого
+ * режима: старые записи получают `mode: 'engineering'` и списки из одного
+ * элемента (той же дробилки/пробы, что уже стояли в `crusherName`/`ore`).
+ * Данные прежних версий не выбрасываются, а дополняются значениями по
+ * умолчанию: проекты — это работа пользователя, и терять её из-за того,
+ * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -50,23 +53,34 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
-    if (payload.version === 5) return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV6), trash, seeded });
+    if (payload.version === 6) return seedIfNeeded({ projects: payload.projects.map(migrateModeV7), trash, seeded });
+    if (payload.version === 5) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7), trash, seeded });
+    }
     if (payload.version === 4) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 3) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 2) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6),
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
         trash,
         seeded: false,
       });
     }
     if (payload.version === 1) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateFromV1).map(migrateGeomV5).map(migrateBaselineV6),
+        projects: payload.projects.map(migrateFromV1).map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
         trash,
         seeded: false,
       });
@@ -124,6 +138,22 @@ function migrateBaselineV6(project: Project): Project {
   return { ...project, geomBaseline: project.geomBaseline ?? null };
 }
 
+/**
+ * До версии 7 у проекта не было `mode`/`crusherNames`/`oreNames` — все
+ * записи были инженерными с одной дробилкой и одной пробой, поэтому
+ * получают `mode: 'engineering'` и списки из того, что уже стояло
+ * в `crusherName`/`ore`.
+ */
+function migrateModeV7(project: Project): Project {
+  const legacy = project as Partial<Pick<Project, 'mode' | 'crusherNames' | 'oreNames'>> & Project;
+  return {
+    ...project,
+    mode: legacy.mode ?? 'engineering',
+    crusherNames: legacy.crusherNames ?? (project.crusherName ? [project.crusherName] : []),
+    oreNames: legacy.oreNames ?? (project.ore ? [project.ore] : []),
+  };
+}
+
 function writeState(state: StoredState): void {
   try {
     // Любая запись означает, что список больше не «нетронутый»: подсыпать
@@ -149,13 +179,18 @@ function formatDate(): string {
 
 /**
  * Пробы руды здесь нет: при создании она неизвестна и выбирается на шаге
- * «Грансостав». До тех пор `ore` у проекта пустая — так же, как в прототипе.
+ * «Грансостав» (инженерный режим) или «Руда» (упрощённый). До тех пор `ore`
+ * у проекта пустая — так же, как в прототипе.
  */
 export type NewProjectInput = {
   name: string;
   customer: string;
-  crusherName: string;
   executor: string;
+  mode: ProjectMode;
+  /** Инженерный режим — ровно одна дробилка. */
+  crusherName?: string;
+  /** Упрощённый режим — одна или несколько, отчёт считает каждую. */
+  crusherNames?: string[];
   data: WizardData;
 };
 
@@ -171,17 +206,26 @@ export function useProjects() {
   }, [state]);
 
   const createProject = useCallback((input: NewProjectInput): Project => {
+    // Упрощённый режим допускает несколько дробилок сразу — характеристики
+    // в колонках списка проектов при этом берутся у первой выбранной:
+    // показать там же сразу все комбинации было бы некуда, а отчёт по
+    // каждой всё равно строится отдельно на шаге «Продукт».
+    const names = input.mode === 'simplified' ? (input.crusherNames ?? []) : input.crusherName ? [input.crusherName] : [];
+    const primaryName = names[0] ?? '';
     // Характеристики берутся из каталога выбранной машины: они известны
     // сразу после выбора, и оставлять три колонки прочерками до расчёта
     // значит показывать полупустую строку там, где данные уже есть.
-    const specs = CRUSHERS.find((c) => c.name === input.crusherName)?.values;
+    const specs = CRUSHERS.find((c) => c.name === primaryName)?.values;
 
     const project: Project = {
       id: makeId(),
       name: input.name,
       customer: input.customer,
-      crusherName: input.crusherName,
+      mode: input.mode,
+      crusherName: primaryName,
+      crusherNames: names,
       ore: '',
+      oreNames: [],
       code: `П-${Math.floor(10000 + Math.random() * 89999)}`,
       tag: null,
       date: formatDate(),
@@ -196,6 +240,32 @@ export function useProjects() {
     setState((prev) => ({ ...prev, projects: [project, ...prev.projects] }));
     return project;
   }, []);
+
+  /**
+   * Копия проекта с правкой поверх посчитанного шага.
+   *
+   * Посчитанный шаг не переписывается на месте — правка данных создаёт
+   * новый проект с применённым изменением, а исходный остаётся таким, каким
+   * был на момент расчёта. Так и в исходном прототипе: расчёт — это снимок,
+   * а не черновик, который можно тихо переписать задним числом.
+   */
+  const forkProject = useCallback(
+    (id: string, patch: Partial<Project>): Project | null => {
+      const source = state.projects.find((p) => p.id === id);
+      if (!source) return null;
+
+      const forked: Project = {
+        ...source,
+        ...patch,
+        id: makeId(),
+        code: `П-${Math.floor(10000 + Math.random() * 89999)}`,
+        date: formatDate(),
+      };
+      setState((prev) => ({ ...prev, projects: [forked, ...prev.projects] }));
+      return forked;
+    },
+    [state.projects]
+  );
 
   const updateProject = useCallback((id: string, patch: Partial<Project>) => {
     setState((prev) => ({
@@ -243,6 +313,7 @@ export function useProjects() {
     trash: state.trash,
     createProject,
     updateProject,
+    forkProject,
     removeProject,
     restoreProject,
     purgeProject,

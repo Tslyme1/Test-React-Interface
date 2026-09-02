@@ -145,12 +145,21 @@ test.describe('Главный экран со списком проектов', 
   test('дата отбирается календарём, «Очистить» возвращает всё', async ({ page }) => {
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
 
-    await page.getByLabel('Дата проекта').first().click();
+    // Через панель «Фильтры», а не через строку под заголовком: сайдбар
+    // сузил доступную ширину строки, и «Дата проекта» — низкоприоритетный
+    // фильтр (см. `.filterItem[data-filter-priority]` в `ProjectsPage.module.css`) —
+    // на обычном экране уже не помещается в неё. Ровно для этого случая
+    // и заведено правило файла — брать конкретный фильтр из панели.
+    const drawer = await openFilters(page);
+    await drawer.getByLabel('Дата проекта').click();
     await page.getByRole('button', { name: 'Сегодня' }).click();
+    await drawer.getByRole('button', { name: 'Готово' }).click();
     await expect(page.getByText(/Проекты: 0 из 18/)).toBeVisible();
 
-    await page.getByLabel('Дата проекта').first().click();
+    const drawer2 = await openFilters(page);
+    await drawer2.getByLabel('Дата проекта').click();
     await page.getByRole('button', { name: 'Очистить' }).click();
+    await drawer2.getByRole('button', { name: 'Готово' }).click();
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
   });
 
@@ -172,10 +181,14 @@ test.describe('Главный экран со списком проектов', 
   });
 
   test('в полосе шапки нет второй точки входа на главную', async ({ page }) => {
-    // На главную ведёт знак УЗТМ слева; ячейка «Проекты» справа была тем же
-    // переходом, и по полосе нельзя было понять, чем они отличаются.
-    await expect(page.getByRole('button', { name: 'Проекты', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'УЗТМ' })).toBeVisible();
+    // На главную ведёт знак УЗТМ слева; ячейка «Проекты» справа в самой
+    // полосе шапки была тем же переходом, и по полосе нельзя было понять,
+    // чем они отличаются. Проверка — именно про полосу шапки: пункт
+    // «Проекты» в сайдбаре слева — другой вход, про раздел приложения,
+    // а не дубль перехода на главную, и его эта проверка не касается.
+    const header = page.getByRole('banner');
+    await expect(header.getByRole('button', { name: 'Проекты', exact: true })).toHaveCount(0);
+    await expect(header.getByRole('button', { name: 'УЗТМ' })).toBeVisible();
   });
 
   test('кнопка «Фильтры» показывает, сколько условий применено', async ({ page }) => {
