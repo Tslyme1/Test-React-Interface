@@ -15,3 +15,6 @@ screenshots-review/
 .DS_Store
 Thumbs.db
 *.log
+
+# Личные разрешения инструмента для этой сессии/машины — не общий конфиг проекта.
+.claude/settings.local.json

@@ -1,0 +1,11 @@
+/** Название и заказчик первого шага — та же раскладка футера, что в NewProjectModal.module.css. */
+.footerFields {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-md);
+}
+
+.footerField {
+  flex: 0 1 240px;
+  min-width: 160px;
+}

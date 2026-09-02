@@ -10,6 +10,7 @@ import { ProjectsPage } from '@/pages/ProjectsPage';
 import { CustomersPage } from '@/pages/CustomersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { NewProjectModal } from '@/pages/NewProjectModal';
+import { SimplifiedProjectModal } from '@/pages/SimplifiedProjectModal';
 import { WizardPage } from '@/pages/wizard/WizardPage';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import type { Project, ProjectMode } from '@/types';
@@ -30,6 +31,8 @@ export function App() {
 
   /**
    * Открытый проект и то, показан ли он сейчас, — два разных состояния.
+   * Касается только инженерного режима: упрощённый работает через
+   * `simplifiedFlow` ниже и никогда не занимает собой весь экран.
    *
    * Возврат на главную закрывал проект: вкладка исчезала из шапки, и всё,
    * что человек считал открытым, приходилось открывать заново. Уход
@@ -44,9 +47,21 @@ export function App() {
   const [projectShown, setProjectShown] = useState(false);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
 
-  /** Раздел сайдбара. Открытый и показанный проект временно перекрывает его — так же, как раньше перекрывал список. */
+  /**
+   * Упрощённый режим целиком живёт в одном окне (`SimplifiedProjectModal`):
+   * список проектов остаётся на экране, окно поверх него открывает,
+   * продолжает и завершает расчёт, не подменяя собой главную. `projectId`
+   * пуст, пока проект создаётся — окно в этот момент ещё не привязано
+   * ни к какой записи.
+   */
+  const [simplifiedFlow, setSimplifiedFlow] = useState<{ open: boolean; projectId: string | null }>({
+    open: false,
+    projectId: null,
+  });
+
+  /** Раздел сайдбара. Открытый и показанный инженерный проект временно перекрывает его — сайдбар в этот момент скрыт целиком. */
   const [view, setView] = useState<SidebarView>('projects');
-  /** Режим следующего нового проекта — задаётся переключателем в сайдбаре, пока ни один проект не открыт. */
+  /** Режим следующего нового проекта — задаётся переключателем в «Профиле». */
   const [defaultMode, setDefaultMode] = useState<ProjectMode>('engineering');
   /** Заказчик, с которого перешли со страницы «Заказчики» — на один переход. */
   const [customerFilter, setCustomerFilter] = useState<string | null>(null);
@@ -65,8 +80,13 @@ export function App() {
   }
 
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
+  const simplifiedProject = projects.find((p) => p.id === simplifiedFlow.projectId) ?? null;
 
   const openProject = (project: Project) => {
+    if (project.mode === 'simplified') {
+      setSimplifiedFlow({ open: true, projectId: project.id });
+      return;
+    }
     setActiveProjectId(project.id);
     setProjectShown(true);
   };
@@ -88,10 +108,17 @@ export function App() {
     setProjectShown(false);
   };
 
+  const startNewProject = () => {
+    if (defaultMode === 'simplified') {
+      setSimplifiedFlow({ open: true, projectId: null });
+    } else {
+      setNewProjectOpen(true);
+    }
+  };
+
   return (
     <>
       <AppShell
-        user={user}
         project={activeProject ? { name: activeProject.name, active: projectShown } : null}
         contentKey={activeProject && projectShown ? `project:${activeProject.id}` : `view:${view}`}
         onGoProjects={goProjects}
@@ -100,13 +127,9 @@ export function App() {
         onRenameProject={
           activeProject ? (name) => updateProject(activeProject.id, { name }) : undefined
         }
-        onNewProject={() => setNewProjectOpen(true)}
-        onLogout={logout}
+        onNewProject={startNewProject}
         view={view}
         onViewChange={goView}
-        mode={activeProject ? activeProject.mode : defaultMode}
-        modeLocked={Boolean(activeProject)}
-        onModeChange={setDefaultMode}
         trash={trash}
         onRestoreProject={restoreProject}
         onPurgeProject={purgeProject}
@@ -128,7 +151,7 @@ export function App() {
             }}
           />
         ) : view === 'profile' ? (
-          <ProfilePage user={user} />
+          <ProfilePage user={user} mode={defaultMode} onModeChange={setDefaultMode} onLogout={logout} />
         ) : (
           <ProjectsPage
             projects={projects}
@@ -139,7 +162,7 @@ export function App() {
               if (id === activeProjectId) closeProject();
               removeProject(id);
             }}
-            onNewProject={() => setNewProjectOpen(true)}
+            onNewProject={startNewProject}
             initialCustomerFilter={customerFilter}
             onConsumeInitialCustomerFilter={() => setCustomerFilter(null)}
           />
@@ -150,14 +173,27 @@ export function App() {
         open={newProjectOpen}
         onClose={() => setNewProjectOpen(false)}
         defaultExecutor={user.name}
-        mode={defaultMode}
         onCreate={(input) => {
-          const project = createProject({ ...input, data: defaultWizardData() });
+          const project = createProject({ ...input, mode: 'engineering', data: defaultWizardData() });
           setNewProjectOpen(false);
           openProject(project);
           showToast(`Проект «${project.name}» создан`);
-          // Проба руды здесь не спрашивается — её выбирают на шаге «Грансостав»/«Руда».
+          // Проба руды здесь не спрашивается — её выбирают на шаге «Грансостав».
         }}
+      />
+
+      <SimplifiedProjectModal
+        open={simplifiedFlow.open}
+        onClose={() => setSimplifiedFlow({ open: false, projectId: null })}
+        project={simplifiedProject}
+        defaultExecutor={user.name}
+        onCreate={(input) => {
+          const project = createProject({ ...input, mode: 'simplified', data: defaultWizardData() });
+          setSimplifiedFlow({ open: true, projectId: project.id });
+          return project;
+        }}
+        onUpdateProject={updateProject}
+        showToast={showToast}
       />
 
       <Toast message={message} />
