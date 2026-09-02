@@ -16,11 +16,14 @@ const STORAGE_KEY = 'uztm-projects';
  * «Дельта». Версия 7 — `mode`, `crusherNames`, `oreNames` для упрощённого
  * режима: старые записи получают `mode: 'engineering'` и списки из одного
  * элемента (той же дробилки/пробы, что уже стояли в `crusherName`/`ore`).
+ * Версия 8 — `granBaseline`, `prodBaseline`: тот же снимок для «Дельта», что
+ * `geomBaseline`, но для шагов «Грансостав» и «Продукт» — раньше режим
+ * существовал только на «Геометрии».
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -53,34 +56,48 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
-    if (payload.version === 6) return seedIfNeeded({ projects: payload.projects.map(migrateModeV7), trash, seeded });
+    if (payload.version === 7) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV8), trash, seeded });
+    }
+    if (payload.version === 6) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8), trash, seeded });
+    }
     if (payload.version === 5) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 4) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
         trash,
         seeded,
       });
     }
     if (payload.version === 3) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
         trash,
         seeded,
       });
     }
     if (payload.version === 2) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
         trash,
         seeded: false,
       });
     }
     if (payload.version === 1) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateFromV1).map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7),
+        projects: payload.projects
+          .map(migrateFromV1)
+          .map(migrateGeomV5)
+          .map(migrateBaselineV6)
+          .map(migrateModeV7)
+          .map(migrateBaselineV8),
         trash,
         seeded: false,
       });
@@ -136,6 +153,21 @@ function migrateGeomV5(project: Project): Project {
 /** До версии 6 у проекта не было `geomBaseline` — записи без него не считались. */
 function migrateBaselineV6(project: Project): Project {
   return { ...project, geomBaseline: project.geomBaseline ?? null };
+}
+
+/**
+ * До версии 8 у проекта не было `granBaseline`/`prodBaseline` — режим
+ * «Дельта» существовал только на шаге «Геометрия». Как и `geomBaseline`
+ * ниже, `null` значит «шаг ни разу не считался с тех пор», а не «дельты
+ * не будет никогда»: следующий расчёт этого шага заведёт снимок сам.
+ */
+function migrateBaselineV8(project: Project): Project {
+  const legacy = project as Partial<Pick<Project, 'granBaseline' | 'prodBaseline'>> & Project;
+  return {
+    ...project,
+    granBaseline: legacy.granBaseline ?? null,
+    prodBaseline: legacy.prodBaseline ?? null,
+  };
 }
 
 /**
@@ -236,6 +268,8 @@ export function useProjects() {
       calc: [false, false, false],
       data: input.data,
       geomBaseline: null,
+      granBaseline: null,
+      prodBaseline: null,
     };
     setState((prev) => ({ ...prev, projects: [project, ...prev.projects] }));
     return project;

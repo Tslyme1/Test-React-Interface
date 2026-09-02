@@ -5,6 +5,8 @@ import { ORE_SAMPLES } from '@/data/oreSamples';
 export type GranStepProps = {
   data: GranData;
   onChange: (patch: Partial<GranData>) => void;
+  /** Снимок формы на момент последнего расчёта — опора для подсказки «было: X». `null`, пока не считалось. */
+  baseline: GranData | null;
   /** Месторождение выбранной пробы. Пусто — шаг закрыт заглушкой. */
   ore: string;
   /**
@@ -25,7 +27,14 @@ export type GranStepProps = {
  * `WizardPage` перехватывает переход без неё раньше; ветка ниже — подстраховка
  * на случай, если проба всё же оказалась пустой.
  */
-export function GranStep({ data, onChange, ore, onRequestOrePicker }: GranStepProps) {
+export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: GranStepProps) {
+  /** Пояснение под полем: было ли отредактировано после последнего расчёта — и на что. */
+  const hintWithDelta = (key: keyof GranData): string | undefined => {
+    if (!baseline) return undefined;
+    const was = baseline[key];
+    return was === data[key] ? undefined : `было: ${was}`;
+  };
+
   return ore ? (
     <Stack gap="xl" direction="column">
       <Stack gap="xs" direction="column">
@@ -50,31 +59,31 @@ export function GranStep({ data, onChange, ore, onRequestOrePicker }: GranStepPr
       </Stack>
 
       <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность Dmin, мм" required>
+        <Field label="Минимальная крупность Dmin, мм" required hint={hintWithDelta('dMin')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Максимальная крупность Dmax, мм" required>
+        <Field label="Максимальная крупность Dmax, мм" required hint={hintWithDelta('dMax')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр Z0">
+        <Field label="Параметр Z0" hint={hintWithDelta('z0')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.z0} onChange={(e) => onChange({ z0: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр S00">
+        <Field label="Параметр S00" hint={hintWithDelta('s00')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.s00} onChange={(e) => onChange({ s00: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр N0">
+        <Field label="Параметр N0" hint={hintWithDelta('n0')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
           )}

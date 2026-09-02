@@ -61,8 +61,12 @@ export function buildSampleProjects(): Project[] {
       data: defaultWizardData(),
       // Шаг «Геометрия» у примеров всегда посчитан (первый элемент `calc`
       // всегда `true`) — снимок делаем от тех же значений, что и в форме,
-      // поэтому у свежих примеров дельты быть не должно.
+      // поэтому у свежих примеров дельты быть не должно. «Грансостав»
+      // и «Продукт» посчитаны только у части примеров (`calcDone`) — снимок
+      // есть только у них, у начатых остаётся `null`, как и до расчёта.
       geomBaseline: defaultWizardData().geom,
+      granBaseline: calcDone ? defaultWizardData().gran : null,
+      prodBaseline: calcDone ? defaultWizardData().prod : null,
     };
   });
 }

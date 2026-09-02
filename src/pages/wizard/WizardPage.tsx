@@ -79,10 +79,15 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     // относилось к прежним данным и не может остаться отмеченным как есть.
     for (let i = pendingFork.calcIndex; i < nextCalc.length; i += 1) nextCalc[i] = false;
 
+    // Снимок «Дельта» держится только для шага, который остался посчитанным:
+    // форк с изменённого шага и дальше сбрасывает `calc` (выше), и снимок,
+    // сравнивать который стало не с чем, сбрасывается вместе с ним.
     const forked = onForkProject(project.id, {
       ...pendingFork.patch,
       calc: nextCalc,
-      geomBaseline: pendingFork.calcIndex === 0 ? null : project.geomBaseline,
+      geomBaseline: pendingFork.calcIndex <= 0 ? null : project.geomBaseline,
+      granBaseline: pendingFork.calcIndex <= 1 ? null : project.granBaseline,
+      prodBaseline: pendingFork.calcIndex <= 2 ? null : project.prodBaseline,
     });
 
     setPendingFork(null);
@@ -121,10 +126,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     nextCalc[step] = true;
     onUpdateProject(project.id, {
       calc: nextCalc,
-      // Снимок геометрии на момент расчёта — опора для режима отображения
-      // «Дельта» на шаге «Геометрия»: он сравнивает текущие поля с тем,
-      // что было в форме в момент именно этого расчёта.
+      // Снимок шага на момент расчёта — опора для режима отображения
+      // «Дельта»: он сравнивает текущие поля с тем, что было в форме
+      // в момент именно этого расчёта.
       ...(stepKey === 'geom' ? { geomBaseline: { ...project.data.geom } } : {}),
+      ...(stepKey === 'gran' ? { granBaseline: { ...project.data.gran } } : {}),
+      ...(stepKey === 'prod' ? { prodBaseline: { ...project.data.prod } } : {}),
     });
     showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
@@ -148,11 +155,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             <GranStep
               data={project.data.gran}
               onChange={patchGran}
+              baseline={project.granBaseline}
               ore={project.ore}
               onRequestOrePicker={() => setOrePickerOpen(true)}
             />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} />
+            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.prodBaseline} showToast={showToast} />
           )}
         </Box>
       </div>
