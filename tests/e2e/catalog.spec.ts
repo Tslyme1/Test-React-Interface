@@ -192,6 +192,10 @@ test.describe('Выбор дробилки из каталога', () => {
     // Открытие снова — черновик панели заведён от применённого.
     await dialog.getByRole('button', { name: 'Фильтры: 1' }).click();
     await filters.locator('button[aria-haspopup="dialog"]', { hasText: 'D, мм' }).click();
+    // Ждём, пока панель диапазона осядет на месте (плавающий попап
+    // позиционируется асинхронно): клик по «Сбросить» сразу за открытием
+    // иногда обгонял эту раскладку и промахивался мимо кнопки панели.
+    await expect(page.getByLabel('D, мм: не менее')).toBeVisible();
     await page.getByRole('button', { name: 'Сбросить' }).last().click();
     await expect(page.getByLabel('D, мм: не менее')).toHaveValue('');
     await page.getByRole('button', { name: 'Готово' }).last().click();

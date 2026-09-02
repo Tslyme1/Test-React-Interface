@@ -1,15 +1,27 @@
 import { useState } from 'react';
-import { Button, Field, Input, Modal, Select } from '@uralmash/design-system';
+import { Button, Field, Input, Modal, Select, Stack, Text } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
+import type { ProjectMode } from '@/types';
 import styles from './NewProjectModal.module.css';
 
 export type NewProjectModalProps = {
   open: boolean;
   onClose: () => void;
   defaultExecutor: string;
-  onCreate: (input: { name: string; customer: string; crusherName: string; executor: string }) => void;
+  /**
+   * Режим будущего проекта — задаётся заранее в сайдбаре («Режим работы»),
+   * здесь только используется. В инженерном выбирают ровно одну дробилку,
+   * в упрощённом — одну или несколько: расчёт на шаге «Продукт» пройдёт
+   * по каждой.
+   */
+  mode: ProjectMode;
+  onCreate: (
+    input:
+      | { mode: 'engineering'; name: string; customer: string; crusherName: string; executor: string }
+      | { mode: 'simplified'; name: string; customer: string; crusherNames: string[]; executor: string }
+  ) => void;
 };
 
 /**
@@ -38,8 +50,10 @@ const FAMILY_OPTIONS = [
  * там же и выбирается. Спрашивать её на входе — задерживать создание
  * проекта ради данных, которые понадобятся через два шага.
  */
-export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: NewProjectModalProps) {
+export function NewProjectModal({ open, onClose, defaultExecutor, mode, onCreate }: NewProjectModalProps) {
   const [crusherName, setCrusherName] = useState<string | null>(null);
+  /** Упрощённый режим — набор вместо одной дробилки. */
+  const [crusherNames, setCrusherNames] = useState<string[]>([]);
   const [name, setName] = useState('');
   /**
    * Название, которое подставили мы. Пока пользователь не переписал его сам,
@@ -58,10 +72,12 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
   const [family, setFamily] = useState<Family>(null);
   const [familyDraft, setFamilyDraft] = useState<Family>(null);
 
-  const canCreate = Boolean(crusherName && name.trim() && customer);
+  const hasCrusher = mode === 'simplified' ? crusherNames.length > 0 : Boolean(crusherName);
+  const canCreate = Boolean(hasCrusher && name.trim() && customer);
 
   const reset = () => {
     setCrusherName(null);
+    setCrusherNames([]);
     setName('');
     setSuggested('');
     setCustomer(null);
@@ -93,9 +109,37 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     }
   };
 
+  /**
+   * Множественный выбор в упрощённом режиме: название подсказывается по
+   * первой дробилке в наборе — так же, как в инженерном по единственной, —
+   * и не переписывается, пока набор не опустеет.
+   */
+  const pickCrushers = (picked: string[]) => {
+    setCrusherNames(picked);
+
+    if (picked.length === 0) {
+      if (name === suggested) {
+        setName('');
+        setSuggested('');
+      }
+      return;
+    }
+
+    if (!name.trim() || name === suggested) {
+      setName(picked[0]);
+      setSuggested(picked[0]);
+    }
+  };
+
   const submit = () => {
-    if (!canCreate || !crusherName || !customer) return;
-    onCreate({ name: name.trim(), customer, crusherName, executor: defaultExecutor });
+    if (!canCreate || !customer) return;
+
+    if (mode === 'simplified') {
+      onCreate({ mode, name: name.trim(), customer, crusherNames, executor: defaultExecutor });
+    } else {
+      if (!crusherName) return;
+      onCreate({ mode, name: name.trim(), customer, crusherName, executor: defaultExecutor });
+    }
     reset();
   };
 
@@ -107,7 +151,7 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     <Modal
       open={open}
       onClose={close}
-      title="Новый проект"
+      title={mode === 'simplified' ? 'Новый проект — упрощённый расчёт' : 'Новый проект'}
       size="lg"
       footer={
         /* Поля стоят справа, вплотную к главному действию: заполнение имени
@@ -151,11 +195,21 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         </Modal.Footer>
       }
     >
-      <CatalogPicker
+      <Stack gap="md" direction="column">
+        {mode === 'simplified' ? (
+          <Text variant="bodySm" color="textMuted">
+            Можно выбрать несколько дробилок — расчёт на шаге «Продукт» пройдёт по каждой отдельно.
+          </Text>
+        ) : null}
+
+        <CatalogPicker
         specs={CRUSHER_SPECS}
         items={CRUSHERS}
         value={crusherName}
         onPick={pickCrusher}
+        multiple={mode === 'simplified'}
+        selected={crusherNames}
+        onPickMultiple={pickCrushers}
         nameLabel="Дробилка"
         searchPlaceholder="КМД-2200, 2200, 500-655…"
         visibleNames={visibleCrushers}
@@ -205,7 +259,8 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
             onChange={(next) => setFamilyDraft((next as Family) ?? null)}
           />
         }
-      />
+        />
+      </Stack>
     </Modal>
   );
 }

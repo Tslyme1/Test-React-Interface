@@ -65,17 +65,18 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
   });
 
-  test('шаг «Грансостав» закрыт заглушкой, пока не выбрана проба руды', async ({ page }) => {
+  test('переход на «Руда» без выбранной пробы открывает выбор пробы, оставляя шаг «Дробилка»', async ({ page }) => {
     const console_ = watchConsole(page);
 
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await page.getByRole('button', { name: /Руда/ }).click();
 
-    await expect(page.getByText('Выберите пробу руды')).toBeVisible();
-    // Считать нечего, пока руда неизвестна: кнопка расчёта заблокирована,
-    // а полей на шаге ещё нет.
-    await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeDisabled();
-    await expect(page.getByLabel('Минимальная крупность Dmin, мм')).toHaveCount(0);
+    // Степпер не переключился: заглушки «нечем считать» на шаге «Грансостав»
+    // быть не должно вовсе — вместо неё сразу открывается выбор пробы,
+    // а форма позади него остаётся на шаге «Дробилка».
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
+    await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
 
     await pickOre(page);
 

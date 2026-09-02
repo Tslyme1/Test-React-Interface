@@ -7,18 +7,57 @@ export type ProdStepProps = {
   onChange: (patch: Partial<ProdData>) => void;
   /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
   showToast?: (message: string) => void;
+  /**
+   * Упрощённый режим: только тип питания и максимальная крупность
+   * продукта — единственный ввод во всём режиме. Остальные параметры
+   * (работа разрушения, форма куска, ситовый анализ) не показываются
+   * и остаются на значениях по умолчанию.
+   */
+  simplified?: boolean;
 };
 
-export function ProdStep({ data, onChange, showToast }: ProdStepProps) {
+export function ProdStep({ data, onChange, showToast, simplified = false }: ProdStepProps) {
   const applySieveToParams = (nextA0: number, nextVa0: number) => {
     onChange({ a0: String(nextA0), va0: String(nextVa0) });
     showToast?.(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
   };
 
+  if (simplified) {
+    return (
+      <Stack gap="xl" direction="column">
+        <Stack gap="xs" direction="column">
+          <Text variant="headingMd">Продукт</Text>
+          <Text variant="bodySm" color="textMuted">
+            Тип питания и желаемая крупность продукта — расчёт пройдёт по каждой выбранной паре «дробилка — проба».
+          </Text>
+        </Stack>
+
+        <Stack gap="2xs" direction="column" align="start">
+          <Text variant="label">Тип питания</Text>
+          <SegmentedControl
+            legend="Тип питания"
+            options={[
+              { value: 'dry', label: 'Сухое' },
+              { value: 'wet', label: 'Влажное' },
+            ]}
+            value={data.feedType}
+            onChange={(v) => onChange({ feedType: v })}
+          />
+        </Stack>
+
+        <Field label="Максимальная крупность продукта Dmax, мм" required>
+          {(props) => (
+            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
+          )}
+        </Field>
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap="xl" direction="column">
       <Stack gap="xs" direction="column">
-        <Text variant="headingSm">Грансостав продукта и усилия</Text>
+        <Text variant="headingMd">Грансостав продукта и усилия</Text>
         <Text variant="bodySm" color="textMuted">
           Параметры продукта дробления и режима нагружения.
         </Text>

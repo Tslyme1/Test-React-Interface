@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Box,
@@ -13,7 +13,6 @@ import {
   Popover,
   Select,
   Stack,
-  Surface,
   Table,
   Tag,
   Text,
@@ -21,6 +20,7 @@ import {
 import type { SelectOption, TableColumn, TableSort, TagColorToken } from '@uralmash/design-system';
 import type { Project } from '@/types';
 import { oreTypeOf } from '@/data/oreSamples';
+import { crusherLabel, oreLabel } from '@/domain/projectLabels';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_LABELS } from '@/domain/steps';
 import { TAG_COLORS, useTags } from '@/state/useTags';
@@ -49,12 +49,17 @@ type FilterField = {
 
 export type ProjectsPageProps = {
   projects: Project[];
-  trash: Project[];
   onOpenProject: (project: Project) => void;
   onRemoveProject: (id: string) => void;
-  onRestoreProject: (id: string) => void;
-  onPurgeProject: (id: string) => void;
   onNewProject: () => void;
+  /**
+   * Заказчик, с которого перешли со страницы «Заказчики» — фильтр
+   * применяется один раз при появлении экрана и тут же сбрасывается
+   * наружу (`onConsumeInitialCustomerFilter`), чтобы обычный переход
+   * на «Проекты» из сайдбара не приносил чужой фильтр из прошлого раза.
+   */
+  initialCustomerFilter?: string | null;
+  onConsumeInitialCustomerFilter?: () => void;
 };
 
 /**
@@ -80,12 +85,11 @@ function toOptions(values: string[]): SelectOption[] {
 
 export function ProjectsPage({
   projects,
-  trash,
   onOpenProject,
   onRemoveProject,
-  onRestoreProject,
-  onPurgeProject,
   onNewProject,
+  initialCustomerFilter,
+  onConsumeInitialCustomerFilter,
 }: ProjectsPageProps) {
   /* Теги и их цвета живут отдельно от проектов: цвет заводят один раз,
      и он не должен пропадать вместе с последним проектом, где тег стоял. */
@@ -98,8 +102,17 @@ export function ProjectsPage({
   const [executor, setExecutor] = useState<string>(NONE);
   const [date, setDate] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
+
+  // Заказчик из «Заказчики» приходит один раз, каждым переходом заново —
+  // применяем и сразу сообщаем наружу, что фильтр принят, иначе обычное
+  // переключение на «Проекты» из сайдбара приносило бы вчерашний фильтр.
+  useEffect(() => {
+    if (!initialCustomerFilter) return;
+    setCustomer(initialCustomerFilter);
+    onConsumeInitialCustomerFilter?.();
+  }, [initialCustomerFilter, onConsumeInitialCustomerFilter]);
+
   const [menuFor, setMenuFor] = useState<string | null>(null);
-  const [trashOpen, setTrashOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   /**
    * Черновик панели «Фильтры». Не `null` ровно пока панель открыта.
@@ -315,7 +328,11 @@ export function ProjectsPage({
   }, [projects, search, crusher, customer, tag, executor, date, sort]);
 
   const columns: TableColumn<Project>[] = [
-    { key: 'crusherName', title: 'Дробилка', sortable: true },
+    // `render` — не сама строка `crusherName`/`ore`: в упрощённом режиме
+    // их может быть несколько, и первая молча вместо всех была бы неправдой
+    // о содержимом проекта. Сортировка при этом остаётся по `crusherName`/
+    // `ore` — по первой выбранной, как и до `render`.
+    { key: 'crusherName', title: 'Дробилка', sortable: true, render: (row) => crusherLabel(row) },
     { key: 'customer', title: 'Заказчик', sortable: true },
     { key: 'code', title: 'Код проекта' },
     {
@@ -324,7 +341,7 @@ export function ProjectsPage({
       render: (row) => (row.tag ? <Tag color={colorOf(row.tag)}>{row.tag}</Tag> : null),
     },
     { key: 'oreType', title: 'Руда', render: (row) => oreTypeOf(row.ore) },
-    { key: 'ore', title: 'Месторождение', sortable: true },
+    { key: 'ore', title: 'Месторождение', sortable: true, render: (row) => oreLabel(row) },
     { key: 'oreIn', title: 'Руда, вход' },
     { key: 'oreOut', title: 'Руда, выход' },
     { key: 'throughput', title: 'Произв., т/ч', align: 'end' },
@@ -438,16 +455,18 @@ export function ProjectsPage({
           после шорткода, обнуляя уже поставленный отступ. `paddingX`/`paddingY`
           через тот же баг не проходят, потому что заполняют как раз те самые
           длинные свойства. Заявка в дизайн-систему подана отдельно. */}
-      <Box paddingX="2xl" paddingY="2xl" fullWidth>
+      <div className={styles.root}>
         <div className={styles.page}>
-          <Stack gap="xl" direction="column">
-            <Text variant="headingMd" as="h1">
-              Проекты
-            </Text>
+          {/* Заголовок и панель фильтров стоят вне скролл-зоны — прокручивается
+              только таблица ниже (`.scroll`), как и на шагах визарда. */}
+          <Box paddingX="2xl" paddingY="2xl" fullWidth>
+            <Stack gap="xl" direction="column">
+              <Text variant="headingMd" as="h1">
+                Проекты
+              </Text>
 
-            {projects.length > 0 ? (
-              <>
-                {/* В строке фильтры идут без `Field`. Назначение написано внутри
+              {projects.length > 0 ? (
+                /* В строке фильтры идут без `Field`. Назначение написано внутри
                     самого поля, и оно же служит доступным именем контрола: у `Select`
                     это текст триггера, у поиска — плейсхолдер. Подпись над каждым из
                     шести соседних фильтров дублировала бы то же слово и делала панель
@@ -456,7 +475,7 @@ export function ProjectsPage({
                     В панели «Фильтры» — наоборот, через `Field`: там фильтры идут
                     столбцом, места по вертикали хватает, и исключение теряет
                     основание. Правило системы — подпись через `Field`; в строке
-                    от него отступают ровно из-за плотности. */}
+                    от него отступают ровно из-за плотности. */
                 <div className={styles.filtersBar}>
                   <div className={styles.filters}>
                     {rowFields.map((field) => (
@@ -489,7 +508,13 @@ export function ProjectsPage({
                     </div>
                   </div>
                 </div>
+              ) : null}
+            </Stack>
+          </Box>
 
+          <div className={styles.scroll}>
+            <div className={styles.tableWrap}>
+              {projects.length > 0 ? (
                 <Table
                   columns={columns}
                   rows={rows}
@@ -504,6 +529,11 @@ export function ProjectsPage({
                   sort={sort}
                   onSortChange={setSort}
                   onRowClick={onOpenProject}
+                  /* Шапка таблицы остаётся на месте при прокрутке строк —
+                     предок с ограниченной высотой и своей прокруткой уже
+                     есть (`.scroll`), это ровно тот случай, под который
+                     проп задуман. */
+                  stickyHeader
                   empty={
                     <EmptyState
                       icon="search"
@@ -517,22 +547,22 @@ export function ProjectsPage({
                     />
                   }
                 />
-              </>
-            ) : (
-              <EmptyState
-                icon="folder"
-                title="Проектов пока нет"
-                description="Создайте первый расчёт — он появится в списке."
-                action={
-                  <Button variant="primary" iconStart="plus" onClick={onNewProject}>
-                    Новый проект
-                  </Button>
-                }
-              />
-            )}
-          </Stack>
+              ) : (
+                <EmptyState
+                  icon="folder"
+                  title="Проектов пока нет"
+                  description="Создайте первый расчёт — он появится в списке."
+                  action={
+                    <Button variant="primary" iconStart="plus" onClick={onNewProject}>
+                      Новый проект
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+          </div>
         </div>
-      </Box>
+      </div>
 
       {/* Все фильтры разом — окном, а не выдвижной панелью. Панель оставляла
           таблицу видимой, но занимала её край и сдвигала колонки; к тому же
@@ -588,85 +618,6 @@ export function ProjectsPage({
             )}
           </Field>
         </Stack>
-      </Modal>
-
-      {/* Корзина. Показывается всегда: пустая объясняет, что удалённое
-          не пропадает сразу, — это снимает страх перед удалением. */}
-      <div className={styles.trashDock}>
-        <Surface level="raised" radius="md" padding="2xs" background="surface">
-          <Stack direction="row" gap="2xs" align="center">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="trash"
-              aria-label={`Корзина: ${trash.length}`}
-              onClick={() => setTrashOpen(true)}
-            />
-            {/* Число — типографикой, без оболочки: бейдж означает статус,
-                а здесь просто счёт того, что лежит в корзине. Обводка вокруг
-                цифры рядом со значком делала из пары «значок + число» два
-                разных предмета. */}
-            {trash.length > 0 ? (
-              <Box paddingX="2xs">
-                <Text variant="label" color="textMuted">
-                  {trash.length}
-                </Text>
-              </Box>
-            ) : null}
-          </Stack>
-        </Surface>
-      </div>
-
-      <Modal
-        open={trashOpen}
-        onClose={() => setTrashOpen(false)}
-        title={`Корзина — ${trash.length}`}
-        size="lg"
-        footer={
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setTrashOpen(false)}>
-              Закрыть
-            </Button>
-          </Modal.Footer>
-        }
-      >
-        <Table
-          columns={[
-            { key: 'crusherName', title: 'Дробилка' },
-            { key: 'customer', title: 'Заказчик' },
-            { key: 'code', title: 'Код проекта' },
-            { key: 'date', title: 'Дата' },
-            {
-              key: 'actions',
-              title: '',
-              align: 'end',
-              render: (row) => (
-                <Stack direction="row" gap="2xs" justify="end">
-                  <Button variant="ghost" size="sm" iconStart="upload" onClick={() => onRestoreProject(row.id)}>
-                    Восстановить
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="trash"
-                    aria-label={`Удалить безвозвратно: ${row.crusherName}`}
-                    onClick={() => onPurgeProject(row.id)}
-                  />
-                </Stack>
-              ),
-            },
-          ]}
-          rows={trash}
-          rowKey={(row) => row.id}
-          caption="Удалённые проекты"
-          empty={
-            <EmptyState
-              icon="trash"
-              title="Корзина пуста"
-              description="Удалённые проекты попадают сюда, и их можно вернуть."
-            />
-          }
-        />
       </Modal>
     </>
   );

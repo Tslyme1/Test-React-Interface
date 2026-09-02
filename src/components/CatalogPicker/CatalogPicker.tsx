@@ -9,13 +9,24 @@ export type CatalogPickerProps = {
   /** Колонки характеристик. Порядок сохраняется как в справочнике. */
   specs: SpecColumn[];
   items: CatalogItem[];
-  /** Имя выбранной позиции, если она уже есть. */
+  /** Имя выбранной позиции, если она уже есть. Не используется при `multiple`. */
   value: string | null;
   /**
    * Выбор позиции. `null` — выбор снят: нажатие по уже выбранной строке
-   * её отжимает, как и повторное нажатие по флажку.
+   * её отжимает, как и повторное нажатие по флажку. Не вызывается при
+   * `multiple` — там набор меняет `onPickMultiple`.
    */
   onPick: (name: string | null) => void;
+  /**
+   * Множественный выбор — для упрощённого режима, где считают сразу
+   * несколько дробилок или проб руды. Флажок строки копит набор вместо
+   * одной выбранной строки; `value`/`onPick` в этом режиме не участвуют.
+   */
+  multiple?: boolean;
+  /** Текущий набор при `multiple`. */
+  selected?: string[];
+  /** Смена набора при `multiple`. */
+  onPickMultiple?: (names: string[]) => void;
   /** Подпись первой колонки: «Дробилка», «Проба руды». */
   nameLabel: string;
   searchPlaceholder: string;
@@ -89,6 +100,9 @@ export function CatalogPicker({
   items,
   value,
   onPick,
+  multiple = false,
+  selected,
+  onPickMultiple,
   nameLabel,
   searchPlaceholder,
   filter,
@@ -224,9 +238,20 @@ export function CatalogPicker({
     return sort.direction === 'desc' ? sorted.reverse() : sorted;
   }, [items, visibleNames, search, sort, activeBounds]);
 
-  /* Нажатие по выбранной строке снимает выбор. Иначе передумать нельзя:
-     раз отметив машину, снять отметку было нечем — только выбрать другую. */
-  const toggle = (name: string) => onPick(name === value ? null : name);
+  /*
+   * Одиночный выбор: нажатие по выбранной строке снимает выбор — иначе
+   * передумать нельзя, раз отметив машину, снять отметку было нечем.
+   * Множественный: строка добавляется в набор или убирается из него.
+   */
+  const toggle = (name: string) => {
+    if (multiple) {
+      const current = selected ?? [];
+      const next = current.includes(name) ? current.filter((n) => n !== name) : [...current, name];
+      onPickMultiple?.(next);
+      return;
+    }
+    onPick(name === value ? null : name);
+  };
 
   const hasFilters = Boolean(filter) || rangeSpecs.length > 0;
 
@@ -273,7 +298,7 @@ export function CatalogPicker({
       title: '',
       render: (item) => (
         <Checkbox
-          checked={item.name === value}
+          checked={multiple ? (selected ?? []).includes(item.name) : item.name === value}
           onChange={() => toggle(item.name)}
           aria-label={`Выбрать ${item.name}`}
         />

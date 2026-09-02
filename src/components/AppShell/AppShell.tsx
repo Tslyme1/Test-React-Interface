@@ -4,6 +4,7 @@ import {
   AppHeader,
   Button,
   Cell,
+  EmptyState,
   Field,
   HeaderButton,
   HeaderDivider,
@@ -11,11 +12,15 @@ import {
   HeaderTab,
   Icon,
   Input,
+  Modal,
   Popover,
   Stack,
+  Table,
   Text,
 } from '@uralmash/design-system';
-import type { User } from '@/types';
+import type { Project, ProjectMode, User } from '@/types';
+import { Sidebar } from '@/components/Sidebar/Sidebar';
+import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import logoSrc from '@/uztm-logo.png';
 import styles from './AppShell.module.css';
 
@@ -29,6 +34,13 @@ export type ShellProject = { name: string; active: boolean };
 export type AppShellProps = {
   user: User;
   project?: ShellProject | null;
+  /**
+   * Ключ переключаемого содержимого — список проектов и открытый проект
+   * получают разные значения. Смена ключа перемонтирует обёртку и
+   * проигрывает анимацию входа заново, поэтому и открытие, и закрытие
+   * проекта выглядят одинаково плавным переходом, а не мгновенной подменой.
+   */
+  contentKey: string;
   onGoProjects: () => void;
   /** Вернуться в открытый проект — нажатие по самой вкладке. */
   onOpenProject?: () => void;
@@ -36,21 +48,44 @@ export type AppShellProps = {
   onRenameProject?: (name: string) => void;
   onNewProject: () => void;
   onLogout: () => void;
+  /** Раздел приложения — сайдбар слева, независимо от шапки и открытого проекта. */
+  view: SidebarView;
+  onViewChange: (view: SidebarView) => void;
+  /**
+   * Режим будущего проекта, пока ничего не открыто, либо режим уже
+   * открытого — тогда правка заблокирована (`modeLocked`).
+   */
+  mode: ProjectMode;
+  modeLocked: boolean;
+  onModeChange: (mode: ProjectMode) => void;
+  trash: Project[];
+  onRestoreProject: (id: string) => void;
+  onPurgeProject: (id: string) => void;
   children: ReactNode;
 };
 
 export function AppShell({
   user,
   project,
+  contentKey,
   onGoProjects,
   onOpenProject,
   onCloseProject,
   onRenameProject,
   onNewProject,
   onLogout,
+  view,
+  onViewChange,
+  mode,
+  modeLocked,
+  onModeChange,
+  trash,
+  onRestoreProject,
+  onPurgeProject,
   children,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   return (
     <Stack direction="column" grow>
@@ -128,7 +163,75 @@ export function AppShell({
         </AppHeader.Right>
       </AppHeader>
 
-      <main className={styles.main}>{children}</main>
+      <div className={styles.body}>
+        <Sidebar
+          view={view}
+          onViewChange={onViewChange}
+          mode={mode}
+          modeLocked={modeLocked}
+          onModeChange={onModeChange}
+          trashCount={trash.length}
+          onOpenTrash={() => setTrashOpen(true)}
+        />
+
+        <main className={styles.main}>
+          <div key={contentKey} className={styles.content}>
+            {children}
+          </div>
+        </main>
+      </div>
+
+      <Modal
+        open={trashOpen}
+        onClose={() => setTrashOpen(false)}
+        title={`Корзина — ${trash.length}`}
+        size="lg"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setTrashOpen(false)}>
+              Закрыть
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <Table
+          columns={[
+            { key: 'crusherName', title: 'Дробилка' },
+            { key: 'customer', title: 'Заказчик' },
+            { key: 'code', title: 'Код проекта' },
+            { key: 'date', title: 'Дата' },
+            {
+              key: 'actions',
+              title: '',
+              align: 'end',
+              render: (row) => (
+                <Stack direction="row" gap="2xs" justify="end">
+                  <Button variant="ghost" size="sm" iconStart="upload" onClick={() => onRestoreProject(row.id)}>
+                    Восстановить
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="trash"
+                    aria-label={`Удалить безвозвратно: ${row.crusherName}`}
+                    onClick={() => onPurgeProject(row.id)}
+                  />
+                </Stack>
+              ),
+            },
+          ]}
+          rows={trash}
+          rowKey={(row) => row.id}
+          caption="Удалённые проекты"
+          empty={
+            <EmptyState
+              icon="trash"
+              title="Корзина пуста"
+              description="Удалённые проекты попадают сюда, и их можно вернуть."
+            />
+          }
+        />
+      </Modal>
     </Stack>
   );
 }

@@ -61,7 +61,7 @@ export type SeedOptions = {
 };
 
 /** Версия формата хранилища проектов. Должна совпадать с `useProjects`. */
-const PROJECTS_SCHEMA_VERSION = 4;
+const PROJECTS_SCHEMA_VERSION = 7;
 
 /**
  * Быстрый вход: сессия кладётся в localStorage до загрузки страницы.
@@ -162,11 +162,13 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
 }
 
 /**
- * Выбирает пробу руды на шаге «Грансостав». Шаг должен быть уже открыт:
- * без пробы он закрыт заглушкой, и полей на нём нет.
+ * Выбирает пробу руды в уже открытой модалке «Выбор пробы руды».
+ *
+ * Модалка открывается кликом по шагу «Руда» без выбранной пробы — переход
+ * остаётся на шаге «Дробилка» и не показывает шаг «Грансостав» заглушкой,
+ * поэтому открывать окно здесь отдельным кликом уже не нужно.
  */
 export async function pickOre(page: Page, ore = SAMPLE_PROJECT.ore) {
-  await page.getByRole('button', { name: /Выбрать пробу руды/ }).click();
   await page.getByRole('dialog', { name: 'Выбор пробы руды' }).getByRole('button', { name: ore, exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 }
@@ -236,8 +238,8 @@ export async function removeFirstProject(page: Page) {
   await page.getByRole('button', { name: 'Удалить в корзину' }).click();
 }
 
-/** Открывает окно корзины из дока в правом нижнем углу. */
+/** Открывает окно корзины из пункта «Корзина» в сайдбаре. */
 export async function openTrash(page: Page) {
-  await page.getByRole('button', { name: /^Корзина:/ }).click();
+  await page.getByRole('button', { name: /Корзина/ }).click();
   await expect(page.getByRole('dialog', { name: /Корзина/ })).toBeVisible();
 }

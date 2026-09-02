@@ -248,7 +248,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </Field>
 
           <Stack gap="sm" direction="column">
-            <Text variant="label">Углы профиля</Text>
             <Stack direction="column" gap="md">
               {zoned(
                 'beta10',
@@ -295,7 +294,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </Stack>
 
           <Stack gap="sm" direction="column">
-            <Text variant="label">Геометрия камеры</Text>
             <Stack direction="column" gap="md">
               {zoned(
                 'D',
@@ -345,7 +343,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </Stack>
 
           <Stack gap="sm" direction="column">
-            <Text variant="label">Угол нутации</Text>
             <Stack direction="column" gap="md">
               {zoned(
                 'theta',
@@ -364,7 +361,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </Stack>
 
           <Stack gap="sm" direction="column">
-            <Text variant="label">Разгрузочная щель</Text>
             <Stack direction="column" gap="md">
               {zoned(
                 'S0',
@@ -378,7 +374,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </Stack>
 
           <Stack gap="sm" direction="column">
-            <Text variant="label">Длины зон дробления</Text>
             <Stack direction="column" gap="md">
               <Field label="Длина первой зоны l11, мм" hint={hintWithDelta('l11')}>
                 {(props) => (
