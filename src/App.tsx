@@ -30,21 +30,23 @@ export function App() {
   const { message, showToast } = useToast();
 
   /**
-   * Открытый проект и то, показан ли он сейчас, — два разных состояния.
-   * Касается только инженерного режима: упрощённый работает через
-   * `simplifiedFlow` ниже и никогда не занимает собой весь экран.
+   * Открытые вкладки инженерных проектов — как вкладки браузера: список id
+   * в порядке открытия, и какая из них показана сейчас. Несколько проектов
+   * могут быть открыты одновременно; закрывает вкладку только крестик на
+   * ней самой, а не переключение на другую или уход на список. Касается
+   * только инженерного режима: упрощённый работает через `simplifiedFlow`
+   * ниже и никогда не занимает собой весь экран, поэтому вкладок не заводит.
    *
-   * Возврат на главную закрывал проект: вкладка исчезала из шапки, и всё,
-   * что человек считал открытым, приходилось открывать заново. Уход
-   * на список — это переключение, а не закрытие; закрывает проект только
-   * крестик на его вкладке.
+   * `shownProjectId: null` — виден раздел приложения (сайдбар и его
+   * содержимое), а не какой-то из открытых проектов; открытые вкладки при
+   * этом никуда не деваются, только временно не показаны.
    *
    * В памяти, а не в хранилище: перезагрузка страницы — это начало сеанса
-   * заново, и восстанавливать поверх неё открытую вкладку значило бы решать
+   * заново, и восстанавливать поверх неё открытые вкладки значило бы решать
    * за пользователя, где он остановился.
    */
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [projectShown, setProjectShown] = useState(false);
+  const [openTabs, setOpenTabs] = useState<string[]>([]);
+  const [shownProjectId, setShownProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   /**
@@ -86,7 +88,11 @@ export function App() {
     );
   }
 
-  const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
+  /** Открытые вкладки — сами проекты, в порядке `openTabs`. Проект, которого больше нет (удалён), молча выпадает из полосы. */
+  const openProjects = openTabs
+    .map((id) => projects.find((p) => p.id === id))
+    .filter((p): p is Project => Boolean(p));
+  const shownProject = projects.find((p) => p.id === shownProjectId) ?? null;
   const simplifiedProject = projects.find((p) => p.id === simplifiedFlow.projectId) ?? null;
 
   const openProject = (project: Project) => {
@@ -94,31 +100,41 @@ export function App() {
       setSimplifiedFlow({ open: true, projectId: project.id });
       return;
     }
-    setActiveProjectId(project.id);
-    setProjectShown(true);
+    setOpenTabs((prev) => (prev.includes(project.id) ? prev : [...prev, project.id]));
+    setShownProjectId(project.id);
   };
 
-  /** Уход на список. Проект остаётся открытым — его вкладка никуда не девается. */
+  /** Уход на список. Открытые вкладки остаются — их закрывает только крестик на них самих. */
   const goProjects = () => {
-    setProjectShown(false);
+    setShownProjectId(null);
     setView('projects');
   };
 
-  const closeProject = () => {
-    setActiveProjectId(null);
-    setProjectShown(false);
+  /**
+   * Закрытие вкладки. Если закрыли ту, что была показана, — переключение
+   * на соседнюю справа (а если закрыли последнюю — на соседнюю слева), тем
+   * же приёмом, что и у вкладок браузера: человек чаще продолжает работать
+   * рядом с тем, что только что закрыл, чем возвращается к списку.
+   */
+  const closeProject = (id: string) => {
+    const idx = openTabs.indexOf(id);
+    const nextTabs = openTabs.filter((t) => t !== id);
+    setOpenTabs(nextTabs);
+    if (shownProjectId === id) {
+      setShownProjectId(nextTabs[idx] ?? nextTabs[idx - 1] ?? null);
+    }
   };
 
   /**
-   * Переход по сайдбару — раздел приложения, а не открытый проект: вкладка
-   * проекта остаётся, но с глаз уходит. Клик по сайдбару всегда осознанный
-   * уход из текущего места, поэтому попутно снимает фильтр по заказчику —
-   * иначе клик по «Проекты» из отфильтрованного списка не отличался бы
-   * от простого пролистывания той же страницы.
+   * Переход по сайдбару — раздел приложения, а не открытый проект: открытые
+   * вкладки остаются, но ни одна не показана. Клик по сайдбару всегда
+   * осознанный уход из текущего места, поэтому попутно снимает фильтр по
+   * заказчику — иначе клик по «Проекты» из отфильтрованного списка не
+   * отличался бы от простого пролистывания той же страницы.
    */
   const goView = (next: SidebarView) => {
     setView(next);
-    setProjectShown(false);
+    setShownProjectId(null);
     setCustomerFilter(null);
   };
 
@@ -133,14 +149,13 @@ export function App() {
   return (
     <>
       <AppShell
-        project={activeProject ? { name: activeProject.name, active: projectShown } : null}
-        contentKey={activeProject && projectShown ? `project:${activeProject.id}` : `view:${view}`}
+        projectTabs={openProjects.map((p) => ({ id: p.id, name: p.name }))}
+        shownProjectId={shownProjectId}
+        contentKey={shownProject ? `project:${shownProject.id}` : `view:${view}`}
         onGoProjects={goProjects}
-        onOpenProject={() => setProjectShown(true)}
-        onCloseProject={activeProject ? closeProject : undefined}
-        onRenameProject={
-          activeProject ? (name) => updateProject(activeProject.id, { name }) : undefined
-        }
+        onSelectProject={setShownProjectId}
+        onCloseProject={closeProject}
+        onRenameProject={(id, name) => updateProject(id, { name })}
         onNewProject={startNewProject}
         view={sidebarView}
         onViewChange={goView}
@@ -148,9 +163,9 @@ export function App() {
         onRestoreProject={restoreProject}
         onPurgeProject={purgeProject}
       >
-        {activeProject && projectShown ? (
+        {shownProject ? (
           <WizardPage
-            project={activeProject}
+            project={shownProject}
             onUpdateProject={updateProject}
             onForkProject={forkProject}
             onOpenProject={openProject}
@@ -180,7 +195,7 @@ export function App() {
             onRemoveProject={(id) => {
               /* Удалённый проект не может остаться открытым: вкладка вела бы
                  в корзину. */
-              if (id === activeProjectId) closeProject();
+              if (openTabs.includes(id)) closeProject(id);
               removeProject(id);
             }}
             onNewProject={startNewProject}
