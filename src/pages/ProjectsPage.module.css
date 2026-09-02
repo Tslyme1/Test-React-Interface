@@ -37,6 +37,16 @@
   flex-direction: column;
 }
 
+/**
+ * Заголовок и панель фильтров — не `Box`: тому нужен один и тот же отступ
+ * со всех сторон (`paddingY` красит и верх, и низ), а здесь снизу должен
+ * быть тот же малый зазор, что и между самими фильтрами (`--space-sm`
+ * в `.filters` ниже), а не полный `--space-2xl`, как сверху и по бокам.
+ */
+.header {
+  padding: var(--space-2xl) var(--space-2xl) var(--space-sm);
+}
+
 /*
  * `min-width: 0` здесь — не для красоты: без него таблица шире экрана
  * растягивает эту колонку вместо того, чтобы прокрутиться сама
@@ -199,4 +209,9 @@
 .swatch[aria-pressed='true'] {
   outline: var(--border-strong) solid var(--color-accent);
   outline-offset: var(--space-2xs);
+}
+
+/** Сегмент «Заказчики /» в заголовке-крошке — приглушённый, имя заказчика остаётся обычным цветом текста. */
+.breadcrumbMuted {
+  color: var(--color-text-muted);
 }

@@ -23,6 +23,11 @@
   flex-direction: column;
 }
 
+/** Тот же малый зазор снизу до таблицы, что между поиском и любым соседним контролом — не полный `--space-2xl`. */
+.header {
+  padding: var(--space-2xl) var(--space-2xl) var(--space-sm);
+}
+
 .scroll {
   flex: 1;
   min-height: 0;

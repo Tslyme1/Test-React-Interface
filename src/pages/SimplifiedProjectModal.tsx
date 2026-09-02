@@ -191,6 +191,14 @@ export function SimplifiedProjectModal({
       ? 'Результат расчёта'
       : `Упрощённый расчёт — ${STEP_META[step].label}`;
 
+  // Степпер — в футере слева (`aside`), а не в теле: тело в упрощённом
+  // режиме и так короткое, и степпер сверху отрывал шаг от кнопки,
+  // которая его подтверждает. `aside` — ровно то место, что система
+  // отвела второстепенному содержимому слева от действий футера.
+  const stepperAside = project ? (
+    <Stepper steps={STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }))} current={step} onStepClick={goToStep} />
+  ) : null;
+
   return (
     <Modal
       open={open}
@@ -226,7 +234,7 @@ export function SimplifiedProjectModal({
             </Button>
           </Modal.Footer>
         ) : resultOpen ? (
-          <Modal.Footer>
+          <Modal.Footer aside={stepperAside}>
             <Button variant="secondary" onClick={() => setResultOpen(false)}>
               Назад к шагам
             </Button>
@@ -235,7 +243,7 @@ export function SimplifiedProjectModal({
             </Button>
           </Modal.Footer>
         ) : (
-          <Modal.Footer>
+          <Modal.Footer aside={stepperAside}>
             <Button variant="primary" disabled={!ready} onClick={calculated ? advance : runCalc}>
               {calculated ? 'Далее' : step === 2 ? 'Выполнить расчёт' : 'Продолжить'}
             </Button>
@@ -244,10 +252,6 @@ export function SimplifiedProjectModal({
       }
     >
       <Stack gap="lg" direction="column">
-        {project ? (
-          <Stepper steps={STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }))} current={step} onStepClick={goToStep} />
-        ) : null}
-
         {!project ? (
           <Stack gap="md" direction="column">
             <Text variant="bodySm" color="textMuted">
