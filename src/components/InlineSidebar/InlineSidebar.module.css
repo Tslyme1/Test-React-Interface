@@ -40,6 +40,7 @@
    кадра, схема должна занимать заметную часть экрана сама по себе, а не
    быть узкой колонкой сбоку от формы — ради этого сюда и переехала. */
 .panel {
+  position: relative;
   overflow: hidden;
   width: 50cqi;
   transition: width var(--duration-slow) var(--easing-standard);
@@ -51,4 +52,25 @@
 
 .panelInner {
   width: 50cqi;
+}
+
+/**
+ * Ручка ручной ширины — только когда экран сам её включил (`onWidthChange`).
+ * Область захвата шире полоски: `sm`, а не `2xs`, иначе в неё не попасть
+ * курсором на первой попытке. Полоска растёт по высоте вместе с панелью —
+ * `top`/`bottom: 0`, а не своя фиксированная высота.
+ */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--space-sm);
+  cursor: col-resize;
+  z-index: var(--z-raised);
+}
+
+.resizeHandle:hover,
+.resizeHandle:active {
+  background: var(--color-border-hover);
 }

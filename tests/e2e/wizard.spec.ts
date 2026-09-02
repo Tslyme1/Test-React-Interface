@@ -188,4 +188,22 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByText('рад', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('°', { exact: true })).toHaveCount(0);
   });
+
+  test('ширину панели со схемой можно тянуть вручную', async ({ page }) => {
+    const panel = page.locator('[data-open="true"]');
+    const before = await panel.boundingBox();
+    if (!before) throw new Error('панель схемы не найдена');
+
+    const handle = page.getByRole('separator', { name: /Ширина панели/ });
+    const handleBox = await handle.boundingBox();
+    if (!handleBox) throw new Error('ручка ширины не найдена');
+
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x - 150, handleBox.y + handleBox.height / 2, { steps: 10 });
+    await page.mouse.up();
+
+    const after = await panel.boundingBox();
+    expect(after!.width).toBeGreaterThan(before.width + 100);
+  });
 });
