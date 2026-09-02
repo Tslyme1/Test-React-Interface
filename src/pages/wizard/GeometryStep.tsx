@@ -46,7 +46,34 @@ export type GeometryStepProps = {
 export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCrusher }: GeometryStepProps) {
   const scheme = useMemo(() => buildChamberSchemeProps(data), [data]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  /**
+   * Ширина панели схемы. `null` — панель занимает свою половину строки
+   * (`50cqi` в `InlineSidebar.module.css`), как и до появления ручки:
+   * это состояние «пользователь ширину не трогал», а не число, которое
+   * нужно было бы держать синхронным с шириной строки самому.
+   */
+  const [diagramWidth, setDiagramWidth] = useState<number | null>(null);
   const hasSecondZone = data.zones === '2';
+
+  /**
+   * Ширина строки «поля / схема» — нужна, чтобы ограничить ручную ширину
+   * схемы разумным пределом: без него можно было бы утащить форму слева
+   * до нуля. Меряется `ResizeObserver`, а не читается один раз при
+   * монтировании — строка меняет ширину при сворачивании сайдбара
+   * приложения и при ресайзе окна.
+   */
+  const splitRef = useRef<HTMLDivElement>(null);
+  const [splitWidth, setSplitWidth] = useState(0);
+  useEffect(() => {
+    const el = splitRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setSplitWidth(entry.contentRect.width));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const DIAGRAM_MIN_WIDTH = 320;
+  const FIELDS_MIN_WIDTH = 360;
+  const diagramMaxWidth = Math.max(DIAGRAM_MIN_WIDTH, splitWidth - FIELDS_MIN_WIDTH);
 
   // ── смена дробилки ──
   const [crusherPickerOpen, setCrusherPickerOpen] = useState(false);
@@ -138,7 +165,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   };
 
   return (
-    <div className={styles.split}>
+    <div className={styles.split} ref={splitRef}>
       <div className={styles.fields}>
         <Stack gap="lg" direction="column">
           <Stack direction="row" justify="between" align="start" gap="md" wrap>
@@ -406,6 +433,10 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
         title="Схема профиля камеры"
+        width={diagramWidth !== null ? Math.min(diagramWidth, diagramMaxWidth) : undefined}
+        onWidthChange={setDiagramWidth}
+        minWidth={DIAGRAM_MIN_WIDTH}
+        maxWidth={diagramMaxWidth}
         actions={
           <>
             <Popover
