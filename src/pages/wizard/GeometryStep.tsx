@@ -253,12 +253,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 'beta10',
                 <Field label="Угол конуса β10" hint={hintWithDelta('beta10')}>
                   {(props) => (
-                    <div className={styles.angleField}>
-                      <Input {...props} fullWidth type="number" value={data.beta10} onChange={(e) => onChange({ beta10: e.target.value })} />
-                      <Text variant="caption" color="textMuted">
-                        {angleUnitSuffix}
-                      </Text>
-                    </div>
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      value={data.beta10}
+                      onChange={(e) => onChange({ beta10: e.target.value })}
+                      suffix={angleUnitSuffix}
+                    />
                   )}
                 </Field>
               )}
@@ -267,12 +269,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 'beta2',
                 <Field label="Угол на выходе конуса β2" hint={hintWithDelta('beta2')}>
                   {(props) => (
-                    <div className={styles.angleField}>
-                      <Input {...props} fullWidth type="number" value={data.beta2} onChange={(e) => onChange({ beta2: e.target.value })} />
-                      <Text variant="caption" color="textMuted">
-                        {angleUnitSuffix}
-                      </Text>
-                    </div>
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      value={data.beta2}
+                      onChange={(e) => onChange({ beta2: e.target.value })}
+                      suffix={angleUnitSuffix}
+                    />
                   )}
                 </Field>
               )}
@@ -281,12 +285,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 'beta40',
                 <Field label="Угол чаши β40" hint={hintWithDelta('beta40')}>
                   {(props) => (
-                    <div className={styles.angleField}>
-                      <Input {...props} fullWidth type="number" value={data.beta40} onChange={(e) => onChange({ beta40: e.target.value })} />
-                      <Text variant="caption" color="textMuted">
-                        {angleUnitSuffix}
-                      </Text>
-                    </div>
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      value={data.beta40}
+                      onChange={(e) => onChange({ beta40: e.target.value })}
+                      suffix={angleUnitSuffix}
+                    />
                   )}
                 </Field>
               )}
@@ -348,12 +354,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 'theta',
                 <Field label="Угол гирации θ" hint={hintWithDelta('theta')}>
                   {(props) => (
-                    <div className={styles.angleField}>
-                      <Input {...props} fullWidth type="number" value={data.theta} onChange={(e) => onChange({ theta: e.target.value })} />
-                      <Text variant="caption" color="textMuted">
-                        {angleUnitSuffix}
-                      </Text>
-                    </div>
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      value={data.theta}
+                      onChange={(e) => onChange({ theta: e.target.value })}
+                      suffix={angleUnitSuffix}
+                    />
                   )}
                 </Field>
               )}
