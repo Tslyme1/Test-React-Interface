@@ -21,7 +21,11 @@ test.describe('Сайдбар', () => {
     await page.getByRole('button', { name: 'Заказчики' }).click();
     await expect(page.getByRole('heading', { name: 'Заказчики' })).toBeVisible();
     // Свод по тем же проектам: заказчик из примеров обязан найтись.
-    await expect(page.getByRole('cell', { name: 'ЕВРАЗ КГОК' })).toBeVisible();
+    const evrazRow = page.getByRole('row', { name: /ЕВРАЗ КГОК/ });
+    await expect(evrazRow).toBeVisible();
+    // Колонка тегов — свод тегов всех его проектов, тот же справочник цветов,
+    // что и на «Проекты».
+    await expect(evrazRow.getByText('Рабочий', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Профиль' }).click();
     await expect(page.getByRole('heading', { name: 'Профиль' })).toBeVisible();
