@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { EmptyState, Input, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn, TableSort } from '@uralmash/design-system';
 import type { Project } from '@/types';
+import { useTags } from '@/state/useTags';
 import styles from './CustomersPage.module.css';
 
 export type CustomersPageProps = {
@@ -13,6 +14,7 @@ type CustomerRow = {
   customer: string;
   count: number;
   executors: string[];
+  tags: string[];
   lastDate: string;
   lastDateMs: number;
 };
@@ -41,12 +43,16 @@ function buildCustomerRows(projects: Project[]): CustomerRow[] {
 
   return [...byCustomer.entries()].map(([customer, rows]) => {
     const executors = [...new Set(rows.map((r) => r.executor))].sort((a, b) => a.localeCompare(b, 'ru'));
+    const tags = [...new Set(rows.map((r) => r.tag).filter((t): t is string => Boolean(t)))].sort((a, b) =>
+      a.localeCompare(b, 'ru')
+    );
     const latest = rows.reduce((max, r) => Math.max(max, parseProjectDate(r.date)), 0);
     const latestRow = rows.find((r) => parseProjectDate(r.date) === latest);
     return {
       customer,
       count: rows.length,
       executors,
+      tags,
       lastDate: latestRow?.date ?? '—',
       lastDateMs: latest,
     };
@@ -61,6 +67,9 @@ function buildCustomerRows(projects: Project[]): CustomerRow[] {
  * где сравнивают и все остальные проекты, а не в отдельной урезанной копии.
  */
 export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) {
+  /* Цвет тега — тот же справочник, что красит теги на «Проектах»: один
+     и тот же тег обязан выглядеть одинаково на обоих экранах. */
+  const { colorOf } = useTags();
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'lastDateMs', direction: 'desc' });
 
@@ -94,6 +103,20 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
           ))}
         </Stack>
       ),
+    },
+    {
+      key: 'tags',
+      title: 'Теги',
+      render: (row) =>
+        row.tags.length > 0 ? (
+          <Stack direction="row" gap="2xs" wrap>
+            {row.tags.map((name) => (
+              <Tag key={name} color={colorOf(name)}>
+                {name}
+              </Tag>
+            ))}
+          </Stack>
+        ) : null,
     },
     { key: 'lastDateMs', title: 'Последний проект', render: (row) => row.lastDate, sortable: true },
   ];
