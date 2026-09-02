@@ -3,12 +3,10 @@ import { Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/des
 import type { Step } from '@uralmash/design-system';
 import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
-import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
 import { GeometryStep } from './GeometryStep';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
-import { SimplifiedCatalogStep } from './SimplifiedCatalogStep';
 import { ResultsDrawer } from './ResultsDrawer';
 import { STEP_KEYS } from '@/domain/steps';
 import styles from './WizardPage.module.css';
@@ -25,13 +23,12 @@ export type WizardPageProps = {
   showToast: (message: string) => void;
 };
 
+/** Инженерный визард — три шага с вводом данных. Упрощённый режим ведёт `SimplifiedProjectModal`, сюда не заходит. */
 export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProject, showToast }: WizardPageProps) {
   const [step, setStep] = useState(0);
-  // Переход на шаг «Руда» без выбранной пробы (инженерный режим) не
-  // переключает степпер туда — он остаётся на шаге 0, а поверх него
-  // открывается выбор пробы. Показывать шаг заглушкой «нечем считать»
-  // хуже, чем сразу дать выбрать. В упрощённом режиме шаг «Руда» — сам
-  // по себе выбор, этот случай там не наступает.
+  // Переход на шаг «Руда» без выбранной пробы не переключает степпер туда —
+  // он остаётся на шаге 0, а поверх него открывается выбор пробы. Показывать
+  // шаг заглушкой «нечем считать» хуже, чем сразу дать выбрать.
   const [orePickerOpen, setOrePickerOpen] = useState(false);
   const [resultOpen, setResultOpen] = useState(false);
   // Последний непустой шаг результата держим отдельно от `resultOpen`:
@@ -43,32 +40,18 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   // применяется только по подтверждению в окне ниже.
   const [pendingFork, setPendingFork] = useState<{ calcIndex: number; patch: Partial<Project> } | null>(null);
 
-  const simplified = project.mode === 'simplified';
-
   const available = (i: number) => i === 0 || project.calc[i - 1] || project.calc[i];
   const stepKey = STEP_KEYS[step];
   const calculated = project.calc[step];
 
-  const ready = simplified
-    ? stepKey === 'geom'
-      ? project.crusherNames.length > 0
-      : stepKey === 'gran'
-        ? project.oreNames.length > 0
-        : Boolean(project.data.prod.dMax)
-    : // Инженерный режим: шаг «Грансостав» без пробы руды считать нечего —
-      // форма ещё закрыта заглушкой, и активная кнопка расчёта обещала бы
-      // результат из пустоты.
-      stepKey !== 'gran' || Boolean(project.ore);
-
-  // В упрощённом режиме у шагов «Дробилка»/«Руда» нет отдельной панели
-  // результата — это чистый выбор, а не расчёт с числами. Отчёт есть
-  // только за шагом «Продукт»: там же видна вся выбранная матрица.
-  const hasReportView = !(simplified && stepKey !== 'prod');
+  // Шаг «Грансостав» без пробы руды считать нечего: форма ещё закрыта
+  // заглушкой, и активная кнопка расчёта обещала бы результат из пустоты.
+  const ready = stepKey !== 'gran' || Boolean(project.ore);
 
   const steps: Step[] = STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }));
 
   const goToStep = (i: number) => {
-    if (!simplified && i === 1 && !project.ore) {
+    if (i === 1 && !project.ore) {
       setOrePickerOpen(true);
       return;
     }
@@ -115,9 +98,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     applyOrFork(1, { ore });
   };
 
-  const changeCrusherNames = (names: string[]) => applyOrFork(0, { crusherNames: names, crusherName: names[0] ?? '' });
-  const changeOreNames = (names: string[]) => applyOrFork(1, { oreNames: names, ore: names[0] ?? '' });
-
   /*
    * Числовые поля применяются напрямую, без форка, даже на посчитанном
    * шаге: форк на каждое нажатие клавиши держал бы значение поля
@@ -142,11 +122,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     onUpdateProject(project.id, {
       calc: nextCalc,
       // Снимок геометрии на момент расчёта — опора для режима отображения
-      // «Дельта» на шаге «Геометрия» (только инженерный режим — в
-      // упрощённом геометрия не вводится руками, сравнивать нечего).
-      ...(stepKey === 'geom' && !simplified ? { geomBaseline: { ...project.data.geom } } : {}),
+      // «Дельта» на шаге «Геометрия»: он сравнивает текущие поля с тем,
+      // что было в форме в момент именно этого расчёта.
+      ...(stepKey === 'geom' ? { geomBaseline: { ...project.data.geom } } : {}),
     });
-    showToast(simplified && stepKey !== 'prod' ? 'Выбор сохранён' : `Шаг «${STEP_META[step].label}» рассчитан`);
+    showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
 
   return (
@@ -157,52 +137,22 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             гасит сам себя. */}
         <Box paddingX="2xl" paddingY="2xl" fullWidth>
           {stepKey === 'geom' ? (
-            simplified ? (
-              <SimplifiedCatalogStep
-                title="Дробилки"
-                description="Выберите одну или несколько — расчёт на шаге «Продукт» пройдёт по каждой."
-                specs={CRUSHER_SPECS}
-                items={CRUSHERS}
-                nameLabel="Дробилка"
-                searchPlaceholder="КМД-2200, 2200, 500-655…"
-                emptyTitle="Дробилки не выбраны"
-                emptyDescription="Выберите хотя бы одну, чтобы продолжить расчёт."
-                selected={project.crusherNames}
-                onChange={changeCrusherNames}
-              />
-            ) : (
-              <GeometryStep
-                data={project.data.geom}
-                onChange={patchGeom}
-                baseline={project.geomBaseline}
-                crusherName={project.crusherName}
-                onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
-              />
-            )
+            <GeometryStep
+              data={project.data.geom}
+              onChange={patchGeom}
+              baseline={project.geomBaseline}
+              crusherName={project.crusherName}
+              onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
+            />
           ) : stepKey === 'gran' ? (
-            simplified ? (
-              <SimplifiedCatalogStep
-                title="Пробы руды"
-                description="Выберите одну или несколько — расчёт на шаге «Продукт» пройдёт по каждой."
-                specs={ORE_SPECS}
-                items={ORE_SAMPLES}
-                nameLabel="Проба руды"
-                searchPlaceholder="Костомукшская, X, 14-16…"
-                emptyTitle="Пробы не выбраны"
-                emptyDescription="Выберите хотя бы одну, чтобы продолжить расчёт."
-                selected={project.oreNames}
-                onChange={changeOreNames}
-              />
-            ) : (
-              <GranStep
-                data={project.data.gran}
-                onChange={patchGran}
-                ore={project.ore}
-                onRequestOrePicker={() => setOrePickerOpen(true)}
-              />
-            )
+            <GranStep
+              data={project.data.gran}
+              onChange={patchGran}
+              ore={project.ore}
+              onRequestOrePicker={() => setOrePickerOpen(true)}
+            />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} simplified={simplified} />
+            <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} />
           )}
         </Box>
       </div>
@@ -211,7 +161,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         <Stack direction="row" justify="between" align="center" gap="xl">
           <Stepper steps={steps} current={step} onStepClick={goToStep} />
 
-          {calculated && hasReportView ? (
+          {calculated ? (
             <Button
               variant="primary"
               iconStart="fileText"
@@ -224,7 +174,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             </Button>
           ) : (
             <Button variant="primary" disabled={!ready} onClick={runCalc}>
-              {simplified && stepKey !== 'prod' ? 'Продолжить' : 'Выполнить расчёт'}
+              Выполнить расчёт
             </Button>
           )}
         </Stack>
@@ -235,39 +185,37 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           её снаружи ещё раз. */}
       <ResultsDrawer open={resultOpen} onClose={() => setResultOpen(false)} stepKey={resultStep} project={project} />
 
-      {!simplified ? (
-        /* Живёт здесь, а не внутри `GranStep`: переход на шаг «Руда» без
-           выбранной пробы должен открыть это окно поверх шага «Дробилка»,
-           не переключая степпер, — то есть окно обязано существовать
-           независимо от того, смонтирован ли `GranStep` вообще. */
-        <Modal
-          open={orePickerOpen}
-          onClose={() => setOrePickerOpen(false)}
-          title="Выбор пробы руды"
-          size="lg"
-          footer={
-            <Modal.Footer>
-              <Button variant="secondary" onClick={() => setOrePickerOpen(false)}>
-                Отмена
-              </Button>
-            </Modal.Footer>
-          }
-        >
-          <CatalogPicker
-            specs={ORE_SPECS}
-            items={ORE_SAMPLES}
-            value={project.ore || null}
-            onPick={(picked) => {
-              /* Снятие выбора здесь ничего не даёт: шаг без пробы закрыт
-                 заглушкой, и уйти из окна ни с чем можно крестиком. */
-              if (!picked) return;
-              pickOre(picked);
-            }}
-            nameLabel="Проба руды"
-            searchPlaceholder="Костомукшская, X, 14-16…"
-          />
-        </Modal>
-      ) : null}
+      {/* Живёт здесь, а не внутри `GranStep`: переход на шаг «Руда» без
+          выбранной пробы должен открыть это окно поверх шага «Дробилка»,
+          не переключая степпер, — то есть окно обязано существовать
+          независимо от того, смонтирован ли `GranStep` вообще. */}
+      <Modal
+        open={orePickerOpen}
+        onClose={() => setOrePickerOpen(false)}
+        title="Выбор пробы руды"
+        size="lg"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setOrePickerOpen(false)}>
+              Отмена
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <CatalogPicker
+          specs={ORE_SPECS}
+          items={ORE_SAMPLES}
+          value={project.ore || null}
+          onPick={(picked) => {
+            /* Снятие выбора здесь ничего не даёт: шаг без пробы закрыт
+               заглушкой, и уйти из окна ни с чем можно крестиком. */
+            if (!picked) return;
+            pickOre(picked);
+          }}
+          nameLabel="Проба руды"
+          searchPlaceholder="Костомукшская, X, 14-16…"
+        />
+      </Modal>
 
       <Modal
         open={pendingFork !== null}

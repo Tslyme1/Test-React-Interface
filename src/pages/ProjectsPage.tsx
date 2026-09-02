@@ -461,8 +461,12 @@ export function ProjectsPage({
               только таблица ниже (`.scroll`), как и на шагах визарда. */}
           <Box paddingX="2xl" paddingY="2xl" fullWidth>
             <Stack gap="xl" direction="column">
+              {/* Заказчик из фильтра — тем же заголовком: пришли ли сюда со
+                  страницы «Заказчики» или выбрали его прямо в строке
+                  фильтров, экран в обоих случаях показывает проекты именно
+                  этого заказчика, а не общий список. */}
               <Text variant="headingMd" as="h1">
-                Проекты
+                {customer !== NONE ? customer : 'Проекты'}
               </Text>
 
               {projects.length > 0 ? (

@@ -3,22 +3,19 @@ import type { ReactNode } from 'react';
 import {
   AppHeader,
   Button,
-  Cell,
   EmptyState,
   Field,
   HeaderButton,
   HeaderDivider,
   HeaderLogo,
   HeaderTab,
-  Icon,
   Input,
   Modal,
   Popover,
   Stack,
   Table,
-  Text,
 } from '@uralmash/design-system';
-import type { Project, ProjectMode, User } from '@/types';
+import type { Project } from '@/types';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import logoSrc from '@/uztm-logo.png';
@@ -32,7 +29,6 @@ import styles from './AppShell.module.css';
 export type ShellProject = { name: string; active: boolean };
 
 export type AppShellProps = {
-  user: User;
   project?: ShellProject | null;
   /**
    * Ключ переключаемого содержимого — список проектов и открытый проект
@@ -47,17 +43,9 @@ export type AppShellProps = {
   onCloseProject?: () => void;
   onRenameProject?: (name: string) => void;
   onNewProject: () => void;
-  onLogout: () => void;
-  /** Раздел приложения — сайдбар слева, независимо от шапки и открытого проекта. */
+  /** Раздел приложения — сайдбар слева. Скрыт, пока открытый проект показан на экране: там должен быть виден только он. */
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
-  /**
-   * Режим будущего проекта, пока ничего не открыто, либо режим уже
-   * открытого — тогда правка заблокирована (`modeLocked`).
-   */
-  mode: ProjectMode;
-  modeLocked: boolean;
-  onModeChange: (mode: ProjectMode) => void;
   trash: Project[];
   onRestoreProject: (id: string) => void;
   onPurgeProject: (id: string) => void;
@@ -65,7 +53,6 @@ export type AppShellProps = {
 };
 
 export function AppShell({
-  user,
   project,
   contentKey,
   onGoProjects,
@@ -73,22 +60,17 @@ export function AppShell({
   onCloseProject,
   onRenameProject,
   onNewProject,
-  onLogout,
   view,
   onViewChange,
-  mode,
-  modeLocked,
-  onModeChange,
   trash,
   onRestoreProject,
   onPurgeProject,
   children,
 }: AppShellProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
 
   return (
-    <Stack direction="column" grow>
+    <div className={styles.shell}>
       <AppHeader>
         <AppHeader.Left>
           {/* Знак и есть переход на главную. Отдельной ячейки «домой» рядом
@@ -124,55 +106,15 @@ export function AppShell({
 
           <HeaderButton icon="plus" aria-label="Новый проект" onClick={onNewProject} />
         </AppHeader.Left>
-
-        <AppHeader.Right>
-          {/* Ячейки «Проекты» здесь нет: на главную ведёт знак слева, и
-              вторая точка входа в то же место стояла в полосе просто так —
-              из неё нельзя было понять, чем она отличается от знака. */}
-          <Popover
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            placement="bottom-end"
-            width="sm"
-            trigger={
-              <HeaderButton icon="user" expandable onClick={() => setMenuOpen((v) => !v)}>
-                {user.name.split(' ')[0]}
-              </HeaderButton>
-            }
-          >
-            <Stack gap="xs" direction="column">
-              <Stack gap="none" direction="column">
-                <Text variant="label">{user.name}</Text>
-                <Text variant="caption" color="textMuted">
-                  {user.role}
-                </Text>
-              </Stack>
-              {/* Строка меню — `Cell`, а не кнопка: у кнопки содержимое стоит
-                  по центру, и в списке подписи не выстраиваются в столбец. */}
-              <Cell
-                leading={<Icon name="logOut" size="sm" />}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onLogout();
-                }}
-              >
-                Выйти
-              </Cell>
-            </Stack>
-          </Popover>
-        </AppHeader.Right>
       </AppHeader>
 
       <div className={styles.body}>
-        <Sidebar
-          view={view}
-          onViewChange={onViewChange}
-          mode={mode}
-          modeLocked={modeLocked}
-          onModeChange={onModeChange}
-          trashCount={trash.length}
-          onOpenTrash={() => setTrashOpen(true)}
-        />
+        {/* Только раздел приложения — не про открытый проект, поэтому
+            прячется, когда проект показан на экране: там должен быть виден
+            только он, а не список разделов рядом. */}
+        {!project?.active ? (
+          <Sidebar view={view} onViewChange={onViewChange} trashCount={trash.length} onOpenTrash={() => setTrashOpen(true)} />
+        ) : null}
 
         <main className={styles.main}>
           <div key={contentKey} className={styles.content}>
@@ -232,7 +174,7 @@ export function AppShell({
           }
         />
       </Modal>
-    </Stack>
+    </div>
   );
 }
 

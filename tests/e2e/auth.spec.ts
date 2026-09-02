@@ -21,12 +21,13 @@ test.describe('Вход', () => {
     console_.assertClean();
   });
 
-  test('вход ведёт к списку проектов и показывает имя пользователя', async ({ page }) => {
+  test('вход ведёт к списку проектов и показывает имя пользователя в профиле', async ({ page }) => {
     const console_ = watchConsole(page);
     await login(page);
 
-    // Шапка показывает фамилию — значит сессия долетела до оболочки.
-    await expect(page.getByRole('button', { name: /Иванов/ })).toBeVisible();
+    // Имя — в «Профиле», не в шапке: там сессия долетела до раздела приложения.
+    await page.getByRole('button', { name: 'Профиль' }).click();
+    await expect(page.getByText(DEMO_USER.name)).toBeVisible();
     console_.assertClean();
   });
 
@@ -41,7 +42,7 @@ test.describe('Вход', () => {
   test('выход возвращает на экран входа и очищает сессию', async ({ page }) => {
     await login(page);
 
-    await page.getByRole('button', { name: /Иванов/ }).click();
+    await page.getByRole('button', { name: 'Профиль' }).click();
     await page.getByRole('button', { name: 'Выйти' }).click();
 
     await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeVisible();
