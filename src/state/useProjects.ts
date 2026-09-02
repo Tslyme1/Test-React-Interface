@@ -22,11 +22,14 @@ const STORAGE_KEY = 'uztm-projects';
  * существовал только на «Геометрии».
  * Версия 9 — `calcDates`: дата и время расчёта каждого шага отдельно от
  * даты заведения проекта (`date`), для метаданных в шторке результата.
+ * Версия 10 — `tag: string | null` заменён на `tags: string[]`: у проекта
+ * теперь может быть несколько меток. Старое значение переносится как список
+ * из одного элемента (или пустой, если тега не было).
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -59,22 +62,34 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 9) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateTagsV10), trash, seeded });
+    }
     if (payload.version === 8) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcDatesV9), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10), trash, seeded });
     }
     if (payload.version === 7) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV8).map(migrateCalcDatesV9), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateBaselineV8).map(migrateCalcDatesV9).map(migrateTagsV10),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 6) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9),
+        projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9).map(migrateTagsV10),
         trash,
         seeded,
       });
     }
     if (payload.version === 5) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9),
+        projects: payload.projects
+          .map(migrateBaselineV6)
+          .map(migrateModeV7)
+          .map(migrateBaselineV8)
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10),
         trash,
         seeded,
       });
@@ -86,7 +101,8 @@ function readState(): StoredState {
           .map(migrateBaselineV6)
           .map(migrateModeV7)
           .map(migrateBaselineV8)
-          .map(migrateCalcDatesV9),
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10),
         trash,
         seeded,
       });
@@ -98,7 +114,8 @@ function readState(): StoredState {
           .map(migrateBaselineV6)
           .map(migrateModeV7)
           .map(migrateBaselineV8)
-          .map(migrateCalcDatesV9),
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10),
         trash,
         seeded,
       });
@@ -110,7 +127,8 @@ function readState(): StoredState {
           .map(migrateBaselineV6)
           .map(migrateModeV7)
           .map(migrateBaselineV8)
-          .map(migrateCalcDatesV9),
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10),
         trash,
         seeded: false,
       });
@@ -123,7 +141,8 @@ function readState(): StoredState {
           .map(migrateBaselineV6)
           .map(migrateModeV7)
           .map(migrateBaselineV8)
-          .map(migrateCalcDatesV9),
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10),
         trash,
         seeded: false,
       });
@@ -212,6 +231,19 @@ function migrateCalcDatesV9(project: Project): Project {
 }
 
 /**
+ * До версии 10 у проекта был один `tag: string | null`, теперь —
+ * `tags: string[]`. Старое значение переносится как список из одного
+ * элемента, а `null` — как пустой список: у проекта не было ни одной
+ * метки, и после миграции их по-прежнему ни одной.
+ */
+function migrateTagsV10(project: Project): Project {
+  const legacy = project as Partial<Pick<Project, 'tags'>> & Project & { tag?: string | null };
+  if (legacy.tags) return project;
+  const { tag, ...rest } = legacy;
+  return { ...rest, tags: tag ? [tag] : [] };
+}
+
+/**
  * До версии 7 у проекта не было `mode`/`crusherNames`/`oreNames` — все
  * записи были инженерными с одной дробилкой и одной пробой, поэтому
  * получают `mode: 'engineering'` и списки из того, что уже стояло
@@ -293,7 +325,7 @@ export function useProjects() {
       ore: '',
       oreNames: [],
       code: `П-${Math.floor(10000 + Math.random() * 89999)}`,
-      tag: null,
+      tags: [],
       date: formatDate(),
       executor: input.executor,
       oreIn: specs?.['F95, мм'] ? `${specs['F95, мм']} мм (F95)` : '—',

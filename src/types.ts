@@ -114,7 +114,8 @@ export type Project = {
   crusherNames: string[];
   oreNames: string[];
   code: string;
-  tag: string | null;
+  /** Метки проекта — их может быть несколько; пусто, если ни одной не поставили. */
+  tags: string[];
   date: string;
   executor: string;
   oreIn: string;

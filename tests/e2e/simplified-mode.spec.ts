@@ -37,6 +37,25 @@ async function createSimplifiedProject(page: Page) {
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Руда' })).toBeVisible();
 }
 
+test.describe('Упрощённый режим — до создания проекта', () => {
+  test('степпер виден уже на первом шаге', async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await switchToSimplified(page);
+
+    await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    const dialog = page.getByRole('dialog', { name: /упрощ/i });
+    await expect(dialog).toBeVisible();
+
+    // Шаги «Руда» и «Продукт» видны в степпере сразу — не только начиная
+    // со второго шага (footer этой ветки раньше не получал степпер вовсе).
+    // «Дробилка» здесь неоднозначна (так же называется и колонка каталога),
+    // поэтому опознаётся по своей паре с номером шага.
+    await expect(dialog.getByText('1Дробилка', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Руда', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('Продукт', { exact: true })).toBeVisible();
+  });
+});
+
 test.describe('Упрощённый режим', () => {
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });

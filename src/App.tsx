@@ -9,6 +9,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { ProjectsPage } from '@/pages/ProjectsPage';
 import { CustomersPage } from '@/pages/CustomersPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { TrashPage } from '@/pages/TrashPage';
 import { NewProjectModal } from '@/pages/NewProjectModal';
 import { SimplifiedProjectModal } from '@/pages/SimplifiedProjectModal';
 import { WizardPage } from '@/pages/wizard/WizardPage';
@@ -159,9 +160,7 @@ export function App() {
         onNewProject={startNewProject}
         view={sidebarView}
         onViewChange={goView}
-        trash={trash}
-        onRestoreProject={restoreProject}
-        onPurgeProject={purgeProject}
+        trashCount={trash.length}
       >
         {shownProject ? (
           <WizardPage
@@ -171,6 +170,8 @@ export function App() {
             onOpenProject={openProject}
             showToast={showToast}
           />
+        ) : view === 'trash' ? (
+          <TrashPage trash={trash} onRestoreProject={restoreProject} onPurgeProject={purgeProject} />
         ) : view === 'customers' ? (
           <CustomersPage
             projects={projects}
@@ -185,6 +186,7 @@ export function App() {
               setView('projects');
               setCustomerFilter(customer);
             }}
+            onNewProject={startNewProject}
           />
         ) : view === 'profile' ? (
           <ProfilePage user={user} mode={defaultMode} onModeChange={setDefaultMode} onLogout={logout} />

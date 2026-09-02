@@ -104,21 +104,31 @@ export function ProjectsPage({
   const [date, setDate] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
 
-  // Заказчик из «Заказчики» — только сев для фильтра при заходе; дальше
-  // фильтром управляет обычная строка над таблицей, как и любым другим.
+  // Заказчик из «Заказчики» — снаружи управляет тем же полем, что и строка
+  // фильтров над таблицей, но только в одну сторону: приход сюда с именем
+  // заказчика выставляет фильтр, а сброс снаружи (уход на «Проекты» по
+  // сайдбару — см. `goView` в App.tsx) снимает его. Обратное направление —
+  // не эффект, а прямой вызов в точке изменения (`setCustomerAndNotify`
+  // ниже): эффект, реагирующий на `customer` и одновременно им же
+  // управляемый эффектом выше, был бы взаимным контуром без устойчивой
+  // точки — оба меняют одно и то же значение туда-сюда до бесконечности,
+  // потому что в один и тот же коммит второй эффект видит ещё не
+  // обновлённое состояние первого.
   useEffect(() => {
-    if (!initialCustomerFilter) return;
-    setCustomer(initialCustomerFilter);
+    setCustomer(initialCustomerFilter || NONE);
   }, [initialCustomerFilter]);
 
-  // Наружу — при любой смене, не только при сеянии: сайдбар подсвечивает
-  // «Заказчики», пока этот фильтр применён, и должен узнавать и о ручном
-  // выборе в строке фильтров, и о сбросе. `onCustomerFilterChange` не в
-  // зависимостях намеренно: это инлайн-колбэк из App.tsx, и добавлять его
-  // сюда значило бы дёргать эффект на каждый чужой ре-рендер без надобности.
-  useEffect(() => {
-    onCustomerFilterChange?.(customer || null);
-  }, [customer]);
+  /**
+   * Наружу — только когда заказчика меняют здесь, а не эхом на приход
+   * извне: сайдбар подсвечивает «Заказчики», пока этот фильтр применён,
+   * и должен узнавать о ручном выборе в строке фильтров или о сбросе
+   * через панель. Используется вместо `setCustomer` в `setters.customer`
+   * ниже — то есть ровно в тех местах, где заказчика меняет сам человек.
+   */
+  const setCustomerAndNotify = (value: string) => {
+    setCustomer(value);
+    onCustomerFilterChange?.(value || null);
+  };
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -149,7 +159,7 @@ export function ProjectsPage({
    * ли он вообще.
    */
   const tagOptions = useMemo<SelectOption[]>(() => {
-    const names = uniqueSorted([...projects.map((p) => p.tag), ...tags.map((t) => t.name)]);
+    const names = uniqueSorted([...projects.flatMap((p) => p.tags), ...tags.map((t) => t.name)]);
     return names.map((name) => ({
       value: name,
       label: name,
@@ -165,7 +175,7 @@ export function ProjectsPage({
 
   const setters: Record<keyof FilterValues, (value: string) => void> = {
     crusher: setCrusher,
-    customer: setCustomer,
+    customer: setCustomerAndNotify,
     tag: setTag,
     executor: setExecutor,
     date: setDate,
@@ -176,8 +186,13 @@ export function ProjectsPage({
     (Object.keys(setters) as (keyof FilterValues)[]).forEach((key) => setters[key](values[key]));
   };
 
+  // «Заказчик», зафиксированный названием страницы, не в счёт: это не
+  // условие, наложенное через панель, а контекст самого экрана — тот же
+  // повод, по которому его поле убрано из обеих панелей выше.
   const countActive = (values: FilterValues) =>
-    [values.crusher, values.customer, values.tag, values.executor].filter((v) => v !== NONE).length +
+    [values.crusher, customer === NONE ? values.customer : NONE, values.tag, values.executor].filter(
+      (v) => v !== NONE
+    ).length +
     (values.date ? 1 : 0) +
     (values.search.trim() ? 1 : 0);
 
@@ -292,19 +307,33 @@ export function ProjectsPage({
     },
   ];
 
+  /**
+   * Фильтр «Заказчик» скрыт, пока экран и так показывает ровно одного —
+   * хлебная крошка в заголовке уже называет его, а рядом висящий селект
+   * с тем же самым значением читался как два разных места правки одного
+   * условия и путал: непонятно, что случится, если тронуть выпадающий
+   * список, если заказчик и так «зафиксирован» названием страницы.
+   */
+  const withoutCustomerFilter = (fields: FilterField[]) =>
+    customer !== NONE ? fields.filter((f) => f.key !== 'customer') : fields;
+
   /** Строка под заголовком: правки применяются сразу — результат тут же виден. */
-  const rowFields = buildFilterFields(applied, (key, value) => setters[key](value));
+  const rowFields = withoutCustomerFilter(buildFilterFields(applied, (key, value) => setters[key](value)));
 
   /** Панель: правки копятся в черновике до «Готово». */
   const draftValues = draft ?? applied;
-  const draftFields = buildFilterFields(draftValues, (key, value) =>
-    setDraft((current) => ({ ...(current ?? applied), [key]: value }))
+  const draftFields = withoutCustomerFilter(
+    buildFilterFields(draftValues, (key, value) => setDraft((current) => ({ ...(current ?? applied), [key]: value })))
   );
 
+  /**
+   * Сброс не трогает заказчика: пока его поле скрыто (зафиксировано
+   * названием страницы), «Сбросить» относится к тому, что всё ещё видно
+   * и доступно для правки, а не к уходу со страницы этого заказчика.
+   */
   const resetFilters = () => {
     setSearch('');
     setCrusher(NONE);
-    setCustomer(NONE);
     setTag(NONE);
     setExecutor(NONE);
     setDate('');
@@ -316,7 +345,7 @@ export function ProjectsPage({
     const filtered = projects.filter((p) => {
       if (crusher !== NONE && p.crusherName !== crusher) return false;
       if (customer !== NONE && p.customer !== customer) return false;
-      if (tag !== NONE && p.tag !== tag) return false;
+      if (tag !== NONE && !p.tags.includes(tag)) return false;
       if (executor !== NONE && p.executor !== executor) return false;
       // `p.date` несёт минуты («24.07.2026 14:32»), фильтр — только календарный день.
       if (date && p.date.split(' ')[0] !== new Date(date).toLocaleDateString('ru-RU')) return false;
@@ -344,9 +373,18 @@ export function ProjectsPage({
     { key: 'customer', title: 'Заказчик', sortable: true },
     { key: 'code', title: 'Код проекта' },
     {
-      key: 'tag',
-      title: 'Тег',
-      render: (row) => (row.tag ? <Tag color={colorOf(row.tag)}>{row.tag}</Tag> : null),
+      key: 'tags',
+      title: 'Теги',
+      render: (row) =>
+        row.tags.length > 0 ? (
+          <Stack direction="row" gap="2xs" wrap>
+            {row.tags.map((name) => (
+              <Tag key={name} color={colorOf(name)}>
+                {name}
+              </Tag>
+            ))}
+          </Stack>
+        ) : null,
     },
     { key: 'oreType', title: 'Руда', render: (row) => oreTypeOf(row.ore) },
     { key: 'ore', title: 'Месторождение', sortable: true, render: (row) => oreLabel(row) },
@@ -605,11 +643,13 @@ export function ProjectsPage({
         footer={
           <Modal.Footer>
             {/* Сброс правит черновик, а не применённое: иначе одна кнопка
-                окна действовала бы сразу, а остальные — по «Готово». */}
+                окна действовала бы сразу, а остальные — по «Готово».
+                Заказчик — не в EMPTY: его поля здесь и так нет (см.
+                `withoutCustomerFilter`), сбрасывать в черновике нечего. */}
             <Button
               variant="secondary"
               disabled={countActive(draftValues) === 0}
-              onClick={() => setDraft(EMPTY)}
+              onClick={() => setDraft({ ...EMPTY, customer })}
             >
               Сбросить
             </Button>

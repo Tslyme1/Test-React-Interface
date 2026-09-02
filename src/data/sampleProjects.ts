@@ -52,7 +52,9 @@ export function buildSampleProjects(): Project[] {
       ore: ore.name,
       oreNames: [ore.name],
       code: `П-${10231 + i * 3}`,
-      tag: TAGS[i % TAGS.length],
+      // Один пример — сразу с двумя метками, чтобы список тегов и в таблице,
+      // и в шторке результата был виден не только по одному значению.
+      tags: [TAGS[i % TAGS.length], i === 0 ? 'Архив' : null].filter((t): t is string => Boolean(t)),
       date,
       executor: EXECUTORS[i % EXECUTORS.length],
       oreIn: specs['F95, мм'] ? `${specs['F95, мм']} мм (F95)` : '—',

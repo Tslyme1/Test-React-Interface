@@ -39,7 +39,32 @@
   padding: 0 var(--space-2xl) var(--space-2xl);
 }
 
-/** Поиск — той же ширины, что и в панели фильтров списка проектов. */
+/** Поиск занимает остаток строки фильтров, но не шире, чем на «Проектах». */
 .searchBar {
+  flex: 1 1 150px;
+  min-width: 120px;
   max-width: 360px;
+}
+
+/**
+ * Строка фильтров: два селекта по содержимому, поиск забирает остаток
+ * строки, кнопка не сжимается. Переносится на вторую строку целиком —
+ * фильтров здесь всего два, очередь исчезновения по одному (как в
+ * `ProjectsPage.module.css`) для такого числа была бы лишней сложностью.
+ */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.filterItem {
+  flex: 0 1 152px;
+  min-width: 112px;
+}
+
+.filterActions {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }

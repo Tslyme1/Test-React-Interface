@@ -1,21 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  AppHeader,
-  Button,
-  EmptyState,
-  Field,
-  HeaderButton,
-  HeaderDivider,
-  HeaderLogo,
-  HeaderTab,
-  Input,
-  Modal,
-  Popover,
-  Stack,
-  Table,
-} from '@uralmash/design-system';
-import type { Project } from '@/types';
+import { AppHeader, Button, Field, HeaderButton, HeaderDivider, HeaderLogo, HeaderTab, Input, Popover, Stack } from '@uralmash/design-system';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import logoSrc from '@/uztm-logo.png';
@@ -55,9 +40,8 @@ export type AppShellProps = {
   /** Раздел приложения — сайдбар слева. Скрыт, пока открытый проект показан на экране: там должен быть виден только он. */
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
-  trash: Project[];
-  onRestoreProject: (id: string) => void;
-  onPurgeProject: (id: string) => void;
+  /** Только для бейджа-счётчика у пункта «Корзина» — сама корзина открывается разделом («Корзина» в `view`), а не отсюда. */
+  trashCount: number;
   children: ReactNode;
 };
 
@@ -72,13 +56,9 @@ export function AppShell({
   onNewProject,
   view,
   onViewChange,
-  trash,
-  onRestoreProject,
-  onPurgeProject,
+  trashCount,
   children,
 }: AppShellProps) {
-  const [trashOpen, setTrashOpen] = useState(false);
-
   return (
     <div className={styles.shell}>
       <AppHeader>
@@ -131,7 +111,7 @@ export function AppShell({
             прячется, когда проект показан на экране: там должен быть виден
             только он, а не список разделов рядом. */}
         {!shownProjectId ? (
-          <Sidebar view={view} onViewChange={onViewChange} trashCount={trash.length} onOpenTrash={() => setTrashOpen(true)} />
+          <Sidebar view={view} onViewChange={onViewChange} trashCount={trashCount} />
         ) : null}
 
         <main className={styles.main}>
@@ -140,59 +120,6 @@ export function AppShell({
           </div>
         </main>
       </div>
-
-      <Modal
-        open={trashOpen}
-        onClose={() => setTrashOpen(false)}
-        title={`Корзина — ${trash.length}`}
-        size="lg"
-        footer={
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setTrashOpen(false)}>
-              Закрыть
-            </Button>
-          </Modal.Footer>
-        }
-      >
-        <Table
-          columns={[
-            { key: 'crusherName', title: 'Дробилка' },
-            { key: 'customer', title: 'Заказчик' },
-            { key: 'code', title: 'Код проекта' },
-            { key: 'date', title: 'Дата' },
-            {
-              key: 'actions',
-              title: '',
-              align: 'end',
-              render: (row) => (
-                <Stack direction="row" gap="2xs" justify="end">
-                  <Button variant="ghost" size="sm" iconStart="upload" onClick={() => onRestoreProject(row.id)}>
-                    Восстановить
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="trash"
-                    aria-label={`Удалить безвозвратно: ${row.crusherName}`}
-                    onClick={() => onPurgeProject(row.id)}
-                  />
-                </Stack>
-              ),
-            },
-          ]}
-          rows={trash}
-          rowKey={(row) => row.id}
-          caption="Удалённые проекты"
-          pinEndKey="actions"
-          empty={
-            <EmptyState
-              icon="trash"
-              title="Корзина пуста"
-              description="Удалённые проекты попадают сюда, и их можно вернуть."
-            />
-          }
-        />
-      </Modal>
     </div>
   );
 }
