@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, createProject, pickOre, seedSession, watchConsole } from './helpers';
+import { DEMO_USER, SAMPLE_PROJECT, createProject, pickOre, seedSession, watchConsole } from './helpers';
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
@@ -41,6 +41,25 @@ test.describe('Инженерный визард', () => {
 
     await drawer.getByRole('button', { name: 'Закрыть', exact: true }).click();
     await expect(drawer).toBeHidden();
+  });
+
+  test('шторка результата показывает метаданные расчёта и позволяет завести тег на месте', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат' }).click();
+
+    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    await expect(drawer.getByText('Дата расчёта')).toBeVisible();
+    // Дробилка и мощность — из каталога, по названию выбранной машины (КСД-2200Т).
+    await expect(drawer.getByText('КСД-2200Т', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('315/400 кВт', { exact: true })).toBeVisible();
+    await expect(drawer.getByText(DEMO_USER.name)).toBeVisible();
+
+    // Тег заводится прямо в шторке, тем же поповером, что и в фильтре списка проектов.
+    await drawer.getByRole('button', { name: 'Без тега' }).click();
+    await page.getByRole('button', { name: 'Новый тег' }).click();
+    await page.getByLabel('Название тега').fill('Срочный');
+    await page.getByRole('button', { name: 'Добавить' }).click();
+    await expect(drawer.getByRole('button', { name: 'Срочный', exact: true })).toBeVisible();
   });
 
   test('панель результата закрывается по Esc', async ({ page }) => {

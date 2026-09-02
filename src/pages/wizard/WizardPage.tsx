@@ -9,6 +9,7 @@ import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
 import { ResultsDrawer } from './ResultsDrawer';
 import { STEP_KEYS } from '@/domain/steps';
+import { formatDate } from '@/domain/date';
 import styles from './WizardPage.module.css';
 
 const STEP_META: Step[] = [{ label: 'Дробилка' }, { label: 'Руда' }, { label: 'Продукт' }];
@@ -75,9 +76,13 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   const confirmFork = () => {
     if (!pendingFork) return;
     const nextCalc = [...project.calc] as Project['calc'];
+    const nextCalcDates = [...project.calcDates] as Project['calcDates'];
     // Форк начинает расчёт заново с изменённого шага: посчитанное дальше
     // относилось к прежним данным и не может остаться отмеченным как есть.
-    for (let i = pendingFork.calcIndex; i < nextCalc.length; i += 1) nextCalc[i] = false;
+    for (let i = pendingFork.calcIndex; i < nextCalc.length; i += 1) {
+      nextCalc[i] = false;
+      nextCalcDates[i] = null;
+    }
 
     // Снимок «Дельта» держится только для шага, который остался посчитанным:
     // форк с изменённого шага и дальше сбрасывает `calc` (выше), и снимок,
@@ -85,6 +90,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     const forked = onForkProject(project.id, {
       ...pendingFork.patch,
       calc: nextCalc,
+      calcDates: nextCalcDates,
       geomBaseline: pendingFork.calcIndex <= 0 ? null : project.geomBaseline,
       granBaseline: pendingFork.calcIndex <= 1 ? null : project.granBaseline,
       prodBaseline: pendingFork.calcIndex <= 2 ? null : project.prodBaseline,
@@ -124,8 +130,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   const runCalc = () => {
     const nextCalc = [...project.calc] as Project['calc'];
     nextCalc[step] = true;
+    const nextCalcDates = [...project.calcDates] as Project['calcDates'];
+    nextCalcDates[step] = formatDate();
     onUpdateProject(project.id, {
       calc: nextCalc,
+      calcDates: nextCalcDates,
       // Снимок шага на момент расчёта — опора для режима отображения
       // «Дельта»: он сравнивает текущие поля с тем, что было в форме
       // в момент именно этого расчёта.
@@ -191,7 +200,13 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
       {/* Рендерится безусловно, как `Modal`/`Popover` в остальном приложении —
           снятие панели отдаём целиком компоненту дизайн-системы, а не гасим
           её снаружи ещё раз. */}
-      <ResultsDrawer open={resultOpen} onClose={() => setResultOpen(false)} stepKey={resultStep} project={project} />
+      <ResultsDrawer
+        open={resultOpen}
+        onClose={() => setResultOpen(false)}
+        stepKey={resultStep}
+        project={project}
+        onUpdateProject={onUpdateProject}
+      />
 
       {/* Живёт здесь, а не внутри `GranStep`: переход на шаг «Руда» без
           выбранной пробы должен открыть это окно поверх шага «Дробилка»,

@@ -40,6 +40,7 @@ export function buildSampleProjects(): Project[] {
     // Расчёт по трём шагам считается выполненным у части примеров —
     // чтобы в списке были видны и посчитанные проекты, и начатые.
     const calcDone = i % 3 !== 2;
+    const date = pastDate(i * 2 + 1);
 
     return {
       id: `sample-${i}`,
@@ -52,12 +53,13 @@ export function buildSampleProjects(): Project[] {
       oreNames: [ore.name],
       code: `П-${10231 + i * 3}`,
       tag: TAGS[i % TAGS.length],
-      date: pastDate(i * 2 + 1),
+      date,
       executor: EXECUTORS[i % EXECUTORS.length],
       oreIn: specs['F95, мм'] ? `${specs['F95, мм']} мм (F95)` : '—',
       oreOut: specs['S, мм'] ? `${specs['S, мм']} мм` : '—',
       throughput: specs['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: calcDone ? [true, true, true] : [true, false, false],
+      calcDates: calcDone ? [date, date, date] : [date, null, null],
       data: defaultWizardData(),
       // Шаг «Геометрия» у примеров всегда посчитан (первый элемент `calc`
       // всегда `true`) — снимок делаем от тех же значений, что и в форме,
