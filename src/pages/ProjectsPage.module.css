@@ -186,31 +186,6 @@
   justify-content: flex-end;
 }
 
-/**
- * Образец цвета в сборе тега. Кнопка без собственного вида: показывает она
- * сам тег, а своя рамка вокруг него читалась бы как часть тега.
- * Выбранный отмечается кольцом — тем же, что и фокус, но акцентным.
- */
-.swatch {
-  display: inline-flex;
-  padding: 0;
-
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.swatch:focus-visible {
-  outline: var(--border-strong) solid var(--color-focus-ring);
-  outline-offset: var(--space-2xs);
-}
-
-.swatch[aria-pressed='true'] {
-  outline: var(--border-strong) solid var(--color-accent);
-  outline-offset: var(--space-2xs);
-}
-
 /** Сегмент «Заказчики /» в заголовке-крошке — приглушённый, имя заказчика остаётся обычным цветом текста. */
 .breadcrumbMuted {
   color: var(--color-text-muted);

@@ -3,6 +3,7 @@ import type { GeomData, ProdData, Project, ProjectMode, WizardData } from '@/typ
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { CRUSHERS } from '@/data/crushers';
+import { formatDate } from '@/domain/date';
 
 const STORAGE_KEY = 'uztm-projects';
 
@@ -19,11 +20,13 @@ const STORAGE_KEY = 'uztm-projects';
  * Версия 8 — `granBaseline`, `prodBaseline`: тот же снимок для «Дельта», что
  * `geomBaseline`, но для шагов «Грансостав» и «Продукт» — раньше режим
  * существовал только на «Геометрии».
+ * Версия 9 — `calcDates`: дата и время расчёта каждого шага отдельно от
+ * даты заведения проекта (`date`), для метаданных в шторке результата.
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -56,36 +59,58 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 8) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcDatesV9), trash, seeded });
+    }
     if (payload.version === 7) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV8), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateBaselineV8).map(migrateCalcDatesV9), trash, seeded });
     }
     if (payload.version === 6) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 5) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
+        projects: payload.projects.map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9),
         trash,
         seeded,
       });
     }
     if (payload.version === 4) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
+        projects: payload.projects
+          .map(migrateGeomV5)
+          .map(migrateBaselineV6)
+          .map(migrateModeV7)
+          .map(migrateBaselineV8)
+          .map(migrateCalcDatesV9),
         trash,
         seeded,
       });
     }
     if (payload.version === 3) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
+        projects: payload.projects
+          .map(migrateGeomV5)
+          .map(migrateBaselineV6)
+          .map(migrateModeV7)
+          .map(migrateBaselineV8)
+          .map(migrateCalcDatesV9),
         trash,
         seeded,
       });
     }
     if (payload.version === 2) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateGeomV5).map(migrateBaselineV6).map(migrateModeV7).map(migrateBaselineV8),
+        projects: payload.projects
+          .map(migrateGeomV5)
+          .map(migrateBaselineV6)
+          .map(migrateModeV7)
+          .map(migrateBaselineV8)
+          .map(migrateCalcDatesV9),
         trash,
         seeded: false,
       });
@@ -97,7 +122,8 @@ function readState(): StoredState {
           .map(migrateGeomV5)
           .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8),
+          .map(migrateBaselineV8)
+          .map(migrateCalcDatesV9),
         trash,
         seeded: false,
       });
@@ -171,6 +197,21 @@ function migrateBaselineV8(project: Project): Project {
 }
 
 /**
+ * До версии 9 у проекта не было `calcDates`. Шаг, уже отмеченный посчитанным
+ * (`calc[i]`), получает дату самого проекта — точнее взять неоткуда, а
+ * оставить пустой рядом с «Рассчитано» в шторке выглядело бы как баг, а не
+ * как «неизвестно когда». Непосчитанный шаг остаётся `null`, как и раньше.
+ */
+function migrateCalcDatesV9(project: Project): Project {
+  const legacy = project as Partial<Pick<Project, 'calcDates'>> & Project;
+  if (legacy.calcDates) return project;
+  return {
+    ...project,
+    calcDates: project.calc.map((done) => (done ? project.date : null)) as Project['calcDates'],
+  };
+}
+
+/**
  * До версии 7 у проекта не было `mode`/`crusherNames`/`oreNames` — все
  * записи были инженерными с одной дробилкой и одной пробой, поэтому
  * получают `mode: 'engineering'` и списки из того, что уже стояло
@@ -200,13 +241,6 @@ function writeState(state: StoredState): void {
 
 function makeId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-/** Дата с точностью до минуты — как `nowStamp()` в прототипе. */
-function formatDate(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
 /**
@@ -266,6 +300,7 @@ export function useProjects() {
       oreOut: specs?.['S, мм'] ? `${specs['S, мм']} мм` : '—',
       throughput: specs?.['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: [false, false, false],
+      calcDates: [null, null, null],
       data: input.data,
       geomBaseline: null,
       granBaseline: null,
