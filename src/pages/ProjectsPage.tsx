@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Box,
   Button,
   Cell,
   DatePicker,
@@ -52,14 +51,15 @@ export type ProjectsPageProps = {
   onOpenProject: (project: Project) => void;
   onRemoveProject: (id: string) => void;
   onNewProject: () => void;
-  /**
-   * Заказчик, с которого перешли со страницы «Заказчики» — фильтр
-   * применяется один раз при появлении экрана и тут же сбрасывается
-   * наружу (`onConsumeInitialCustomerFilter`), чтобы обычный переход
-   * на «Проекты» из сайдбара не приносил чужой фильтр из прошлого раза.
-   */
+  /** Заказчик, с которого перешли со страницы «Заказчики» — сеет фильтр один раз при появлении экрана. */
   initialCustomerFilter?: string | null;
-  onConsumeInitialCustomerFilter?: () => void;
+  /**
+   * Живое значение применённого фильтра «Заказчик» — наружу, а не только
+   * внутрь: сайдбар подсвечивает «Заказчики», пока этот фильтр применён
+   * (см. `App.tsx`), и обязан узнавать о его смене что при заходе со
+   * страницы заказчиков, что при ручном выборе или сбросе прямо здесь.
+   */
+  onCustomerFilterChange?: (customer: string | null) => void;
 };
 
 /**
@@ -89,7 +89,7 @@ export function ProjectsPage({
   onRemoveProject,
   onNewProject,
   initialCustomerFilter,
-  onConsumeInitialCustomerFilter,
+  onCustomerFilterChange,
 }: ProjectsPageProps) {
   /* Теги и их цвета живут отдельно от проектов: цвет заводят один раз,
      и он не должен пропадать вместе с последним проектом, где тег стоял. */
@@ -103,14 +103,21 @@ export function ProjectsPage({
   const [date, setDate] = useState('');
   const [sort, setSort] = useState<TableSort | null>({ key: 'date', direction: 'desc' });
 
-  // Заказчик из «Заказчики» приходит один раз, каждым переходом заново —
-  // применяем и сразу сообщаем наружу, что фильтр принят, иначе обычное
-  // переключение на «Проекты» из сайдбара приносило бы вчерашний фильтр.
+  // Заказчик из «Заказчики» — только сев для фильтра при заходе; дальше
+  // фильтром управляет обычная строка над таблицей, как и любым другим.
   useEffect(() => {
     if (!initialCustomerFilter) return;
     setCustomer(initialCustomerFilter);
-    onConsumeInitialCustomerFilter?.();
-  }, [initialCustomerFilter, onConsumeInitialCustomerFilter]);
+  }, [initialCustomerFilter]);
+
+  // Наружу — при любой смене, не только при сеянии: сайдбар подсвечивает
+  // «Заказчики», пока этот фильтр применён, и должен узнавать и о ручном
+  // выборе в строке фильтров, и о сбросе. `onCustomerFilterChange` не в
+  // зависимостях намеренно: это инлайн-колбэк из App.tsx, и добавлять его
+  // сюда значило бы дёргать эффект на каждый чужой ре-рендер без надобности.
+  useEffect(() => {
+    onCustomerFilterChange?.(customer || null);
+  }, [customer]);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -449,24 +456,28 @@ export function ProjectsPage({
 
   return (
     <>
-      {/* `paddingX`+`paddingY`, а не единый `padding`: в этой версии `Box`
-          проп `padding` сам себя гасит — компонент дописывает в объект стиля
-          `paddingLeft/Right/Top/Bottom: undefined`, и React применяет их
-          после шорткода, обнуляя уже поставленный отступ. `paddingX`/`paddingY`
-          через тот же баг не проходят, потому что заполняют как раз те самые
-          длинные свойства. Заявка в дизайн-систему подана отдельно. */}
       <div className={styles.root}>
         <div className={styles.page}>
           {/* Заголовок и панель фильтров стоят вне скролл-зоны — прокручивается
               только таблица ниже (`.scroll`), как и на шагах визарда. */}
-          <Box paddingX="2xl" paddingY="2xl" fullWidth>
+          <div className={styles.header}>
             <Stack gap="xl" direction="column">
-              {/* Заказчик из фильтра — тем же заголовком: пришли ли сюда со
-                  страницы «Заказчики» или выбрали его прямо в строке
-                  фильтров, экран в обоих случаях показывает проекты именно
-                  этого заказчика, а не общий список. */}
+              {/* Заказчик из фильтра — хлебной крошкой в заголовке, а не
+                  заменой ему: пришли ли сюда со страницы «Заказчики» или
+                  выбрали его прямо в строке фильтров, экран в обоих случаях
+                  показывает проекты именно этого заказчика, и крошка это
+                  называет. Один `<h1>`, а не два соседних текста — иначе
+                  скринридер объявит два безымянных заголовка вместо одного. */}
               <Text variant="headingMd" as="h1">
-                {customer !== NONE ? customer : 'Проекты'}
+                {customer !== NONE ? (
+                  <>
+                    <span className={styles.breadcrumbMuted}>Заказчики</span>
+                    <span className={styles.breadcrumbMuted}> / </span>
+                    {customer}
+                  </>
+                ) : (
+                  'Проекты'
+                )}
               </Text>
 
               {projects.length > 0 ? (
@@ -514,7 +525,7 @@ export function ProjectsPage({
                 </div>
               ) : null}
             </Stack>
-          </Box>
+          </div>
 
           <div className={styles.scroll}>
             <div className={styles.tableWrap}>

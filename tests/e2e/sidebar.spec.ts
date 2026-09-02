@@ -32,19 +32,27 @@ test.describe('Сайдбар', () => {
     console_.assertClean();
   });
 
-  test('строка заказчика ведёт на «Проекты», отфильтрованные на него, и меняет заголовок', async ({ page }) => {
+  test('строка заказчика ведёт на «Проекты», отфильтрованные на него, меняет заголовок на хлебную крошку и подсвечивает «Заказчики»', async ({ page }) => {
     await page.getByRole('button', { name: 'Заказчики' }).click();
     await page.getByRole('row', { name: /ЕВРАЗ КГОК/ }).click();
 
-    // Заголовок экрана — имя заказчика, а не общее «Проекты»: ясно, что
-    // список сейчас показывает именно его историю, а не весь список сразу.
-    await expect(page.getByRole('heading', { name: 'ЕВРАЗ КГОК', exact: true })).toBeVisible();
+    // Заголовок экрана — хлебная крошка «Заказчики / ЕВРАЗ КГОК», а не общее
+    // «Проекты»: ясно, что список сейчас показывает именно его историю,
+    // а не весь список сразу, и откуда сюда пришли.
+    const heading = page.getByRole('heading', { name: 'Заказчики / ЕВРАЗ КГОК' });
+    await expect(heading).toBeVisible();
     await expect(page.getByRole('button', { name: 'ЕВРАЗ КГОК', exact: true })).toBeVisible();
     const rows = page.getByRole('row').filter({ hasNotText: 'Дробилка' });
     const count = await rows.count();
     for (let i = 0; i < count; i += 1) {
       await expect(rows.nth(i)).toContainText('ЕВРАЗ КГОК');
     }
+
+    // Раздел контента — список проектов, но в сайдбаре по-прежнему подсвечен
+    // «Заказчики» (проп `selected` у `Cell`): пользователь пришёл сюда именно
+    // оттуда и не «потерялся».
+    await expect(page.getByRole('button', { name: 'Заказчики' })).toHaveClass(/selected/);
+    await expect(page.getByRole('button', { name: 'Проекты' })).not.toHaveClass(/selected/);
   });
 
   test('корзина открывается из сайдбара', async ({ page }) => {

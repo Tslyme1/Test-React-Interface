@@ -63,8 +63,15 @@ export function App() {
   const [view, setView] = useState<SidebarView>('projects');
   /** Режим следующего нового проекта — задаётся переключателем в «Профиле». */
   const [defaultMode, setDefaultMode] = useState<ProjectMode>('engineering');
-  /** Заказчик, с которого перешли со страницы «Заказчики» — на один переход. */
+  /**
+   * Заказчик, из которого провалились со страницы «Заказчики» — держится,
+   * пока список проектов им отфильтрован, а не на один переход: пока фильтр
+   * активен, в сайдбаре должен подсвечиваться пункт «Заказчики», а не
+   * «Проекты», хотя сам список рисует `ProjectsPage`.
+   */
   const [customerFilter, setCustomerFilter] = useState<string | null>(null);
+  /** Пункт сайдбара с поправкой на «мы всё ещё внутри заказчика». */
+  const sidebarView: SidebarView = customerFilter !== null ? 'customers' : view;
 
   if (!user) {
     return (
@@ -102,10 +109,17 @@ export function App() {
     setProjectShown(false);
   };
 
-  /** Переход по сайдбару — раздел приложения, а не открытый проект: вкладка проекта остаётся, но с глаз уходит. */
+  /**
+   * Переход по сайдбару — раздел приложения, а не открытый проект: вкладка
+   * проекта остаётся, но с глаз уходит. Клик по сайдбару всегда осознанный
+   * уход из текущего места, поэтому попутно снимает фильтр по заказчику —
+   * иначе клик по «Проекты» из отфильтрованного списка не отличался бы
+   * от простого пролистывания той же страницы.
+   */
   const goView = (next: SidebarView) => {
     setView(next);
     setProjectShown(false);
+    setCustomerFilter(null);
   };
 
   const startNewProject = () => {
@@ -128,7 +142,7 @@ export function App() {
           activeProject ? (name) => updateProject(activeProject.id, { name }) : undefined
         }
         onNewProject={startNewProject}
-        view={view}
+        view={sidebarView}
         onViewChange={goView}
         trash={trash}
         onRestoreProject={restoreProject}
@@ -146,8 +160,15 @@ export function App() {
           <CustomersPage
             projects={projects}
             onOpenCustomer={(customer) => {
+              /*
+               * Не через `goView`: тот всегда снимает фильтр по заказчику,
+               * а сюда мы как раз его ставим. Раздел контента переключается
+               * на «Проекты» (`view`), а сайдбар всё равно подсветит
+               * «Заказчики» — это делает `sidebarView` выше, глядя на сам
+               * `customerFilter`, а не на `view`.
+               */
+              setView('projects');
               setCustomerFilter(customer);
-              goView('projects');
             }}
           />
         ) : view === 'profile' ? (
@@ -164,7 +185,7 @@ export function App() {
             }}
             onNewProject={startNewProject}
             initialCustomerFilter={customerFilter}
-            onConsumeInitialCustomerFilter={() => setCustomerFilter(null)}
+            onCustomerFilterChange={setCustomerFilter}
           />
         )}
       </AppShell>

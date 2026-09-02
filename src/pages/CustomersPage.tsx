@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Box, EmptyState, Input, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import { EmptyState, Input, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn, TableSort } from '@uralmash/design-system';
 import type { Project } from '@/types';
 import styles from './CustomersPage.module.css';
@@ -101,7 +101,7 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
   return (
     <div className={styles.root}>
       <div className={styles.page}>
-        <Box paddingX="2xl" paddingY="2xl" fullWidth>
+        <div className={styles.header}>
           <Stack gap="xl" direction="column">
             <Text variant="headingMd" as="h1">
               Заказчики
@@ -119,7 +119,7 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
               </div>
             ) : null}
           </Stack>
-        </Box>
+        </div>
 
         <div className={styles.scroll}>
           <div className={styles.tableWrap}>
