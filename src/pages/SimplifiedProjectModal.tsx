@@ -195,9 +195,15 @@ export function SimplifiedProjectModal({
   // режиме и так короткое, и степпер сверху отрывал шаг от кнопки,
   // которая его подтверждает. `aside` — ровно то место, что система
   // отвела второстепенному содержимому слева от действий футера.
-  const stepperAside = project ? (
+  //
+  // Показан и до создания проекта — на первом шаге, когда выбираются
+  // дробилки: без него казалось, что степпер появляется только на втором
+  // шаге, а на самом деле он просто не был передан в футер для этой ветки.
+  // «Руда» и «Продукт» отключены до создания — `available` возвращает
+  // `i === 0`, пока проекта ещё нет.
+  const stepperAside = (
     <Stepper steps={STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }))} current={step} onStepClick={goToStep} />
-  ) : null;
+  );
 
   return (
     <Modal
@@ -207,7 +213,7 @@ export function SimplifiedProjectModal({
       size="lg"
       footer={
         !project ? (
-          <Modal.Footer>
+          <Modal.Footer aside={stepperAside}>
             <div className={styles.footerFields}>
               <div className={styles.footerField}>
                 <Field label="Название проекта" variant="floating" required>

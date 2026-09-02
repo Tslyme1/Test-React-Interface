@@ -45,7 +45,15 @@ test.describe('Сайдбар', () => {
     // а не весь список сразу, и откуда сюда пришли.
     const heading = page.getByRole('heading', { name: 'Заказчики / ЕВРАЗ КГОК' });
     await expect(heading).toBeVisible();
-    await expect(page.getByRole('button', { name: 'ЕВРАЗ КГОК', exact: true })).toBeVisible();
+
+    // Фильтр «Заказчик» скрыт: заказчик и так назван хлебной крошкой,
+    // а рядом висящий селект с тем же значением только путал. Уточнение
+    // по `aria-haspopup` отделяет селект-фильтр от одноимённой кнопки
+    // сортировки в шапке таблицы — та тоже называется «Заказчик».
+    await expect(
+      page.getByRole('button', { name: 'Заказчик', exact: true }).and(page.locator('[aria-haspopup="listbox"]'))
+    ).toHaveCount(0);
+
     const rows = page.getByRole('row').filter({ hasNotText: 'Дробилка' });
     const count = await rows.count();
     for (let i = 0; i < count; i += 1) {
@@ -59,12 +67,16 @@ test.describe('Сайдбар', () => {
     await expect(page.getByRole('button', { name: 'Проекты' })).not.toHaveClass(/selected/);
   });
 
-  test('корзина открывается из сайдбара', async ({ page }) => {
+  test('корзина открывается из сайдбара отдельным экраном', async ({ page }) => {
     await page.getByRole('button', { name: /Действия:/ }).first().click();
     await page.getByRole('button', { name: 'Удалить в корзину' }).click();
 
     await page.getByRole('button', { name: /Корзина/ }).click();
-    await expect(page.getByRole('dialog', { name: /Корзина/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Корзина', exact: true })).toBeVisible();
+    await expect(page.getByText('Удалённые проекты: 1')).toBeVisible();
+
+    // Раздел, а не окно поверх списка: сайдбар подсвечивает «Корзину».
+    await expect(page.getByRole('button', { name: /Корзина/ })).toHaveClass(/selected/);
   });
 
   test('«Профиль» и «Корзина» стоят внизу списка, «Проекты» и «Заказчики» — вверху', async ({ page }) => {

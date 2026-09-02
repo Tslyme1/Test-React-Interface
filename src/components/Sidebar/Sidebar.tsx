@@ -1,13 +1,12 @@
 import { Box, Cell, Icon, Stack, Text } from '@uralmash/design-system';
 import styles from './Sidebar.module.css';
 
-export type SidebarView = 'projects' | 'customers' | 'profile';
+export type SidebarView = 'projects' | 'customers' | 'profile' | 'trash';
 
 export type SidebarProps = {
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
   trashCount: number;
-  onOpenTrash: () => void;
 };
 
 /**
@@ -26,7 +25,7 @@ export type SidebarProps = {
  * есть в `AppShell.module.css` (`var(--color-surface)`, `var(--color-border)`
  * напрямую в CSS-модуле), только по правому краю, а не со всех сторон.
  */
-export function Sidebar({ view, onViewChange, trashCount, onOpenTrash }: SidebarProps) {
+export function Sidebar({ view, onViewChange, trashCount }: SidebarProps) {
   return (
     <div className={styles.sidebar}>
       <Box paddingX="sm" paddingY="lg" fullWidth>
@@ -68,7 +67,8 @@ export function Sidebar({ view, onViewChange, trashCount, onOpenTrash }: Sidebar
                 </Text>
               ) : null
             }
-            onClick={onOpenTrash}
+            selected={view === 'trash'}
+            onClick={() => onViewChange('trash')}
           >
             Корзина
           </Cell>

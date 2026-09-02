@@ -61,7 +61,7 @@ export type SeedOptions = {
 };
 
 /** Версия формата хранилища проектов. Должна совпадать с `useProjects`. */
-const PROJECTS_SCHEMA_VERSION = 8;
+const PROJECTS_SCHEMA_VERSION = 10;
 
 /**
  * Быстрый вход: сессия кладётся в localStorage до загрузки страницы.
@@ -238,8 +238,8 @@ export async function removeFirstProject(page: Page) {
   await page.getByRole('button', { name: 'Удалить в корзину' }).click();
 }
 
-/** Открывает окно корзины из пункта «Корзина» в сайдбаре. */
+/** Переходит на экран корзины из пункта «Корзина» в сайдбаре. */
 export async function openTrash(page: Page) {
   await page.getByRole('button', { name: /Корзина/ }).click();
-  await expect(page.getByRole('dialog', { name: /Корзина/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Корзина', exact: true })).toBeVisible();
 }

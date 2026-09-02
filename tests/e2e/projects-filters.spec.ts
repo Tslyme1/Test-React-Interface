@@ -264,7 +264,7 @@ test.describe('Корзина', () => {
     await expect(page.getByText(/Проекты: 17 из 17/)).toBeVisible();
 
     await openTrash(page);
-    await expect(page.getByRole('dialog', { name: 'Корзина — 1' })).toBeVisible();
+    await expect(page.getByText('Удалённые проекты: 1')).toBeVisible();
   });
 
   test('восстановление возвращает проект в список', async ({ page }) => {
@@ -274,9 +274,7 @@ test.describe('Корзина', () => {
     await page.getByRole('button', { name: 'Восстановить' }).click();
     await expect(page.getByText('Корзина пуста')).toBeVisible();
 
-    // Esc, а не кнопка: «Закрыть» есть и у крестика окна, и в футере,
-    // и по имени они неразличимы. Заодно проверяется закрытие с клавиатуры.
-    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Проекты' }).click();
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
   });
 
@@ -287,9 +285,7 @@ test.describe('Корзина', () => {
     await page.getByRole('button', { name: /^Удалить безвозвратно:/ }).click();
     await expect(page.getByText('Корзина пуста')).toBeVisible();
 
-    // Esc, а не кнопка: «Закрыть» есть и у крестика окна, и в футере,
-    // и по имени они неразличимы. Заодно проверяется закрытие с клавиатуры.
-    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Проекты' }).click();
     await expect(page.getByText(/Проекты: 17 из 17/)).toBeVisible();
   });
 
@@ -298,7 +294,7 @@ test.describe('Корзина', () => {
     await page.reload();
 
     await openTrash(page);
-    await expect(page.getByRole('dialog', { name: 'Корзина — 1' })).toBeVisible();
+    await expect(page.getByText('Удалённые проекты: 1')).toBeVisible();
   });
 
   test('пустая корзина объясняет, что удалённое не пропадает сразу', async ({ page }) => {

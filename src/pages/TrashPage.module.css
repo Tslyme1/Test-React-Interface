@@ -1,0 +1,36 @@
+/** Тот же приём, что в `ProjectsPage.module.css`/`CustomersPage.module.css`: скроллится только таблица. */
+.root {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--space-2xl) var(--space-2xl) var(--space-sm);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.tableWrap {
+  padding: 0 var(--space-2xl) var(--space-2xl);
+}

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { EmptyState, Input, Stack, Table, Tag, Text } from '@uralmash/design-system';
-import type { TableColumn, TableSort } from '@uralmash/design-system';
+import { Button, EmptyState, Input, Select, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import type { SelectOption, TableColumn, TableSort } from '@uralmash/design-system';
 import type { Project } from '@/types';
 import { useTags } from '@/state/useTags';
 import styles from './CustomersPage.module.css';
@@ -8,6 +8,13 @@ import styles from './CustomersPage.module.css';
 export type CustomersPageProps = {
   projects: Project[];
   onOpenCustomer: (customer: string) => void;
+  /**
+   * Заказчика отдельной сущностью система не заводит (см. комментарий у
+   * `CustomersPage` ниже) — «новый заказчик» здесь означает «новый проект
+   * с ещё не встречавшимся именем заказчика», то есть тот же вход, что
+   * и кнопка «Новый проект» на «Проектах».
+   */
+  onNewProject: () => void;
 };
 
 type CustomerRow = {
@@ -18,6 +25,16 @@ type CustomerRow = {
   lastDate: string;
   lastDateMs: number;
 };
+
+const NONE = '';
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
+function toOptions(values: string[]): SelectOption[] {
+  return values.map((v) => ({ value: v, label: v }));
+}
 
 /**
  * Дата проекта хранится строкой «ДД.ММ.ГГГГ ЧЧ:ММ» (см. `formatDate` в
@@ -43,9 +60,7 @@ function buildCustomerRows(projects: Project[]): CustomerRow[] {
 
   return [...byCustomer.entries()].map(([customer, rows]) => {
     const executors = [...new Set(rows.map((r) => r.executor))].sort((a, b) => a.localeCompare(b, 'ru'));
-    const tags = [...new Set(rows.map((r) => r.tag).filter((t): t is string => Boolean(t)))].sort((a, b) =>
-      a.localeCompare(b, 'ru')
-    );
+    const tags = [...new Set(rows.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b, 'ru'));
     const latest = rows.reduce((max, r) => Math.max(max, parseProjectDate(r.date)), 0);
     const latestRow = rows.find((r) => parseProjectDate(r.date) === latest);
     return {
@@ -66,17 +81,31 @@ function buildCustomerRows(projects: Project[]): CustomerRow[] {
  * этого заказчика, — сравнивать его историю удобнее в той же таблице,
  * где сравнивают и все остальные проекты, а не в отдельной урезанной копии.
  */
-export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) {
+export function CustomersPage({ projects, onOpenCustomer, onNewProject }: CustomersPageProps) {
   /* Цвет тега — тот же справочник, что красит теги на «Проектах»: один
      и тот же тег обязан выглядеть одинаково на обоих экранах. */
   const { colorOf } = useTags();
   const [search, setSearch] = useState('');
+  const [executor, setExecutor] = useState<string>(NONE);
+  const [tag, setTag] = useState<string>(NONE);
   const [sort, setSort] = useState<TableSort | null>({ key: 'lastDateMs', direction: 'desc' });
+
+  const executorOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.executor))), [projects]);
+  const tagOptions = useMemo(() => toOptions(uniqueSorted(projects.flatMap((p) => p.tags))), [projects]);
 
   const rows = useMemo(() => {
     const all = buildCustomerRows(projects);
     const query = search.trim().toLowerCase();
-    const filtered = query ? all.filter((r) => r.customer.toLowerCase().includes(query)) : all;
+
+    const filtered = all.filter((r) => {
+      if (query && !r.customer.toLowerCase().includes(query)) return false;
+      // Отбор по своду заказчика — «хотя бы у одного его проекта есть этот
+      // исполнитель/тег», а не «у всех сразу»: заказчик — общая история
+      // проектов, и исполнитель/тег ищут в ней, а не в единственной записи.
+      if (executor !== NONE && !r.executors.includes(executor)) return false;
+      if (tag !== NONE && !r.tags.includes(tag)) return false;
+      return true;
+    });
 
     if (!sort) return filtered;
     const sorted = [...filtered].sort((a, b) => {
@@ -86,7 +115,7 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
       return String(a[sort.key as keyof CustomerRow]).localeCompare(String(b[sort.key as keyof CustomerRow]), 'ru');
     });
     return sort.direction === 'desc' ? sorted.reverse() : sorted;
-  }, [projects, search, sort]);
+  }, [projects, search, executor, tag, sort]);
 
   const columns: TableColumn<CustomerRow>[] = [
     { key: 'customer', title: 'Заказчик', sortable: true },
@@ -131,14 +160,42 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
             </Text>
 
             {projects.length > 0 ? (
-              <div className={styles.searchBar}>
-                <Input
-                  fullWidth
-                  aria-label="Поиск по заказчикам"
-                  placeholder="Поиск…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className={styles.filters}>
+                <div className={styles.filterItem}>
+                  <Select
+                    fullWidth
+                    options={executorOptions}
+                    placeholder="Исполнитель"
+                    value={executor || null}
+                    onChange={(v) => setExecutor((v as string | null) ?? NONE)}
+                    searchable
+                  />
+                </div>
+                <div className={styles.filterItem}>
+                  <Select
+                    fullWidth
+                    options={tagOptions}
+                    placeholder="Тег"
+                    value={tag || null}
+                    onChange={(v) => setTag((v as string | null) ?? NONE)}
+                  />
+                </div>
+
+                <div className={styles.searchBar}>
+                  <Input
+                    fullWidth
+                    aria-label="Поиск по заказчикам"
+                    placeholder="Поиск…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.filterActions}>
+                  <Button variant="primary" iconStart="plus" onClick={onNewProject}>
+                    Новый заказчик
+                  </Button>
+                </div>
               </div>
             ) : null}
           </Stack>
@@ -161,7 +218,20 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
                   <EmptyState
                     icon="search"
                     title="Ничего не найдено"
-                    description="Измените запрос — заказчик под другим именем в списке может найтись."
+                    description="Измените условия отбора или сбросьте фильтры."
+                    action={
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setSearch('');
+                          setExecutor(NONE);
+                          setTag(NONE);
+                        }}
+                      >
+                        Сбросить фильтры
+                      </Button>
+                    }
                   />
                 }
               />
@@ -170,6 +240,11 @@ export function CustomersPage({ projects, onOpenCustomer }: CustomersPageProps) 
                 icon="users"
                 title="Заказчиков пока нет"
                 description="Они появятся здесь, как только в проектах будет указан заказчик."
+                action={
+                  <Button variant="primary" iconStart="plus" onClick={onNewProject}>
+                    Новый проект
+                  </Button>
+                }
               />
             )}
           </div>

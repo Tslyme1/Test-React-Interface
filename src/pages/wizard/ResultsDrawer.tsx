@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Badge, Button, Drawer, Select, Stack, Table, Tag, Text } from '@uralmash/design-system';
-import type { SelectOption, TableColumn } from '@uralmash/design-system';
+import { useState } from 'react';
+import { Badge, Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGran, estimateProd } from '@/domain/estimates';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
@@ -35,6 +36,82 @@ function MetaField({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
+/**
+ * Теги проекта — сами метки в ряд, а не селект с их именами: метки этого
+ * проекта видны сразу, без открытия панели, и снимаются прямо на месте
+ * (`Tag.onRemove`). Добавление — отдельной кнопкой «+»: она открывает тот
+ * же список, что и `Select multiple`, тем же приёмом (`Cell` с флажком),
+ * но без вечно пустого поля-триггера, которое здесь нечем было бы
+ * подписать — тегов может быть и три, и ни одного.
+ */
+function TagsField({ project, onUpdateProject }: { project: Project; onUpdateProject: (id: string, patch: Partial<Project>) => void }) {
+  const { tags, colorOf, addTag } = useTags();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const toggleTag = (name: string) => {
+    const next = project.tags.includes(name) ? project.tags.filter((t) => t !== name) : [...project.tags, name];
+    onUpdateProject(project.id, { tags: next });
+  };
+
+  return (
+    <Stack direction="row" gap="2xs" wrap align="center">
+      {project.tags.map((name) => (
+        <Tag key={name} color={colorOf(name)} onRemove={() => toggleTag(name)}>
+          {name}
+        </Tag>
+      ))}
+
+      <Popover
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        placement="bottom-start"
+        width="sm"
+        trigger={
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="plus"
+            aria-label="Добавить тег"
+            onClick={() => setPickerOpen((v) => !v)}
+          />
+        }
+        footer={
+          <NewTagButton
+            onCreate={(name, color) => {
+              // Заведённый здесь тег сразу становится тегом этого проекта —
+              // в отличие от фильтра списка проектов, где «Новый тег» только
+              // заполняет справочник. Здесь заводят тег ради конкретного
+              // проекта в руках.
+              const created = addTag(name, color);
+              if (created) onUpdateProject(project.id, { tags: [...project.tags, name] });
+              return created;
+            }}
+          />
+        }
+      >
+        <Stack direction="column" gap="none">
+          {tags.map((t) => {
+            const checked = project.tags.includes(t.name);
+            return (
+              <Cell
+                key={t.name}
+                size="sm"
+                role="option"
+                aria-selected={checked}
+                selected={checked}
+                trailing={<Checkbox checked={checked} readOnly tabIndex={-1} />}
+                onClick={() => toggleTag(t.name)}
+              >
+                <Tag color={t.color}>{t.name}</Tag>
+              </Cell>
+            );
+          })}
+        </Stack>
+      </Popover>
+    </Stack>
+  );
+}
+
 export function ResultsDrawer({
   open,
   onClose,
@@ -48,14 +125,7 @@ export function ResultsDrawer({
   project: Project;
   onUpdateProject: (id: string, patch: Partial<Project>) => void;
 }) {
-  const { tags, addTag } = useTags();
   const power = CRUSHERS.find((c) => c.name === project.crusherName)?.values['N, кВт'];
-
-  const tagOptions: SelectOption[] = tags.map((t) => ({
-    value: t.name,
-    label: t.name,
-    content: <Tag color={t.color}>{t.name}</Tag>,
-  }));
 
   return (
     <Drawer
@@ -94,27 +164,8 @@ export function ResultsDrawer({
           <MetaField label="Исполнитель">
             <Text variant="body">{project.executor}</Text>
           </MetaField>
-          <MetaField label="Тег">
-            <Select
-              size="sm"
-              options={tagOptions}
-              placeholder="Без тега"
-              value={project.tag}
-              onChange={(v) => onUpdateProject(project.id, { tag: v as string | null })}
-              footer={
-                <NewTagButton
-                  onCreate={(name, color) => {
-                    // Заведённый здесь тег сразу становится тегом этого
-                    // проекта — в отличие от фильтра списка проектов, где
-                    // «Новый тег» только заполняет справочник, а не отбор.
-                    // Здесь заводят тег ради конкретного проекта в руках.
-                    const created = addTag(name, color);
-                    if (created) onUpdateProject(project.id, { tag: name });
-                    return created;
-                  }}
-                />
-              }
-            />
+          <MetaField label="Теги">
+            <TagsField project={project} onUpdateProject={onUpdateProject} />
           </MetaField>
         </Stack>
 

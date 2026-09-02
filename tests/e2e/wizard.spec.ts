@@ -54,12 +54,32 @@ test.describe('Инженерный визард', () => {
     await expect(drawer.getByText('315/400 кВт', { exact: true })).toBeVisible();
     await expect(drawer.getByText(DEMO_USER.name)).toBeVisible();
 
-    // Тег заводится прямо в шторке, тем же поповером, что и в фильтре списка проектов.
-    await drawer.getByRole('button', { name: 'Без тега' }).click();
+    // Тег заводится прямо в шторке: «+» открывает список тегов с тем же
+    // поповером «Новый тег», что и в фильтре списка проектов, а заведённый
+    // тег сразу становится тегом этого проекта и появляется меткой рядом.
+    await drawer.getByRole('button', { name: 'Добавить тег' }).click();
     await page.getByRole('button', { name: 'Новый тег' }).click();
     await page.getByLabel('Название тега').fill('Срочный');
-    await page.getByRole('button', { name: 'Добавить' }).click();
-    await expect(drawer.getByRole('button', { name: 'Срочный', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Добавить', exact: true }).click();
+    // Метка-чип — единственный `Tag` с кнопкой снятия («Снять метку»):
+    // у варианта в открытом списке выбора такой кнопки нет, поэтому счёт
+    // по ней однозначен даже пока список ещё не закрыт.
+    await expect(drawer.getByRole('button', { name: 'Снять метку' })).toHaveCount(1);
+
+    // Список закрывается сам — клик вне него: свежая метка подвинула «+»
+    // левее, и открывать второй список стоит уже после того, как поповер
+    // от первого добавления доиграл переезд следом.
+    await drawer.getByText('Рассчитано').click();
+    await expect(page.getByRole('button', { name: 'Новый тег' })).toHaveCount(0);
+
+    // Тегов может быть несколько сразу: второй, уже существующий,
+    // добавляется тем же «+», отмеченной галочкой в списке — первый
+    // остаётся меткой рядом, а не заменяется вторым.
+    await drawer.getByRole('button', { name: 'Добавить тег' }).click();
+    const workingOption = page.getByRole('option', { name: 'Рабочий' });
+    await expect(workingOption).toBeVisible();
+    await workingOption.click();
+    await expect(drawer.getByRole('button', { name: 'Снять метку' })).toHaveCount(2);
   });
 
   test('панель результата закрывается по Esc', async ({ page }) => {
