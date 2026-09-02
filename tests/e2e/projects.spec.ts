@@ -148,3 +148,26 @@ test.describe('Список проектов', () => {
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
   });
 });
+
+test.describe('Список проектов — узкий вьюпорт', () => {
+  test('кнопка «Меню» остаётся доступна при горизонтальной прокрутке таблицы', async ({ page }) => {
+    // Уже колонок, которые обычно есть у одиннадцатиколоночной таблицы,
+    // чем свежий iPhone SE — таблица гарантированно уходит в свою
+    // внутреннюю горизонтальную прокрутку (`pinEndKey="actions"`
+    // в `ProjectsPage.tsx`).
+    await page.setViewportSize({ width: 640, height: 800 });
+    await seedSession(page);
+    await expect(page.getByRole('table')).toBeVisible();
+
+    const menuButton = page.getByRole('button', { name: /Действия:/ }).first();
+    const box = await menuButton.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box).not.toBeNull();
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport!.width);
+
+    // Не просто «в границах вьюпорта» — кнопка нажимается без предварительной
+    // прокрутки таблицы вручную.
+    await menuButton.click();
+    await expect(page.getByRole('button', { name: 'Открыть проект' })).toBeVisible();
+  });
+});

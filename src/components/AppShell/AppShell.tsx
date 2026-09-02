@@ -165,6 +165,7 @@ export function AppShell({
           rows={trash}
           rowKey={(row) => row.id}
           caption="Удалённые проекты"
+          pinEndKey="actions"
           empty={
             <EmptyState
               icon="trash"
