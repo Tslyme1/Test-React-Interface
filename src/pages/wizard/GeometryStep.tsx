@@ -182,14 +182,14 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   return (
     <div className={styles.split} ref={splitRef}>
       <div className={styles.fields}>
-        <Stack gap="xl" direction="column">
+        <Stack gap="2xl" direction="column">
           {/* Заголовок и его действия — одной строкой, как в шапке панели
               схемы справа: подпись слева, управление справа, по центру
               по вертикали. Подзаголовок убран — он повторял названия полей,
               которые тут же под ним и стоят, и разводил заголовок с чипсами
               по разной высоте. */}
           <Stack direction="row" justify="between" align="center" gap="md" wrap>
-            <Text variant="headingMd">Геометрия камеры дробления</Text>
+            <Text variant="headingMd">Геометрия камеры</Text>
 
             <Stack direction="row" align="center" gap="sm">
               <Chip
@@ -277,7 +277,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               «повернуть на β, шагнуть на L» от точки подвеса. Каждая строка
               соответствует своему участку схемы (ключ в `zoned`), поэтому
               наведение связывает их в обе стороны. */}
-          <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
             <Text variant="headingSm">Броня чаши — неподвижный профиль 40 · 41 · 42 · 4i · 3</Text>
 
             {zoned(
@@ -416,7 +416,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
           <div className={styles.groupDivider} />
 
-          <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
             <Text variant="headingSm">Броня конуса — гирационный профиль 10 · 11 · 12 · 1i · 2</Text>
 
             {zoned(
@@ -555,7 +555,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
           <div className={styles.groupDivider} />
 
-          <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
             <Text variant="headingSm">Нутация конуса</Text>
 
             {zoned(
@@ -582,7 +582,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           {/* Габариты — независимый ввод поверх построенной цепочки: на чертеже
               это производные величины, здесь их задаёт пользователь, и профиль
               подгоняется под них (`applyCalibration`). */}
-          <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
             <Text variant="headingSm">Габариты камеры</Text>
 
             <div className={styles.pair}>
@@ -621,7 +621,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
           {/* Коэффициенты методики и число зон своего участка на чертеже
               не имеют — подсвечивать при наведении нечего, обёртки нет. */}
-          <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
             <Text variant="headingSm">Коэффициенты профиля</Text>
 
             <div className={styles.pair}>

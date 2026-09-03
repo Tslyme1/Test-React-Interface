@@ -145,7 +145,7 @@ test.describe('Список проектов', () => {
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
   });
 });
 

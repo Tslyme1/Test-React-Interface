@@ -53,7 +53,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
   };
 
   return ore ? (
-    <Stack gap="xl" direction="column">
+    <Stack gap="2xl" direction="column">
       {/* Заголовок и его действия — одной строкой, как на шаге «Геометрия»:
           подпись слева, плашка пробы и режим отображения справа. Отдельная
           подпись «Проба руды» над чипсом убрана — назначение плашки понятно

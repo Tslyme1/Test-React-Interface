@@ -1,6 +1,31 @@
+/**
+ * Скроллится только содержимое — заголовок остаётся на месте. Тот же
+ * приём, что в `WizardPage.module.css`/`ProjectsPage.module.css`: без
+ * него длинный список настроек (режим, тема, размер шрифта, выход)
+ * уезжал за нижний край экрана без возможности прокрутки.
+ */
+.root {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: var(--space-2xl) var(--space-2xl) var(--space-sm);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /** Узкая колонка — карточка с четырьмя полями не должна тянуться во всю ширину экрана. */
 .page {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
+  padding: 0 var(--space-2xl) var(--space-2xl);
 }

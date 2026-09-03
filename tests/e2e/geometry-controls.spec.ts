@@ -79,7 +79,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
       expect(await svg.innerHTML()).not.toBe(before);
     }).toPass();
 
-    await page.getByRole('heading', { name: 'Геометрия камеры дробления' }).hover();
+    await page.getByRole('heading', { name: 'Геометрия камеры' }).hover();
     await expect(async () => {
       expect(await svg.innerHTML()).toBe(before);
     }).toPass();
@@ -107,7 +107,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
     // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
-    await page.getByRole('heading', { name: 'Геометрия камеры дробления' }).hover();
+    await page.getByRole('heading', { name: 'Геометрия камеры' }).hover();
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
   });
 

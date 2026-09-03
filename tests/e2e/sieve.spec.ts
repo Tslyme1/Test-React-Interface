@@ -148,7 +148,7 @@ test.describe('Ситовый анализ на шаге «Грансостав�
     await fillTwoClasses(page);
 
     await page.getByRole('button', { name: /Дробилка/ }).click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
     await page.getByRole('button', { name: /Руда/ }).click();
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();

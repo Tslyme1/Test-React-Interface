@@ -86,7 +86,7 @@ test.describe('Несколько открытых проектов', () => {
     await page.getByRole('button', { name: 'Закрыть проект: Проект Б' }).click();
 
     // Соседняя вкладка («А») становится показанной — не список проектов.
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
     await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
   });
 
