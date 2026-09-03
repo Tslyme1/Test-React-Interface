@@ -356,7 +356,9 @@ test.describe('Печать по шагам из меню строки', () => {
       page.getByRole('button', { name: 'Печать: Геометрия' }).click(),
     ]);
     await expect(popup.locator('h1')).toHaveText('Результат: геометрия камеры дробления');
-    await expect(popup.locator('table')).toContainText('D/2');
+    // Первая таблица — параметры камеры, вторая — профиль по точкам.
+    await expect(popup.locator('table').first()).toContainText('D / 2');
+    await expect(popup.locator('table').nth(1)).toContainText('L сум, мм');
     await popup.close();
   });
 });

@@ -38,10 +38,11 @@ test.describe('Схема камеры дробления на шаге «Гео
     // Целевой S0 достигается точным жёстким сдвигом брони конуса вдоль
     // линии зазора (см. `applyCalibration` в `src/domain/chamberGeometry.ts`),
     // поэтому итоговое расстояние в подписи совпадает с введённым числом.
-    await expect(svg).toContainText('S₀ — выходная щель: 75 мм');
+    // Зазор между крайними точками профиля — тот самый S₀ поля формы.
+    await expect(svg).toContainText('S₀ — зазор 3–2: 75 мм');
 
     await s0Field.fill('40');
-    await expect(svg).toContainText('S₀ — выходная щель: 40 мм');
+    await expect(svg).toContainText('S₀ — зазор 3–2: 40 мм');
   });
 
   test('изменение угла гирации θ, углов β и длины l2 меняет разметку схемы', async ({ page }) => {
@@ -60,7 +61,7 @@ test.describe('Схема камеры дробления на шаге «Гео
     const afterBeta40 = await svg.innerHTML();
     expect(afterBeta40).not.toBe(afterBeta10);
 
-    await page.getByLabel('Длина параллельной зоны l2, мм').fill('260');
+    await page.getByLabel('Длина l2 — 4i→3, калибровка, мм').fill('260');
     const afterL2 = await svg.innerHTML();
     expect(afterL2).not.toBe(afterBeta40);
   });
@@ -104,7 +105,7 @@ test.describe('Схема камеры дробления на шаге «Гео
 
     await page.getByLabel('Ширина разгрузочной щели S0, мм').fill('');
     await page.getByLabel('Диаметр основания D, мм').fill('');
-    await page.getByLabel('Длина параллельной зоны l2, мм').fill('');
+    await page.getByLabel('Длина l2 — 4i→3, калибровка, мм').fill('');
 
     await expect(svg).toBeVisible();
     expect(await svg.locator('path').count()).toBeGreaterThan(0);
@@ -115,8 +116,9 @@ test.describe('Схема камеры дробления на шаге «Гео
   test('точки профиля несут название точки и подсказку с радиусом и углом', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
 
-    // 5 точек брони чаши + 5 точек брони конуса + точка подвеса = 11 подписей.
-    await expect(svg.locator('title', { hasText: 'Точка' })).toHaveCount(11);
+    // 5 точек брони чаши + 5 точек брони конуса + точка подвеса, плюс
+    // её же выноска с подписью справа от чертежа = 12 подсказок.
+    await expect(svg.locator('title', { hasText: 'Точка' })).toHaveCount(12);
   });
 });
 
@@ -127,14 +129,14 @@ test.describe('Схема камеры: выносные размеры', () => 
     await expect(page.getByTestId('chamber-scheme')).toBeVisible();
   });
 
-  test('подписи D, h и S₀ совпадают с полями формы', async ({ page }) => {
+  test('выносной размер D/2 идёт за полем формы, а не за чертежом', async ({ page }) => {
     const scheme = page.getByTestId('chamber-scheme');
 
-    // Значения по умолчанию: D = 1750, H = 1200, S0 = 32.
-    await expect(scheme).toContainText('D = 1 750 мм');
+    // Значение по умолчанию D = 1750 — на выноске половина диаметра.
+    await expect(scheme).toContainText('D/2 = 875 мм');
 
-    // Меняем диаметр — подпись обязана пойти за полем, а не за чертежом.
+    // Меняем диаметр — подпись обязана пойти за полем.
     await page.getByLabel('Диаметр основания D, мм').fill('2200');
-    await expect(scheme).toContainText('D = 2 200 мм');
+    await expect(scheme).toContainText('D/2 = 1 100 мм');
   });
 });

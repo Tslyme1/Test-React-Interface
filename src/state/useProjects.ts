@@ -32,11 +32,16 @@ const STORAGE_KEY = 'uztm-projects';
  * `initialData` есть с самого начала. У старых записей истинных исходных
  * значений уже не восстановить — переносится текущий `data` (для них
  * дельта покажет разницу только по правкам после миграции).
+ * Версия 12 — шаг «Геометрия» получил всю цепочку профиля (24 узла вместо
+ * тринадцати упрощённых полей): недостающие узлы раньше подставлял адаптер
+ * схемы, и половине чертежа не отвечало ни одно поле. Старые значения
+ * ложатся на свои узлы, остальные берут ровно те умолчания, которыми их
+ * и рисовали, — профиль сохранённого проекта после миграции не меняется.
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -69,22 +74,41 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 11) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12), trash, seeded });
+    }
     if (payload.version === 10) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateInitialDataV11), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 9) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 8) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10).map(migrateInitialDataV11),
+        projects: payload.projects
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
     }
     if (payload.version === 7) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10).map(migrateInitialDataV11),
+        projects: payload.projects
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
@@ -95,7 +119,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
@@ -106,7 +131,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
@@ -118,7 +144,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
@@ -130,7 +157,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded,
       });
@@ -142,7 +170,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded: false,
       });
@@ -155,7 +184,8 @@ function readState(): StoredState {
           .map(migrateModeV7)
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
-          .map(migrateInitialDataV11),
+          .map(migrateInitialDataV11)
+          .map(migrateGeomChainV12),
         trash,
         seeded: false,
       });
@@ -250,6 +280,65 @@ function migrateInitialDataV11(project: Project): Project {
   if (legacy.initialData) return project;
   const { geomBaseline, granBaseline, prodBaseline, ...rest } = legacy;
   return { ...rest, initialData: project.data };
+}
+
+/**
+ * До версии 12 шаг «Геометрия» нёс тринадцать упрощённых полей, а
+ * недостающие узлы цепочки профиля подставлял адаптер схемы своими
+ * умолчаниями. Теперь цепочка целиком лежит в форме.
+ *
+ * Перенос сохраняет ровно то, что пользователь видел на схеме до
+ * миграции: старые поля ложатся на свои узлы (`beta40` → `b40`,
+ * `beta10` → `b10`, `beta2` → `b2`, длины — как были), а узлы, которых
+ * в форме не было, получают те самые умолчания, которыми их и рисовали.
+ * Ни одно сохранённое число не подменяется «правильным» из прототипа:
+ * профиль чужого проекта не должен меняться сам по себе.
+ */
+function migrateGeomChainV12(project: Project): Project {
+  type LegacyGeom = {
+    beta10?: string;
+    beta40?: string;
+    beta2?: string;
+    l11?: string;
+    l12?: string;
+    l2?: string;
+    zones?: string;
+  };
+
+  const defaults = defaultWizardData().geom;
+
+  const convert = (data: WizardData): WizardData => {
+    const geom = data.geom as GeomData & LegacyGeom;
+    // Уже новая форма — цепочка на месте, трогать нечего.
+    if (typeof geom.b40 === 'string' && typeof geom.a40 === 'string') return data;
+
+    return {
+      ...data,
+      geom: {
+        ...defaults,
+        // Что было в форме — переносится как есть.
+        b40: geom.beta40 ?? defaults.b40,
+        b10: geom.beta10 ?? defaults.b10,
+        b2: geom.beta2 ?? defaults.b2,
+        l11: geom.l11 ?? defaults.l11,
+        /* `l12` в старой форме участвовал в построении только при двух
+           зонах — при одной адаптер брал умолчание, и на схеме стояло оно. */
+        l12: geom.zones === '2' && geom.l12 ? geom.l12 : defaults.l12,
+        l2: geom.l2 ?? defaults.l2,
+        // Габариты, единицы углов и коэффициенты живут своей жизнью.
+        D: geom.D ?? defaults.D,
+        H: geom.H ?? defaults.H,
+        S0: geom.S0 ?? defaults.S0,
+        theta: geom.theta ?? defaults.theta,
+        angleUnit: geom.angleUnit ?? defaults.angleUnit,
+        zones: geom.zones === '2' ? '2' : '1',
+        R: geom.R ?? defaults.R,
+        a: geom.a ?? defaults.a,
+      },
+    };
+  };
+
+  return { ...project, data: convert(project.data), initialData: convert(project.initialData) };
 }
 
 /**

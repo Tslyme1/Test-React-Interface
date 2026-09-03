@@ -1,5 +1,6 @@
 import { Box, Button, Stack, Text } from '@uralmash/design-system';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
+import type { ThemePreference } from '@/state/useTheme';
 import type { ProjectMode, User } from '@/types';
 import styles from './ProfilePage.module.css';
 
@@ -8,12 +9,20 @@ export type ProfilePageProps = {
   /** Режим следующего нового проекта — переключатель здесь, а не в сайдбаре: это настройка профиля, а не переход. */
   mode: ProjectMode;
   onModeChange: (mode: ProjectMode) => void;
+  theme: ThemePreference;
+  onThemeChange: (theme: ThemePreference) => void;
   onLogout: () => void;
 };
 
 const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
   { value: 'engineering', label: 'Инженерный', description: 'Ручная настройка всех параметров на каждом этапе.' },
   { value: 'simplified', label: 'Упрощённый', description: 'Три коротких шага и готовый отчёт.' },
+];
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; description: string }[] = [
+  { value: 'system', label: 'Как в системе', description: 'Меняется вместе с настройкой операционной системы.' },
+  { value: 'light', label: 'Светлая', description: 'Всегда светлая, независимо от системы.' },
+  { value: 'dark', label: 'Тёмная', description: 'Всегда тёмная, независимо от системы.' },
 ];
 
 /**
@@ -27,7 +36,7 @@ const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[]
  * контрола — только текст для чтения. Пара подписи и значения — тот же
  * приём, что раньше стоял в меню пользователя в шапке.
  */
-export function ProfilePage({ user, mode, onModeChange, onLogout }: ProfilePageProps) {
+export function ProfilePage({ user, mode, onModeChange, theme, onThemeChange, onLogout }: ProfilePageProps) {
   const rows: { label: string; value: string }[] = [
     { label: 'Имя', value: user.name },
     { label: 'Почта', value: user.email || '—' },
@@ -66,6 +75,23 @@ export function ProfilePage({ user, mode, onModeChange, onLogout }: ProfilePageP
                   description={option.description}
                   checked={mode === option.value}
                   onSelect={() => onModeChange(option.value)}
+                />
+              ))}
+            </Stack>
+          </Stack>
+
+          <Stack gap="2xs" direction="column">
+            <Text variant="label" color="textMuted">
+              Тема оформления
+            </Text>
+            <Stack direction="column" gap="none">
+              {THEME_OPTIONS.map((option) => (
+                <OptionCell
+                  key={option.value}
+                  label={option.label}
+                  description={option.description}
+                  checked={theme === option.value}
+                  onSelect={() => onThemeChange(option.value)}
                 />
               ))}
             </Stack>

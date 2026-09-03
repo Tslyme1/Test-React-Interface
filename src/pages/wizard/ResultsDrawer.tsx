@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
-import { estimateGeom, estimateGran, estimateProd } from '@/domain/estimates';
+import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd } from '@/domain/estimates';
+import type { GranRow, KvRow, ProfileRow } from '@/domain/estimates';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
 import { CRUSHERS } from '@/data/crushers';
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
 import { useTags } from '@/state/useTags';
-
-type KvRow = { label: string; value: string; unit: string };
 
 const kvColumns: TableColumn<KvRow>[] = [
   { key: 'label', title: 'Величина' },
@@ -17,11 +16,28 @@ const kvColumns: TableColumn<KvRow>[] = [
   { key: 'unit', title: 'Ед.', align: 'end' },
 ];
 
-type GranRow = { class: string; pass: string };
-
+/**
+ * Грансостав — теми же массивами, что и в распечатке программы-источника:
+ * граница класса, его середина, расчётная ширина куска и доля класса.
+ */
 const granColumns: TableColumn<GranRow>[] = [
   { key: 'class', title: 'Класс крупности, мм' },
+  { key: 'dMid', title: 'D сред', align: 'end' },
+  { key: 'd08', title: '0.8·D пред', align: 'end' },
+  { key: 'gamma', title: 'γ', align: 'end' },
   { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
+];
+
+/** Профиль камеры по точкам — пара «узел чаши · узел конуса» в каждой строке. */
+const profileColumns: TableColumn<ProfileRow>[] = [
+  { key: 'point', title: 'Точки' },
+  { key: 'r1', title: 'r₁, мм', align: 'end' },
+  { key: 'a1', title: 'α₁, град', align: 'end' },
+  { key: 'r4', title: 'r₄, мм', align: 'end' },
+  { key: 'a4', title: 'α₄, град', align: 'end' },
+  { key: 'l', title: 'L, мм', align: 'end' },
+  { key: 'lSum', title: 'L сум, мм', align: 'end' },
+  { key: 's', title: 'S, мм', align: 'end' },
 ];
 
 /** Пара подписи и значения в строке метаданных — тот же приём, что в `ProfilePage`. */
@@ -173,7 +189,15 @@ export function ResultsDrawer({
         </Text>
 
         {stepKey === 'geom' ? (
-          <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Вычисляемые значения" />
+          <>
+            <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления" />
+            <Table
+              columns={profileColumns}
+              rows={estimateGeomProfile(project.data.geom)}
+              rowKey={(r) => r.point}
+              caption="Профиль камеры по точкам"
+            />
+          </>
         ) : null}
 
         {stepKey === 'gran' ? (
