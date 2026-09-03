@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Field, Input, Modal, Select, Stack, Stepper, Table, Text } from '@uralmash/design-system';
 import type { SelectOption, Step, TableColumn } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
+import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
@@ -311,6 +312,11 @@ export function SimplifiedProjectModal({
                 <Table columns={kvColumns} rows={comboReport.geom} rowKey={(r) => r.label} caption="Геометрия камеры (по каталогу дробилки)" />
                 <Table columns={granColumns} rows={comboReport.gran} rowKey={(r) => r.class} caption="Характеристика гранулометрического состава" />
                 <Table columns={kvColumns} rows={comboReport.prod} rowKey={(r) => r.label} caption="Продукт дробления" />
+                <Table columns={granColumns} rows={comboReport.prodGran} rowKey={(r) => r.class} caption="Грансостав продукта дробления" />
+                <Stack gap="xs" direction="column">
+                  <Text variant="label">Суммарные характеристики крупности продукта</Text>
+                  <GranulometryChart rows={comboReport.prodGran} />
+                </Stack>
               </>
             ) : (
               <Text variant="bodySm" color="textMuted">

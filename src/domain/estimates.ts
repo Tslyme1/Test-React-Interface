@@ -128,11 +128,16 @@ export function estimateGeom(data: GeomData): KvRow[] {
  * как «Массив D пред(I)» распечатки: у мелких классов шаг мельче, у крупных
  * крупнее, потому что распределение продукта тоже неравномерно.
  */
-export function estimateGran(data: GranData): GranRow[] {
-  const dMin = toNum(data.dMin);
-  const dMax = Math.max(toNum(data.dMax), dMin + 1);
-  const k = Math.max(toNum(data.n0), 0.1);
-  const z0 = Math.max(toNum(data.z0), 0.1);
+/**
+ * Классы крупности геометрической прогрессией от `dMin` к `dMax` — общий
+ * генератор для питания (`estimateGran`) и продукта (`estimateProdGran`):
+ * у обоих один и тот же смысл столбцов, разнится только откуда берутся
+ * `dMin`/`dMax` и форма кривой (`k`, `z0`).
+ */
+function buildGranClasses(dMin: number, dMaxRaw: number, k: number, z0: number): GranRow[] {
+  const dMax = Math.max(dMaxRaw, dMin + 1);
+  const kSafe = Math.max(k, 0.1);
+  const z0Safe = Math.max(z0, 0.1);
 
   const steps = 8;
   const rows: GranRow[] = [];
@@ -142,9 +147,9 @@ export function estimateGran(data: GranData): GranRow[] {
   for (let i = 1; i <= steps; i += 1) {
     const frac = i / steps;
     // Прогрессия по кубу доли — мелкие классы дробятся чаще крупных.
-    const top = dMin + (dMax - dMin) * Math.pow(frac, 1 / z0);
+    const top = dMin + (dMax - dMin) * Math.pow(frac, 1 / z0Safe);
     const mid = (prevTop + top) / 2;
-    const pass = Math.min(100 * (1 - Math.exp(-k * frac * 3)), 100);
+    const pass = Math.min(100 * (1 - Math.exp(-kSafe * frac * 3)), 100);
 
     rows.push({
       class: `−${top.toFixed(1)} +${prevTop.toFixed(1)}`,
@@ -160,6 +165,29 @@ export function estimateGran(data: GranData): GranRow[] {
   }
 
   return rows;
+}
+
+export function estimateGran(data: GranData): GranRow[] {
+  return buildGranClasses(toNum(data.dMin), toNum(data.dMax), toNum(data.n0), toNum(data.z0));
+}
+
+/**
+ * Грансостав ПРОДУКТА — тот же генератор классов, что и у питания, но
+ * по границам `dMin`/`dMax` продукта и с формой кривой от работы разрушения
+ * `wk` (чем она больше, тем круче кривая — продукт однороднее по крупности).
+ * В распечатке программы-источника это отдельный блок расчёта («РАСЧЕТ
+ * ГРАНСОСТАВА ПРОДУКТА»), а не побочный вывод усилий и мощности — здесь
+ * то же самое: `estimateProd` считает силовые величины, эта функция —
+ * состав по классам для таблицы и графика.
+ */
+export function estimateProdGran(data: ProdData): GranRow[] {
+  // `wk` — работа разрушения, на порядок крупнее шкалы `k`, на которой
+  // построен `buildGranClasses` (там она играет роль `n0` из GranData,
+  // диапазон ~0.5–1.5): без пересчёта кривая выхода насыщалась до 100 %
+  // уже на втором классе, и распределение выглядело ступенькой, а не
+  // плавной S-образной кривой.
+  const k = Math.max(toNum(data.wk) / 15, 0.1);
+  return buildGranClasses(toNum(data.dMin), toNum(data.dMax), k, 1);
 }
 
 export function estimateProd(data: ProdData, geom: GeomData): KvRow[] {
@@ -191,7 +219,7 @@ export function estimateProd(data: ProdData, geom: GeomData): KvRow[] {
 }
 
 export type StepReport =
-  | { kind: 'kv'; title: string; rows: KvRow[]; profile?: ProfileRow[] }
+  | { kind: 'kv'; title: string; rows: KvRow[]; profile?: ProfileRow[]; gran?: GranRow[] }
   | { kind: 'gran'; title: string; rows: GranRow[] };
 
 /**
@@ -203,7 +231,12 @@ export function buildStepReport(project: Project, stepKey: StepKey): StepReport 
     return { kind: 'gran', title: STEP_TITLES.gran, rows: estimateGran(project.data.gran) };
   }
   if (stepKey === 'prod') {
-    return { kind: 'kv', title: STEP_TITLES.prod, rows: estimateProd(project.data.prod, project.data.geom) };
+    return {
+      kind: 'kv',
+      title: STEP_TITLES.prod,
+      rows: estimateProd(project.data.prod, project.data.geom),
+      gran: estimateProdGran(project.data.prod),
+    };
   }
   return {
     kind: 'kv',

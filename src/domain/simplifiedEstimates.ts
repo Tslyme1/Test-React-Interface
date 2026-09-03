@@ -1,7 +1,7 @@
 import type { GeomData, GranData, Project } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { CRUSHERS } from '@/data/crushers';
-import { estimateGeom, estimateGran, estimateProd } from './estimates';
+import { estimateGeom, estimateGran, estimateProd, estimateProdGran } from './estimates';
 
 function firstNumber(value: string | undefined): number | null {
   if (!value) return null;
@@ -67,5 +67,6 @@ export function buildComboReport(combo: SimplifiedCombo, project: Project) {
     geom: estimateGeom(combo.geom),
     gran: estimateGran(combo.gran),
     prod: estimateProd(project.data.prod, combo.geom),
+    prodGran: estimateProdGran(project.data.prod),
   };
 }

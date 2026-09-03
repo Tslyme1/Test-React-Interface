@@ -1,0 +1,26 @@
+/**
+ * `height: auto`, а не атрибут SVG: атрибуты принимают длину, а не `auto` —
+ * тот же приём и та же причина, что в `ChamberScheme.module.css`.
+ */
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/** Цветные штрихи легенды — той же формы, что линии на графике. */
+.swatchUnder,
+.swatchOver {
+  display: inline-block;
+  width: var(--space-lg);
+  height: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+.swatchUnder {
+  background: var(--color-accent);
+}
+
+.swatchOver {
+  background: var(--color-warning-text);
+}
