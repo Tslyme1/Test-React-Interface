@@ -76,9 +76,22 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
     if (fieldMode === 'input') setHoverZone(null);
   }, [fieldMode]);
 
+  /**
+   * Поле и его участок на схеме — связь в обе стороны.
+   *
+   * Наведение на поле подсвечивает участок (как было), наведение на участок
+   * подсвечивает поле: схема сообщает `hoverZone` сама (`onZoneHover` ниже),
+   * и поле с тем же ключом обводится. Односторонняя связь отвечала только
+   * на вопрос «где это на схеме», но не на обратный — «что за размер я
+   * сейчас вижу», а он у незнакомого чертежа возникает первым.
+   */
   const zoned = (key: ChamberHighlightKey, children: ReactNode) =>
     fieldMode === 'highlight' ? (
-      <div onMouseEnter={() => setHoverZone(key)} onMouseLeave={() => setHoverZone((z) => (z === key ? null : z))}>
+      <div
+        className={hoverZone === key ? `${styles.zonedField} ${styles.zonedFieldActive}` : styles.zonedField}
+        onMouseEnter={() => setHoverZone(key)}
+        onMouseLeave={() => setHoverZone((z) => (z === key ? null : z))}
+      >
         {children}
       </div>
     ) : (
@@ -490,6 +503,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 layers={layers}
                 construction={diagramMode === 'build'}
                 highlight={hoverZone}
+                /* Связь в обратную сторону работает в том же режиме, что и
+                   прямая: «Подсветка участка» включает обе, «Только ввод» —
+                   ни одной, иначе один и тот же переключатель отвечал бы
+                   за половину поведения. */
+                onZoneHover={fieldMode === 'highlight' ? setHoverZone : undefined}
               />
             </div>
 
@@ -524,7 +542,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             setCrusherPickerOpen(false);
           }}
           nameLabel="Дробилка"
-          searchPlaceholder="КМД-2200, 2200, 500-655…"
           inlineSpecs={['D, мм', 'Q, т/ч']}
         />
       </Modal>

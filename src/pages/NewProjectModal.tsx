@@ -161,7 +161,6 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
         value={crusherName}
         onPick={pickCrusher}
         nameLabel="Дробилка"
-        searchPlaceholder="КМД-2200, 2200, 500-655…"
         visibleNames={visibleCrushers}
         onFiltersApply={() => setFamily(familyDraft)}
         onFiltersCancel={() => setFamilyDraft(family)}
@@ -177,9 +176,10 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
            под кнопкой «Фильтры»: в полосу они не помещаются, а вынести часть
            и молчать про остальные хуже, чем показать, где лежит целое. */
         inlineFilter={
+          /* Размер не задан — тот же, что у поля поиска рядом (`md`
+             по умолчанию): вся полоса условий одной высоты. */
           <Select
             fullWidth
-            size="sm"
             options={FAMILY_OPTIONS}
             placeholder="Семейство"
             aria-label="Семейство машины"

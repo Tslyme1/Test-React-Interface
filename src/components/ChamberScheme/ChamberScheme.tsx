@@ -46,8 +46,25 @@ export type ChamberSchemeProps = {
   construction?: boolean;
   /** Параметр, чей участок сейчас подсвечен наведением на поле формы. */
   highlight?: ChamberHighlightKey | null;
+  /**
+   * Наведение на участок самой схемы — обратное направление связи: не поле
+   * подсвечивает участок, а участок называет своё поле. `null` — курсор ушёл
+   * с участка. Без этого пропа схема остаётся неинтерактивной, как была.
+   */
+  onZoneHover?: (key: ChamberHighlightKey | null) => void;
   className?: string;
 };
+
+/**
+ * Невидимая широкая линия поверх тонкой — цель для курсора.
+ *
+ * Линия в 1–2px шириной попадается курсору только точным попаданием, и
+ * связь «навёл на участок — подсветилось поле» на такой цели не работает
+ * вовсе. Прозрачный дубль той же геометрии ловит указатель на расстоянии,
+ * ничего не рисуя; `pointer-events: stroke` — чтобы ловил именно штрих,
+ * а не прямоугольник вокруг него.
+ */
+const HIT_WIDTH = 18;
 
 const VB = { w: 1180, h: 840 };
 /** Рабочая область построения внутри viewBox — те же пропорции, что и в прототипе-источнике. */
@@ -79,10 +96,24 @@ function polygonFrom(points: Vec2[]): string {
  * профиль строится как обычное дерево `<path>` / `<circle>` / `<text>` из
  * точек, посчитанных `computeChamberGeometry` (см. `src/domain/chamberGeometry.ts`).
  */
-export function ChamberScheme({ input, calibration, layers, construction, highlight, className }: ChamberSchemeProps) {
+export function ChamberScheme({
+  input,
+  calibration,
+  layers,
+  construction,
+  highlight,
+  onZoneHover,
+  className,
+}: ChamberSchemeProps) {
   const L = { ...DEFAULT_LAYERS, ...layers };
   const accent = 'var(--color-accent)';
   const accentText = 'var(--color-accent-text)';
+
+  /* Группа участка: ловит наведение и называет свой параметр. Без
+     `onZoneHover` пропсов не добавляется вовсе — схема остаётся такой же
+     неинтерактивной, какой была до появления обратной связи. */
+  const zone = (key: ChamberHighlightKey) =>
+    onZoneHover ? { onMouseEnter: () => onZoneHover(key), onMouseLeave: () => onZoneHover(null) } : {};
   const geometry = useMemo(() => computeChamberGeometry(input), [input]);
   const calibrated = useMemo(() => applyCalibration(geometry, calibration ?? {}), [geometry, calibration]);
 
@@ -181,7 +212,16 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
         <title>Ось дробилки</title>
       </line>
       {L.theta ? (
-        <>
+        <g {...zone('theta')}>
+          <line
+            x1={apex.x}
+            y1={top}
+            x2={coneAxisEnd.x}
+            y2={coneAxisEnd.y}
+            stroke="transparent"
+            strokeWidth={HIT_WIDTH}
+            pointerEvents="stroke"
+          />
           <line
             x1={apex.x}
             y1={top}
@@ -213,7 +253,7 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
           >
             θ
           </text>
-        </>
+        </g>
       ) : null}
 
       {/* ── линии построения: лучи от точки подвеса к каждой точке профиля ── */}
@@ -265,7 +305,7 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
             // Единственный сегмент с полем в форме — l2, последний (4i→3).
             const isL2 = i === SEGMENT_LABELS.length - 1;
             const active = isL2 && highlight === 'l2';
-            return (
+            const text = (
               <text
                 key={label}
                 x={mid.x}
@@ -278,6 +318,18 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
               >
                 {label}
               </text>
+            );
+
+            /* Наведение ловит сам сегмент профиля, а не только его подпись:
+               подпись — маленькая цель сбоку, а участок, о котором речь, —
+               это отрезок брони между точками 4i и 3. */
+            return isL2 ? (
+              <g key={label} {...zone('l2')}>
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={HIT_WIDTH} pointerEvents="stroke" />
+                {text}
+              </g>
+            ) : (
+              text
             );
           })}
         </>
@@ -292,7 +344,16 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
 
       {/* ── зазор S0 в зоне калибровки ── */}
       {L.gap ? (
-        <>
+        <g {...zone('S0')}>
+          <line
+            x1={bowlPts[4].x}
+            y1={bowlPts[4].y}
+            x2={conePts[4].x}
+            y2={conePts[4].y}
+            stroke="transparent"
+            strokeWidth={HIT_WIDTH}
+            pointerEvents="stroke"
+          />
           <line
             x1={bowlPts[4].x}
             y1={bowlPts[4].y}
@@ -312,7 +373,7 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
           >
             S₀
           </text>
-        </>
+        </g>
       ) : null}
 
       {/* ── точки профиля ── */}
@@ -320,8 +381,12 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
       {L.bowl
         ? bowlPts.map((p, i) => {
             const active = NAMES_B[i] === '40' && highlight === 'beta40';
+            /* Наведение на точку профиля называет её угол: у «40» это β40,
+               у остальных точек чаши своего поля в форме нет. */
+            const hover = NAMES_B[i] === '40' ? zone('beta40') : {};
             return (
-              <g key={`b-${NAMES_B[i]}`}>
+              <g key={`b-${NAMES_B[i]}`} {...hover}>
+                {NAMES_B[i] === '40' ? <circle cx={p.x} cy={p.y} r={HIT_WIDTH / 2} fill="transparent" /> : null}
                 <circle
                   cx={p.x}
                   cy={p.y}
@@ -342,8 +407,11 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
       {L.cone
         ? conePts.map((p, i) => {
             const active = (NAMES_C[i] === '10' && highlight === 'beta10') || (NAMES_C[i] === '2' && highlight === 'beta2');
+            /* Своё поле в форме есть у двух точек конуса: «10» — β10, «2» — β2. */
+            const zoneKey = NAMES_C[i] === '10' ? 'beta10' : NAMES_C[i] === '2' ? 'beta2' : null;
             return (
-              <g key={`c-${NAMES_C[i]}`}>
+              <g key={`c-${NAMES_C[i]}`} {...(zoneKey ? zone(zoneKey) : {})}>
+                {zoneKey ? <circle cx={p.x} cy={p.y} r={HIT_WIDTH / 2} fill="transparent" /> : null}
                 <circle
                   cx={p.x}
                   cy={p.y}
@@ -375,55 +443,77 @@ export function ChamberScheme({ input, calibration, layers, construction, highli
       {/* ── размеры D/2 и h ── */}
       {L.dims ? (
         <>
-          <line
-            x1={apex.x - 58}
-            y1={apex.y}
-            x2={apex.x - 58}
-            y2={conePts[4].y}
-            stroke={highlight === 'H' ? accent : 'var(--color-text-muted)'}
-            strokeWidth={highlight === 'H' ? 1.8 : 1}
-            markerStart="url(#chamber-arrow)"
-            markerEnd="url(#chamber-arrow)"
-          >
-            <title>h = {fmt(heightRaw)} мм</title>
-          </line>
+          <g {...zone('H')}>
+            <line
+              x1={apex.x - 58}
+              y1={apex.y}
+              x2={apex.x - 58}
+              y2={conePts[4].y}
+              stroke="transparent"
+              strokeWidth={HIT_WIDTH}
+              pointerEvents="stroke"
+            />
+            <line
+              x1={apex.x - 58}
+              y1={apex.y}
+              x2={apex.x - 58}
+              y2={conePts[4].y}
+              stroke={highlight === 'H' ? accent : 'var(--color-text-muted)'}
+              strokeWidth={highlight === 'H' ? 1.8 : 1}
+              markerStart="url(#chamber-arrow)"
+              markerEnd="url(#chamber-arrow)"
+            >
+              <title>h = {fmt(heightRaw)} мм</title>
+            </line>
+            <text
+              x={apex.x - 64}
+              y={(apex.y + conePts[4].y) / 2}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={13}
+              fontStyle="italic"
+              fill={highlight === 'H' ? accentText : 'var(--color-text-muted)'}
+            >
+              h
+            </text>
+          </g>
           <line x1={apex.x} y1={apex.y} x2={apex.x - 66} y2={apex.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
           <line x1={conePts[4].x} y1={conePts[4].y} x2={apex.x - 66} y2={conePts[4].y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-          <text
-            x={apex.x - 64}
-            y={(apex.y + conePts[4].y) / 2}
-            textAnchor="end"
-            dominantBaseline="middle"
-            fontSize={13}
-            fontStyle="italic"
-            fill={highlight === 'H' ? accentText : 'var(--color-text-muted)'}
-          >
-            h
-          </text>
 
-          <line
-            x1={conePts[4].x}
-            y1={conePts[4].y + 36}
-            x2={apex.x}
-            y2={conePts[4].y + 36}
-            stroke={highlight === 'D' ? accent : 'var(--color-text-muted)'}
-            strokeWidth={highlight === 'D' ? 1.8 : 1}
-            markerStart="url(#chamber-arrow)"
-            markerEnd="url(#chamber-arrow)"
-          >
-            <title>D/2 = {fmt(Math.abs(coneRaw[4].x))} мм</title>
-          </line>
+          <g {...zone('D')}>
+            <line
+              x1={conePts[4].x}
+              y1={conePts[4].y + 36}
+              x2={apex.x}
+              y2={conePts[4].y + 36}
+              stroke="transparent"
+              strokeWidth={HIT_WIDTH}
+              pointerEvents="stroke"
+            />
+            <line
+              x1={conePts[4].x}
+              y1={conePts[4].y + 36}
+              x2={apex.x}
+              y2={conePts[4].y + 36}
+              stroke={highlight === 'D' ? accent : 'var(--color-text-muted)'}
+              strokeWidth={highlight === 'D' ? 1.8 : 1}
+              markerStart="url(#chamber-arrow)"
+              markerEnd="url(#chamber-arrow)"
+            >
+              <title>D/2 = {fmt(Math.abs(coneRaw[4].x))} мм</title>
+            </line>
+            <text
+              x={(conePts[4].x + apex.x) / 2}
+              y={conePts[4].y + 29}
+              textAnchor="middle"
+              fontSize={highlight === 'D' ? 13 : 11.5}
+              fontStyle="italic"
+              fill={highlight === 'D' ? accentText : 'var(--color-text-muted)'}
+            >
+              D / 2
+            </text>
+          </g>
           <line x1={conePts[4].x} y1={conePts[4].y} x2={conePts[4].x} y2={conePts[4].y + 44} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-          <text
-            x={(conePts[4].x + apex.x) / 2}
-            y={conePts[4].y + 29}
-            textAnchor="middle"
-            fontSize={highlight === 'D' ? 13 : 11.5}
-            fontStyle="italic"
-            fill={highlight === 'D' ? accentText : 'var(--color-text-muted)'}
-          >
-            D / 2
-          </text>
         </>
       ) : null}
 

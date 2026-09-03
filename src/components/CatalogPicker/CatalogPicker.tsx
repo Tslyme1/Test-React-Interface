@@ -29,7 +29,6 @@ export type CatalogPickerProps = {
   onPickMultiple?: (names: string[]) => void;
   /** Подпись первой колонки: «Дробилка», «Проба руды». */
   nameLabel: string;
-  searchPlaceholder: string;
   /**
    * Дополнительный фильтр над таблицей — например, семейство машины.
    * Контролы внутри должны быть привязаны к черновику: применяются они
@@ -104,7 +103,6 @@ export function CatalogPicker({
   selected,
   onPickMultiple,
   nameLabel,
-  searchPlaceholder,
   filter,
   onFiltersApply,
   onFiltersCancel,
@@ -344,11 +342,15 @@ export function CatalogPicker({
           но каждое, вынесенное в строку, отнимает ширину у поиска. */}
       <div className={styles.toolbar}>
         <div className={styles.search}>
+          {/* Плейсхолдер — «Поиск», а не примеры значений: примеры вида
+              «КМД-2200, 2200, 500-655…» читались как уже введённый запрос
+              и занимали место, ничего не объясняя. Что именно ищется,
+              сказано в доступном имени поля. */}
           <Input
             fullWidth
             type="search"
             aria-label={`Поиск: ${nameLabel.toLowerCase()} или значение характеристики`}
-            placeholder={searchPlaceholder}
+            placeholder="Поиск"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -359,11 +361,13 @@ export function CatalogPicker({
         {/* Характеристика — одно поле, а не пара: диапазон это одно условие,
             и двумя контролами он занимал в полосе место двух. Границы
             вводятся в панели поля и применяются её собственным «Готово». */}
+        {/* Размер не задан — тот же, что у поля поиска слева (`md` по умолчанию):
+            в одной полосе поле и условия обязаны быть одной высоты, иначе
+            строка читается как два разных ряда контролов, слепленных вместе. */}
         {inlineRangeSpecs.map(({ spec, min, max }) => (
           <div key={spec.short} className={styles.inlineControl}>
             <RangeSelect
               fullWidth
-              size="sm"
               placeholder={spec.short}
               fromHint={formatBound(min)}
               toHint={formatBound(max)}

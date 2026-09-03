@@ -85,11 +85,43 @@ test.describe('Шаг «Геометрия»: режим отображения'
     }).toPass();
   });
 
+  test('подсветка участка работает и в обратную сторону: наведение на схему подсвечивает поле', async ({ page }) => {
+    await page.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: 'Подсветка участка' }).click();
+    await page.keyboard.press('Escape');
+
+    const wrapper = page
+      .getByLabel('Диаметр основания D, мм')
+      .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
+    await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
+
+    // Размерная линия «D / 2» на схеме — участок поля «Диаметр основания D».
+    await page.getByTestId('chamber-scheme').locator('g').filter({ hasText: 'D / 2' }).first().hover();
+    await expect(wrapper).toHaveClass(/zonedFieldActive/);
+
+    // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
+    await page.getByRole('heading', { name: 'Геометрия камеры дробления' }).hover();
+    await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
+  });
+
   test('в режиме «Только ввод» (по умолчанию) наведение на поле не меняет схему', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
 
     await page.getByLabel('Диаметр основания D, мм').hover();
+    await page.waitForTimeout(150);
+    expect(await svg.innerHTML()).toBe(before);
+  });
+
+  test('в режиме «Только ввод» наведение на схему не подсвечивает поля', async ({ page }) => {
+    // Обёртки с подсветкой в этом режиме нет вовсе — поле стоит в форме само по себе.
+    await expect(
+      page.getByLabel('Диаметр основания D, мм').locator('xpath=ancestor::div[contains(@class,"zonedField")]')
+    ).toHaveCount(0);
+
+    const svg = page.getByTestId('chamber-scheme');
+    const before = await svg.innerHTML();
+    await svg.locator('g').filter({ hasText: 'D / 2' }).first().hover();
     await page.waitForTimeout(150);
     expect(await svg.innerHTML()).toBe(before);
   });
