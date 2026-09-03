@@ -5,6 +5,8 @@ import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd, estimateProdGran } from '@/domain/estimates';
 import type { GranRow, KvRow, ProfileRow } from '@/domain/estimates';
+import { exportGeomToNx, exportStepToExcel } from '@/domain/exportReport';
+import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
 import { CRUSHERS } from '@/data/crushers';
 import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
@@ -151,7 +153,25 @@ export function ResultsDrawer({
       size="wide"
       title={STEP_TITLES[stepKey]}
       footer={
-        <Stack direction="row" justify="end" grow>
+        <Stack direction="row" justify="between" align="center" grow>
+          {/* Экспорт и печать — слева: это действия над отчётом, а «Закрыть»
+              справа — действие над самой шторкой, и их не стоит путать в ряд
+              на одну сторону. NX — только для «Геометрии»: у неё есть профиль
+              камеры, который и передают в CAD, у остальных шагов параметров
+              модели нет. */}
+          <Stack direction="row" gap="sm">
+            <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
+              Экспорт в Excel
+            </Button>
+            {stepKey === 'geom' ? (
+              <Button variant="secondary" iconStart="download" onClick={() => exportGeomToNx(project)}>
+                Экспорт в NX
+              </Button>
+            ) : null}
+            <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>
+              Печать
+            </Button>
+          </Stack>
           <Button variant="secondary" onClick={onClose}>
             Закрыть
           </Button>

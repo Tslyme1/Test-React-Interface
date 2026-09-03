@@ -207,7 +207,11 @@ export function SimplifiedProjectModal({
   // «Руда» и «Продукт» отключены до создания — `available` возвращает
   // `i === 0`, пока проекта ещё нет.
   const stepperAside = (
-    <Stepper steps={STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }))} current={step} onStepClick={goToStep} />
+    <Stepper
+      steps={STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i), completed: project?.calc[i] }))}
+      current={step}
+      onStepClick={goToStep}
+    />
   );
 
   return (

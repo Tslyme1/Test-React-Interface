@@ -22,7 +22,7 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
 
     await expect(page.getByText('Шаг «Дробилка» рассчитан')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Руда/ })).toBeEnabled();
 
     console_.assertClean();
@@ -30,7 +30,7 @@ test.describe('Инженерный визард', () => {
 
   test('результат открывается панелью и показывает вычисленные значения', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: 'Смотреть результат' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer).toBeVisible();
@@ -47,7 +47,7 @@ test.describe('Инженерный визард', () => {
 
   test('шторка результата показывает метаданные расчёта и позволяет завести тег на месте', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: 'Смотреть результат' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer.getByText('Дата расчёта')).toBeVisible();
@@ -86,7 +86,7 @@ test.describe('Инженерный визард', () => {
 
   test('панель результата закрывается по Esc', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: 'Смотреть результат' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer).toBeVisible();
@@ -154,23 +154,23 @@ test.describe('Инженерный визард', () => {
     // а не только верхний уровень записи проекта.
     await page.getByLabel('Диаметр основания D, мм').fill('1900');
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     await page.reload();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
   });
 
   test('посчитанный шаг остаётся посчитанным после возврата', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
   });
 
   /**
@@ -325,7 +325,7 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await page.getByRole('button', { name: /Продукт/ }).click();
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: 'Смотреть результат' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат/ });
     await expect(drawer).toBeVisible();

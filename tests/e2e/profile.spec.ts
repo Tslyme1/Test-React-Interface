@@ -36,4 +36,37 @@ test.describe('Профиль', () => {
     await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'false');
   });
+
+  test('тема — по умолчанию «Как в системе», выбор переживает перезагрузку', async ({ page }) => {
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/);
+    await expect(page.getByRole('option', { name: 'Как в системе' })).toHaveAttribute('aria-selected', 'true');
+
+    await page.getByRole('option', { name: 'Тёмная' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await page.getByRole('button', { name: 'Профиль' }).click();
+    await expect(page.getByRole('option', { name: 'Тёмная' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('размер шрифта меняет кегли ролей типографики глобально и переживает перезагрузку', async ({ page }) => {
+    const bodySize = () =>
+      page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text-body-size').trim());
+
+    await expect(page.getByRole('option', { name: 'Обычный' })).toHaveAttribute('aria-selected', 'true');
+    // «Обычный» ничего не переопределяет — значение приходит из токена системы.
+    expect(await bodySize()).toBe('14px');
+
+    await page.getByRole('option', { name: 'Очень крупный' }).click();
+    expect(await bodySize()).toBe('18.2px');
+
+    await page.reload();
+    await page.getByRole('button', { name: 'Профиль' }).click();
+    expect(await bodySize()).toBe('18.2px');
+    await expect(page.getByRole('option', { name: 'Очень крупный' })).toHaveAttribute('aria-selected', 'true');
+
+    await page.getByRole('option', { name: 'Обычный' }).click();
+    expect(await bodySize()).toBe('14px');
+  });
 });

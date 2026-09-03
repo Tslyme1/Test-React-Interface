@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { Button, Modal, Text } from '@uralmash/design-system';
 import { useSession } from '@/state/useSession';
 import { useTheme } from '@/state/useTheme';
+import { useFontScale } from '@/state/useFontScale';
 import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
+import { hasUncalculatedChanges } from '@/domain/steps';
 import { AppShell } from '@/components/AppShell/AppShell';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import { LoginPage } from '@/pages/LoginPage';
@@ -31,6 +34,7 @@ export function App() {
   } = useProjects();
   const { message, showToast } = useToast();
   const { theme, setTheme } = useTheme();
+  const { scale: fontScale, setScale: setFontScale } = useFontScale();
 
   /**
    * Открытые вкладки инженерных проектов — как вкладки браузера: список id
@@ -51,6 +55,13 @@ export function App() {
   const [openTabs, setOpenTabs] = useState<string[]>([]);
   const [shownProjectId, setShownProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  /**
+   * Вкладка, закрытие которой ждёт подтверждения, — id проекта, у которого
+   * посчитанный шаг разошёлся со снимком на момент расчёта
+   * (`hasUncalculatedChanges`). `null` — подтверждать нечего, крестик
+   * закрывает вкладку сразу.
+   */
+  const [closeConfirmId, setCloseConfirmId] = useState<string | null>(null);
 
   /**
    * Упрощённый режим целиком живёт в одном окне (`SimplifiedProjectModal`):
@@ -129,6 +140,21 @@ export function App() {
   };
 
   /**
+   * Крестик на вкладке — если в проекте есть посчитанный шаг с правками
+   * после расчёта, сперва спрашивает, закрывать ли: иначе расхождение
+   * между отчётом и текущими данными уходит из вида молча, вместе
+   * с вкладкой, которая на него указывала.
+   */
+  const requestCloseProject = (id: string) => {
+    const project = projects.find((p) => p.id === id);
+    if (project && hasUncalculatedChanges(project)) {
+      setCloseConfirmId(id);
+      return;
+    }
+    closeProject(id);
+  };
+
+  /**
    * Переход по сайдбару — раздел приложения, а не открытый проект: открытые
    * вкладки остаются, но ни одна не показана. Клик по сайдбару всегда
    * осознанный уход из текущего места, поэтому попутно снимает фильтр по
@@ -157,7 +183,7 @@ export function App() {
         contentKey={shownProject ? `project:${shownProject.id}` : `view:${view}`}
         onGoProjects={goProjects}
         onSelectProject={setShownProjectId}
-        onCloseProject={closeProject}
+        onCloseProject={requestCloseProject}
         onRenameProject={(id, name) => updateProject(id, { name })}
         onNewProject={startNewProject}
         view={sidebarView}
@@ -197,6 +223,8 @@ export function App() {
             onModeChange={setDefaultMode}
             theme={theme}
             onThemeChange={setTheme}
+            fontScale={fontScale}
+            onFontScaleChange={setFontScale}
             onLogout={logout}
           />
         ) : (
@@ -243,6 +271,34 @@ export function App() {
         onUpdateProject={updateProject}
         showToast={showToast}
       />
+
+      <Modal
+        open={closeConfirmId !== null}
+        onClose={() => setCloseConfirmId(null)}
+        title="Есть непересчитанные изменения"
+        size="sm"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setCloseConfirmId(null)}>
+              Остаться в проекте
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (closeConfirmId) closeProject(closeConfirmId);
+                setCloseConfirmId(null);
+              }}
+            >
+              Закрыть проект
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <Text variant="bodySm" color="textMuted">
+          Значения на посчитанном шаге изменились после расчёта — отчёт в шторке результата по нему больше не отражает
+          текущий ввод. Правки уже сохранены и не потеряются, но для верного отчёта шаг стоит пересчитать заново.
+        </Text>
+      </Modal>
 
       <Toast message={message} />
     </>

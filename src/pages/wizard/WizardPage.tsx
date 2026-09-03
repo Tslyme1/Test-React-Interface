@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
+import { Badge, Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
 import type { Step } from '@uralmash/design-system';
 import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
@@ -8,7 +8,7 @@ import { GeometryStep } from './GeometryStep';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
 import { ResultsDrawer } from './ResultsDrawer';
-import { STEP_KEYS } from '@/domain/steps';
+import { isStepStale, STEP_KEYS } from '@/domain/steps';
 import { formatDate } from '@/domain/date';
 import styles from './WizardPage.module.css';
 
@@ -44,12 +44,16 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   const available = (i: number) => i === 0 || project.calc[i - 1] || project.calc[i];
   const stepKey = STEP_KEYS[step];
   const calculated = project.calc[step];
+  // Числовая правка на посчитанном шаге не форкает (см. `patchGeom` ниже) —
+  // отчёт по нему остаётся тем, что был на момент расчёта, пока не нажали
+  // «Пересчитать» ещё раз.
+  const stale = isStepStale(project, step);
 
   // Шаг «Грансостав» без пробы руды считать нечего: форма ещё закрыта
   // заглушкой, и активная кнопка расчёта обещала бы результат из пустоты.
   const ready = stepKey !== 'gran' || Boolean(project.ore);
 
-  const steps: Step[] = STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i) }));
+  const steps: Step[] = STEP_META.map((meta, i) => ({ ...meta, disabled: !available(i), completed: project.calc[i] }));
 
   const goToStep = (i: number) => {
     if (i === 1 && !project.ore) {
@@ -77,17 +81,20 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     if (!pendingFork) return;
     const nextCalc = [...project.calc] as Project['calc'];
     const nextCalcDates = [...project.calcDates] as Project['calcDates'];
+    const nextCalcSnapshot = [...project.calcSnapshot] as Project['calcSnapshot'];
     // Форк начинает расчёт заново с изменённого шага: посчитанное дальше
     // относилось к прежним данным и не может остаться отмеченным как есть.
     for (let i = pendingFork.calcIndex; i < nextCalc.length; i += 1) {
       nextCalc[i] = false;
       nextCalcDates[i] = null;
+      nextCalcSnapshot[i] = null;
     }
 
     const forked = onForkProject(project.id, {
       ...pendingFork.patch,
       calc: nextCalc,
       calcDates: nextCalcDates,
+      calcSnapshot: nextCalcSnapshot,
     });
 
     setPendingFork(null);
@@ -126,7 +133,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     nextCalc[step] = true;
     const nextCalcDates = [...project.calcDates] as Project['calcDates'];
     nextCalcDates[step] = formatDate();
-    onUpdateProject(project.id, { calc: nextCalc, calcDates: nextCalcDates });
+    // Снимок данных этого шага прямо сейчас — опора для предупреждения
+    // «есть непересчитанные изменения» при закрытии проекта (см. `App.tsx`
+    // и `hasUncalculatedChanges`).
+    const nextCalcSnapshot = [...project.calcSnapshot] as Project['calcSnapshot'];
+    nextCalcSnapshot[step] = project.data[stepKey];
+    onUpdateProject(project.id, { calc: nextCalc, calcDates: nextCalcDates, calcSnapshot: nextCalcSnapshot });
     showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
 
@@ -165,6 +177,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
 
           {calculated ? (
             <Stack direction="row" align="center" gap="sm">
+              {/* Правка числового поля после расчёта не форкает (см.
+                  `patchGeom`/`patchGran`/`patchProd` выше) — отчёт остаётся
+                  тем, что был на момент расчёта, пока не нажали «Пересчитать».
+                  Бейдж — постоянная подсказка, что расхождение есть, не
+                  дожидаясь попытки закрыть проект. */}
+              {stale ? <Badge tone="warning">Есть непересчитанные изменения</Badge> : null}
               {/* Вторичная — «Смотреть результат» рядом уже несёт основное
                   действие этого состояния, а эта лишь подсказывает, куда
                   идти дальше, когда шаг посчитан и это не очевидно само
@@ -176,15 +194,24 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
                 </Button>
               ) : null}
               <Button
-                variant="primary"
+                variant={stale ? 'secondary' : 'primary'}
                 iconStart="fileText"
                 onClick={() => {
                   setResultStep(stepKey);
                   setResultOpen(true);
                 }}
               >
-                Смотреть результат
+                Смотреть результат {step + 1} этапа
               </Button>
+              {/* Основное действие смещается сюда, когда результат уже
+                  устарел, — «Смотреть результат» в этот момент показал бы
+                  старые цифры, и предлагать его как главное действие
+                  неправильно. */}
+              {stale ? (
+                <Button variant="primary" onClick={runCalc}>
+                  Пересчитать
+                </Button>
+              ) : null}
             </Stack>
           ) : (
             <Button variant="primary" disabled={!ready} onClick={runCalc}>

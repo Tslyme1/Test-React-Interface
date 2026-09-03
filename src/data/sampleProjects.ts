@@ -40,6 +40,7 @@ export function buildSampleProjects(): Project[] {
     // Расчёт по трём шагам считается выполненным у части примеров —
     // чтобы в списке были видны и посчитанные проекты, и начатые.
     const calcDone = i % 3 !== 2;
+    const calc: [boolean, boolean, boolean] = calcDone ? [true, true, true] : [true, false, false];
     const date = pastDate(i * 2 + 1);
 
     // Исходные значения на момент заведения проекта — опора режима
@@ -68,8 +69,11 @@ export function buildSampleProjects(): Project[] {
       oreIn: specs['F95, мм'] ? `${specs['F95, мм']} мм (F95)` : '—',
       oreOut: specs['S, мм'] ? `${specs['S, мм']} мм` : '—',
       throughput: specs['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
-      calc: calcDone ? [true, true, true] : [true, false, false],
+      calc,
       calcDates: calcDone ? [date, date, date] : [date, null, null],
+      // Примеры показывают уже посчитанный и согласованный результат, а не
+      // забытую правку после расчёта — снимок равен текущим данным шага.
+      calcSnapshot: [calc[0] ? data.geom : null, calc[1] ? data.gran : null, calc[2] ? data.prod : null],
       data,
       initialData,
     };

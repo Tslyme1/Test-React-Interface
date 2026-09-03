@@ -45,11 +45,11 @@ test.describe('Схема камеры дробления на шаге «Гео
     await expect(svg).toContainText('S₀ — зазор 3–2: 40 мм');
   });
 
-  test('изменение угла гирации θ, углов β и длины l2 меняет разметку схемы', async ({ page }) => {
+  test('изменение угла нутации θ, углов β и длины l2 меняет разметку схемы', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
 
-    await page.getByLabel('Угол гирации θ').fill('6');
+    await page.getByLabel('Угол нутации θ').fill('6');
     const afterTheta = await svg.innerHTML();
     expect(afterTheta).not.toBe(before);
 
@@ -89,9 +89,9 @@ test.describe('Схема камеры дробления на шаге «Гео
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Радианы' }).click();
     await page.keyboard.press('Escape');
-    // Угол гирации в градусах был 2.5 — в радианах то же самое значение
+    // Угол нутации в градусах был 2.5 — в радианах то же самое значение
     // читается уже совсем иначе, схема обязана пересчитаться без ошибок.
-    await page.getByLabel('Угол гирации θ').fill('0.05');
+    await page.getByLabel('Угол нутации θ').fill('0.05');
 
     await expect(svg).toBeVisible();
     expect(await svg.locator('path').count()).toBeGreaterThan(0);

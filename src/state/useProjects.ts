@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { GeomData, ProdData, Project, ProjectMode, WizardData } from '@/types';
+import type { GeomData, GranData, ProdData, Project, ProjectMode, WizardData } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { CRUSHERS } from '@/data/crushers';
@@ -37,11 +37,25 @@ const STORAGE_KEY = 'uztm-projects';
  * схемы, и половине чертежа не отвечало ни одно поле. Старые значения
  * ложатся на свои узлы, остальные берут ровно те умолчания, которыми их
  * и рисовали, — профиль сохранённого проекта после миграции не меняется.
+ * Версия 13 — у «Грансостава» появилось поле `dk` (кондиционная крупность
+ * питания), пропущенное при переносе формы: старым записям подставляется
+ * значение `dMin`.
+ * Версия 14 — у проекта появился `calcSnapshot`: слепок данных каждого шага
+ * на момент его последнего расчёта, отдельно от `initialData` (та хранит
+ * момент создания проекта и не обновляется при пересчёте). По нему видно,
+ * разошлись ли текущие значения с тем, что легло в уже посчитанный
+ * результат, — без этого поля закрытие проекта с такими правками проходило
+ * молча. Старым записям снимок не восстановить — подставляется `null` по
+ * всем трём шагам; `calc` при этом не трогается, а `null` считается
+ * «снимка нет», а не «разошлось со всем подряд» — иначе сама миграция
+ * включила бы предупреждение о несохранённых правках на каждом уже
+ * посчитанном проекте. Настоящий снимок появится у шага при ближайшем
+ * расчёте.
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 14;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -74,19 +88,25 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 13) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14), trash, seeded });
+    }
+    if (payload.version === 12) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14), trash, seeded });
+    }
     if (payload.version === 11) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14), trash, seeded });
     }
     if (payload.version === 10) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12),
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
     }
     if (payload.version === 9) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12),
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -97,7 +117,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -108,7 +129,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -120,7 +142,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -132,7 +155,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -145,7 +169,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -158,7 +183,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded,
       });
@@ -171,7 +197,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded: false,
       });
@@ -185,7 +212,8 @@ function readState(): StoredState {
           .map(migrateCalcDatesV9)
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
-          .map(migrateGeomChainV12),
+          .map(migrateGeomChainV12)
+          .map(migrateDkV13).map(migrateCalcSnapshotV14),
         trash,
         seeded: false,
       });
@@ -342,6 +370,29 @@ function migrateGeomChainV12(project: Project): Project {
 }
 
 /**
+ * До версии 13 у шага «Грансостав» не было поля `dk` — оно есть в исходных
+ * данных примера расчёта («DMIN=15, DK=15, DMAX=70») наравне с `dMin`/`dMax`,
+ * но было пропущено при переносе. Старым записям подставляется значение
+ * `dMin` — тот же самый частный случай, что и в примере расчёта.
+ */
+function migrateDkV13(project: Project): Project {
+  const convert = (data: WizardData): WizardData => {
+    const gran = data.gran as GranData & { dk?: string };
+    if (typeof gran.dk === 'string') return data;
+    return { ...data, gran: { ...gran, dk: gran.dMin } };
+  };
+
+  return { ...project, data: convert(project.data), initialData: convert(project.initialData) };
+}
+
+/** Снимка на момент расчёта у старых записей нет — `null` по всем трём шагам, см. версию 14 выше. */
+function migrateCalcSnapshotV14(project: Project): Project {
+  const withSnapshot = project as Project & { calcSnapshot?: unknown };
+  if (Array.isArray(withSnapshot.calcSnapshot)) return project;
+  return { ...project, calcSnapshot: [null, null, null] };
+}
+
+/**
  * До версии 7 у проекта не было `mode`/`crusherNames`/`oreNames` — все
  * записи были инженерными с одной дробилкой и одной пробой, поэтому
  * получают `mode: 'engineering'` и списки из того, что уже стояло
@@ -431,6 +482,7 @@ export function useProjects() {
       throughput: specs?.['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: [false, false, false],
       calcDates: [null, null, null],
+      calcSnapshot: [null, null, null],
       data: input.data,
       // Опора «Дельта» с самого начала — не только после первого расчёта.
       initialData: input.data,

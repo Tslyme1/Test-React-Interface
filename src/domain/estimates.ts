@@ -115,7 +115,7 @@ export function estimateGeom(data: GeomData): KvRow[] {
     { label: 'H — высота камеры', value: H.toFixed(1), unit: 'мм' },
     { label: 'h — до нижней точки конуса', value: Math.max(H - l2, 0).toFixed(1), unit: 'мм' },
     { label: 'S₀ — выходная щель', value: S0.toFixed(1), unit: 'мм' },
-    { label: 'θ — угол качания', value: theta.toFixed(2), unit: data.angleUnit === 'рад' ? 'рад' : 'град' },
+    { label: 'θ — угол нутации', value: theta.toFixed(2), unit: data.angleUnit === 'рад' ? 'рад' : 'град' },
     { label: 'α₂ — угол на нижнюю точку конуса', value: alpha2.toFixed(2), unit: 'град' },
     { label: 'Длина профиля брони чаши', value: chainLength.toFixed(1), unit: 'мм' },
     { label: 'Число зон дробления', value: data.zones, unit: '' },
