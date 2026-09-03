@@ -108,7 +108,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   };
 
   /** Постфикс поля угла — говорит, в чём сейчас читать число, не отсылая к отдельной подписи над формой. */
-  const angleUnitSuffix = data.angleUnit === 'рад' ? 'рад' : '°';
+  const angleUnitSuffix = data.angleUnit === 'рад' ? 'рад' : 'град°';
 
   // ── меню «Диаграмма» и «Слои» над схемой ──
   const [diagramOpen, setDiagramOpen] = useState(false);
@@ -554,6 +554,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
  * Флажок/переключатель здесь декоративны (`readOnly`, вне табуляции) —
  * переключает состояние сама строка через `onClick`, как и у `Cell`
  * с флажком внутри `Select`.
+ *
+ * Без `selected` у самой `Cell`: заливка выбранного и так дублирует то,
+ * что уже показывает флажок/радио в правом слоте — вместе это читалось
+ * как две разных отметки одного и того же. `aria-selected` остаётся
+ * для доступности, только визуальную заливку убрали.
  */
 function OptionCell({
   label,
@@ -570,10 +575,9 @@ function OptionCell({
 }) {
   return (
     <Cell
-      size="sm"
+      size="md"
       role="option"
       aria-selected={checked}
-      selected={checked}
       description={description}
       onClick={onSelect}
       trailing={

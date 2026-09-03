@@ -215,7 +215,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('переключение единиц углов меняет постфикс у полей угла', async ({ page }) => {
-    await expect(page.getByText('°', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('град°', { exact: true }).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     const radians = page.getByRole('option', { name: 'Радианы' });
@@ -224,7 +224,7 @@ test.describe('Инженерный визард', () => {
     await page.keyboard.press('Escape');
 
     await expect(page.getByText('рад', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('°', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('град°', { exact: true })).toHaveCount(0);
   });
 
   test('ширину панели со схемой можно тянуть вручную', async ({ page }) => {
