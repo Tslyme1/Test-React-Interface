@@ -13,7 +13,7 @@ test.describe('Профиль', () => {
   });
 
   test('по умолчанию — инженерный режим, «Новый проект» открывает обычную модалку', async ({ page }) => {
-    await expect(page.getByRole('radio', { name: 'Инженерный' })).toBeChecked();
+    await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'true');
 
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
@@ -21,10 +21,19 @@ test.describe('Профиль', () => {
   });
 
   test('переключение на «Упрощённый» меняет, что открывает «Новый проект»', async ({ page }) => {
-    await page.getByRole('radio', { name: 'Упрощённый' }).click();
+    await page.getByRole('option', { name: 'Упрощённый' }).click();
 
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
-    await expect(page.getByRole('dialog', { name: /упрощ/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Выбор дробилки' })).toBeVisible();
+  });
+
+  test('режим работы — строки с описанием, а не сегмент-контрол', async ({ page }) => {
+    await expect(page.getByText('Ручная настройка всех параметров на каждом этапе.')).toBeVisible();
+    await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
+
+    await page.getByRole('option', { name: 'Упрощённый' }).click();
+    await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'false');
   });
 });

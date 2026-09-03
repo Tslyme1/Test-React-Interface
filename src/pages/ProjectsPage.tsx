@@ -61,6 +61,8 @@ export type ProjectsPageProps = {
    * страницы заказчиков, что при ручном выборе или сбросе прямо здесь.
    */
   onCustomerFilterChange?: (customer: string | null) => void;
+  /** Клик по «Заказчики» в хлебной крошке — уход на страницу заказчиков. */
+  onGoCustomers?: () => void;
 };
 
 /**
@@ -91,6 +93,7 @@ export function ProjectsPage({
   onNewProject,
   initialCustomerFilter,
   onCustomerFilterChange,
+  onGoCustomers,
 }: ProjectsPageProps) {
   /* Теги и их цвета живут отдельно от проектов: цвет заводят один раз,
      и он не должен пропадать вместе с последним проектом, где тег стоял. */
@@ -510,7 +513,9 @@ export function ProjectsPage({
               <Text variant="headingMd" as="h1">
                 {customer !== NONE ? (
                   <>
-                    <span className={styles.breadcrumbMuted}>Заказчики</span>
+                    <button type="button" className={styles.breadcrumbLink} onClick={onGoCustomers}>
+                      Заказчики
+                    </button>
                     <span className={styles.breadcrumbMuted}> / </span>
                     {customer}
                   </>

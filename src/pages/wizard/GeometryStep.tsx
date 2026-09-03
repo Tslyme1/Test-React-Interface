@@ -1,27 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode, WheelEvent as ReactWheelEvent } from 'react';
-import {
-  Box,
-  Button,
-  Cell,
-  Checkbox,
-  Chip,
-  Field,
-  Input,
-  Modal,
-  Popover,
-  Radio,
-  Select,
-  Stack,
-  Surface,
-  Text,
-} from '@uralmash/design-system';
+import { Box, Button, Chip, Field, Input, Modal, Popover, Select, Stack, Surface, Text } from '@uralmash/design-system';
 import type { GeomData, ZoneCount } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import type { ChamberHighlightKey, ChamberSchemeLayers } from '@/components/ChamberScheme/ChamberScheme';
 import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
+import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { buildChamberSchemeProps } from './chamberSchemeAdapter';
 import styles from './GeometryStep.module.css';
 
@@ -539,56 +525,10 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           }}
           nameLabel="Дробилка"
           searchPlaceholder="КМД-2200, 2200, 500-655…"
+          inlineSpecs={['D, мм', 'Q, т/ч']}
         />
       </Modal>
     </div>
   );
 }
 
-/**
- * Строка выбора внутри поповера — тот же ряд, что и вариант `Select`
- * (`Cell` с флажком или отметкой в правом слоте, а не голый `Checkbox`/`Radio`
- * посреди панели): высота из шкалы контролов и подсветка при наведении
- * вместо мелкого контрола без чужого поля вокруг.
- *
- * Флажок/переключатель здесь декоративны (`readOnly`, вне табуляции) —
- * переключает состояние сама строка через `onClick`, как и у `Cell`
- * с флажком внутри `Select`.
- *
- * Без `selected` у самой `Cell`: заливка выбранного и так дублирует то,
- * что уже показывает флажок/радио в правом слоте — вместе это читалось
- * как две разных отметки одного и того же. `aria-selected` остаётся
- * для доступности, только визуальную заливку убрали.
- */
-function OptionCell({
-  label,
-  description,
-  checked,
-  onSelect,
-  kind = 'radio',
-}: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onSelect: () => void;
-  kind?: 'radio' | 'checkbox';
-}) {
-  return (
-    <Cell
-      size="md"
-      role="option"
-      aria-selected={checked}
-      description={description}
-      onClick={onSelect}
-      trailing={
-        kind === 'checkbox' ? (
-          <Checkbox checked={checked} readOnly tabIndex={-1} />
-        ) : (
-          <Radio checked={checked} readOnly tabIndex={-1} />
-        )
-      }
-    >
-      {label}
-    </Cell>
-  );
-}

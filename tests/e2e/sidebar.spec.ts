@@ -62,9 +62,24 @@ test.describe('Сайдбар', () => {
 
     // Раздел контента — список проектов, но в сайдбаре по-прежнему подсвечен
     // «Заказчики» (проп `selected` у `Cell`): пользователь пришёл сюда именно
-    // оттуда и не «потерялся».
-    await expect(page.getByRole('button', { name: 'Заказчики' })).toHaveClass(/selected/);
-    await expect(page.getByRole('button', { name: 'Проекты' })).not.toHaveClass(/selected/);
+    // оттуда и не «потерялся». Ищем внутри сайдбара, а не по всей странице:
+    // хлебная крошка заголовка тоже называется «Заказчики» и тоже кликабельна
+    // (ведёт туда же), и по одному имени их не различить.
+    const sidebar = page.locator('[class*="sidebar"]');
+    await expect(sidebar.getByRole('button', { name: 'Заказчики' })).toHaveClass(/selected/);
+    await expect(sidebar.getByRole('button', { name: 'Проекты' })).not.toHaveClass(/selected/);
+  });
+
+  test('«Заказчики» в хлебной крошке ведёт на страницу заказчиков', async ({ page }) => {
+    await page.getByRole('button', { name: 'Заказчики' }).click();
+    await page.getByRole('row', { name: /ЕВРАЗ КГОК/ }).click();
+    await expect(page.getByRole('heading', { name: 'Заказчики / ЕВРАЗ КГОК' })).toBeVisible();
+
+    const heading = page.getByRole('heading', { name: 'Заказчики / ЕВРАЗ КГОК' });
+    await heading.getByRole('button', { name: 'Заказчики' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Заказчики', exact: true })).toBeVisible();
+    await expect(page.getByRole('row', { name: /ЕВРАЗ КГОК/ })).toBeVisible();
   });
 
   test('корзина открывается из сайдбара отдельным экраном', async ({ page }) => {

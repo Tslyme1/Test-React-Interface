@@ -10,7 +10,7 @@ import { seedSession, watchConsole } from './helpers';
 
 async function switchToSimplified(page: Page) {
   await page.getByRole('button', { name: 'Профиль' }).click();
-  await page.getByRole('radio', { name: 'Упрощённый' }).click();
+  await page.getByRole('option', { name: 'Упрощённый' }).click();
   await page.getByRole('button', { name: 'Проекты' }).click();
 }
 
@@ -21,7 +21,7 @@ async function switchToSimplified(page: Page) {
  */
 async function createSimplifiedProject(page: Page) {
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  const dialog = page.getByRole('dialog', { name: /упрощ/i });
+  const dialog = page.getByRole('dialog', { name: 'Выбор дробилки' });
   await expect(dialog).toBeVisible();
 
   await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
@@ -34,7 +34,7 @@ async function createSimplifiedProject(page: Page) {
   // То же окно продолжает работу — не переоткрывалось, список остался под ним.
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Руда' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('heading', { name: 'Выбор руды' })).toBeVisible();
 }
 
 test.describe('Упрощённый режим — до создания проекта', () => {
@@ -43,7 +43,7 @@ test.describe('Упрощённый режим — до создания про�
     await switchToSimplified(page);
 
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
-    const dialog = page.getByRole('dialog', { name: /упрощ/i });
+    const dialog = page.getByRole('dialog', { name: 'Выбор дробилки' });
     await expect(dialog).toBeVisible();
 
     // Шаги «Руда» и «Продукт» видны в степпере сразу — не только начиная
@@ -53,6 +53,21 @@ test.describe('Упрощённый режим — до создания про�
     await expect(dialog.getByText('1Дробилка', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Руда', { exact: true })).toBeVisible();
     await expect(dialog.getByText('Продукт', { exact: true })).toBeVisible();
+  });
+
+  test('подзаголовок считает выбранные дробилки', async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await switchToSimplified(page);
+
+    await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Выбор дробилки' });
+    await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
+
+    await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
+    await expect(dialog.getByText('Выбрано дробилок: 1')).toBeVisible();
+
+    await dialog.getByRole('row', { name: /КСД-2000Т/ }).click();
+    await expect(dialog.getByText('Выбрано дробилок: 2')).toBeVisible();
   });
 });
 
@@ -123,6 +138,6 @@ test.describe('Упрощённый режим', () => {
     // Строка проекта в списке — открывает то же окно на том месте, где остановились.
     await page.getByRole('row', { name: /КМД-2000Т/ }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Руда' })).toBeVisible();
+    await expect(page.getByRole('dialog').getByRole('heading', { name: 'Выбор руды' })).toBeVisible();
   });
 });

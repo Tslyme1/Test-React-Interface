@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedSession, watchConsole } from './helpers';
+import { createProject, seedSession, watchConsole } from './helpers';
 
 /**
  * Окно фильтров каталога и фиксированная высота окна нового проекта.
@@ -108,6 +108,41 @@ test('условия в полосе поиска каталога — одно�
   // один базис, как и строка фильтров на списке проектов.
   expect(Math.abs(familyWidth - diameterWidth), `Семейство: ${familyWidth}, D: ${diameterWidth}`).toBeLessThan(2);
   expect(Math.abs(diameterWidth - throughputWidth), `D: ${diameterWidth}, Q: ${throughputWidth}`).toBeLessThan(2);
+});
+
+test('шапка таблицы каталога остаётся на месте при прокрутке', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await page.getByRole('button', { name: 'Новый проект' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+  await expect(page.getByRole('table')).toBeVisible();
+
+  // Ждём, пока доиграет анимация появления окна — иначе «до» снимается
+  // с ещё движущейся панели, и разница пары пикселей выглядит так же,
+  // как настоящая прокрутка шапки.
+  await page.waitForTimeout(250);
+  const head = dialog.getByRole('columnheader', { name: /Дробилка/ }).first();
+  const before = (await head.boundingBox())!.y;
+
+  const scroller = dialog.locator('[class*="scroll"]').first();
+  await scroller.evaluate((el) => el.scrollBy(0, 300));
+  const after = (await head.boundingBox())!.y;
+
+  expect(Math.abs(after - before), `шапка: было ${before}, стало ${after}`).toBeLessThan(2);
+});
+
+test('в окне выбора пробы руды есть быстрые фильтры по характеристикам, не только поиск', async ({ page }) => {
+  await seedSession(page, { empty: true });
+  await createProject(page);
+
+  await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+  await page.getByRole('button', { name: /Руда/ }).click();
+  const ore = page.getByRole('dialog', { name: 'Выбор пробы руды' });
+  await expect(ore).toBeVisible();
+
+  // `.first()` — то же имя носит и сортирующая кнопка в шапке таблицы;
+  // полоса условий стоит в разметке раньше таблицы (см. тест выше).
+  await expect(ore.getByRole('button', { name: 'f', exact: true }).first()).toBeVisible();
+  await expect(ore.getByRole('button', { name: 'ρ, т/м³', exact: true }).first()).toBeVisible();
 });
 
 test('колонка названия не меняет ширину при смене выборки', async ({ page }) => {
