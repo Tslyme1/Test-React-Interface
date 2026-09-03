@@ -554,12 +554,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           <div className={styles.groupDivider} />
 
           <Stack gap="sm" direction="column">
-            <Text variant="headingSm">Качание конуса</Text>
+            <Text variant="headingSm">Нутация конуса</Text>
 
             {zoned(
               'theta',
               <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Угол гирации θ" hint={hintWithDelta('theta')}>
+                <Field label="Угол нутации θ" hint={hintWithDelta('theta')}>
                   {(props) => (
                     <Input
                       {...props}

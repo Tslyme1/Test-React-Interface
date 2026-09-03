@@ -137,7 +137,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     const console_ = watchConsole(page);
 
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await expect(page.getByRole('button', { name: 'Смотреть результат' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     const field = page.getByLabel('Диаметр основания D, мм');
     await field.fill('1900');

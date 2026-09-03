@@ -53,6 +53,7 @@ export function defaultWizardData(): WizardData {
     },
     gran: {
       dMin: '0',
+      dk: '0',
       dMax: '300',
       z0: '1.2',
       s00: '0.85',

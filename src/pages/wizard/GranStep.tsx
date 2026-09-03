@@ -93,6 +93,10 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: 
           )}
         </Field>
 
+        <Field label="Кондиционная крупность Dk, мм" hint={hintWithDelta('dk')}>
+          {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} />}
+        </Field>
+
         <Field label="Максимальная крупность Dmax, мм" required hint={hintWithDelta('dMax')}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />

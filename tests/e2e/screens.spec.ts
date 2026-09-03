@@ -73,7 +73,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await seedSession(page, { empty: true });
       await createProject(page);
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-      await page.getByRole('button', { name: 'Смотреть результат' }).click();
+      await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
       await expect(page.getByRole('dialog', { name: /Результат/ })).toBeVisible();
       await shot(page, `07-results-drawer-${scheme}`);
     });

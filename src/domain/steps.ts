@@ -1,4 +1,4 @@
-import type { StepKey } from '@/types';
+import type { Project, StepKey } from '@/types';
 
 /**
  * Три шага визарда, в порядке, в котором с ними работает `calc: [boolean, boolean, boolean]`
@@ -21,3 +21,22 @@ export const STEP_TITLES: Record<StepKey, string> = {
   gran: 'Результат: характеристический грансостав',
   prod: 'Результат: грансостав продукта и усилия',
 };
+
+/**
+ * Посчитан ли шаг `index`, но данные с тех пор разошлись со снимком на
+ * момент расчёта (`project.calcSnapshot`) — то есть отчёт по нему больше
+ * не отражает то, что сейчас введено в форме. `null` в `calcSnapshot` —
+ * «снимка нет» (шаг не считался или запись старше версии 14 хранилища)
+ * и в расхождение не идёт: сравнивать не с чем, предупреждать не о чем.
+ */
+export function isStepStale(project: Project, index: number): boolean {
+  if (!project.calc[index]) return false;
+  const snapshot = project.calcSnapshot[index];
+  if (snapshot === null) return false;
+  return JSON.stringify(project.data[STEP_KEYS[index]]) !== JSON.stringify(snapshot);
+}
+
+/** Есть ли в проекте хотя бы один такой шаг — см. `isStepStale`. */
+export function hasUncalculatedChanges(project: Project): boolean {
+  return STEP_KEYS.some((_key, i) => isStepStale(project, i));
+}

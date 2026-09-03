@@ -1,5 +1,6 @@
 import { Box, Button, Stack, Text } from '@uralmash/design-system';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
+import type { FontScalePreference } from '@/state/useFontScale';
 import type { ThemePreference } from '@/state/useTheme';
 import type { ProjectMode, User } from '@/types';
 import styles from './ProfilePage.module.css';
@@ -11,6 +12,8 @@ export type ProfilePageProps = {
   onModeChange: (mode: ProjectMode) => void;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  fontScale: FontScalePreference;
+  onFontScaleChange: (scale: FontScalePreference) => void;
   onLogout: () => void;
 };
 
@@ -25,6 +28,13 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; description: strin
   { value: 'dark', label: 'Тёмная', description: 'Всегда тёмная, независимо от системы.' },
 ];
 
+const FONT_SCALE_OPTIONS: { value: FontScalePreference; label: string; description: string }[] = [
+  { value: 'sm', label: 'Мелкий', description: '90 % от обычного размера.' },
+  { value: 'md', label: 'Обычный', description: 'Размер по умолчанию.' },
+  { value: 'lg', label: 'Крупный', description: '115 % от обычного размера.' },
+  { value: 'xl', label: 'Очень крупный', description: '130 % от обычного размера.' },
+];
+
 /**
  * Только просмотр данных пользователя: правка профиля не входила в задачу,
  * а авторизация здесь демонстрационная (см. README) — заводить форму
@@ -36,7 +46,16 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; description: strin
  * контрола — только текст для чтения. Пара подписи и значения — тот же
  * приём, что раньше стоял в меню пользователя в шапке.
  */
-export function ProfilePage({ user, mode, onModeChange, theme, onThemeChange, onLogout }: ProfilePageProps) {
+export function ProfilePage({
+  user,
+  mode,
+  onModeChange,
+  theme,
+  onThemeChange,
+  fontScale,
+  onFontScaleChange,
+  onLogout,
+}: ProfilePageProps) {
   const rows: { label: string; value: string }[] = [
     { label: 'Имя', value: user.name },
     { label: 'Почта', value: user.email || '—' },
@@ -92,6 +111,23 @@ export function ProfilePage({ user, mode, onModeChange, theme, onThemeChange, on
                   description={option.description}
                   checked={theme === option.value}
                   onSelect={() => onThemeChange(option.value)}
+                />
+              ))}
+            </Stack>
+          </Stack>
+
+          <Stack gap="2xs" direction="column">
+            <Text variant="label" color="textMuted">
+              Размер шрифта
+            </Text>
+            <Stack direction="column" gap="none">
+              {FONT_SCALE_OPTIONS.map((option) => (
+                <OptionCell
+                  key={option.value}
+                  label={option.label}
+                  description={option.description}
+                  checked={fontScale === option.value}
+                  onSelect={() => onFontScaleChange(option.value)}
                 />
               ))}
             </Stack>

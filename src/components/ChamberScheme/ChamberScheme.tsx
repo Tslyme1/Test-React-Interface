@@ -277,14 +277,30 @@ export function ChamberScheme({
   );
 
   {
+    /**
+     * Ось конуса и дуга угла нутации — от точки подвеса, а не от условной
+     * верхней границы рабочей области.
+     *
+     * Раньше обе линии стартовали в `(apex.x, top)`: `top` — отступ сверху
+     * рабочей зоны (`AREA.y - 24`), а не координата самой точки подвеса
+     * (`apex.y`). Пока апекс совпадал с верхом профиля лишь примерно, эти
+     * 24px были незаметны, но дуга угла строилась радиусом в 86% высоты
+     * оси — при таком масштабе даже небольшое расхождение вершины дуги
+     * с точкой подвеса растягивалось в заметный сдвиг: дуга и подпись θ
+     * оказывались у нижнего края чертежа, будто угол мерят там, а не
+     * у точки подвеса наверху.
+     *
+     * Вершина обеих линий — `apex`, дуга — небольшим радиусом рядом
+     * с точкой, тем же приёмом, что и у дуг якорных углов α40/α10 ниже.
+     */
     const coneAxisEnd = polar(apex, bottom - apex.y + 40, input.theta);
-    const R = (bottom - apex.y) * 0.86;
+    const R = 46;
     const labelPoint = polar(apex, R + 16, input.theta / 2);
     parts.push(
       <g key="theta" className={cls('theta')} {...zone('theta')}>
         <line
           x1={apex.x}
-          y1={top}
+          y1={apex.y}
           x2={coneAxisEnd.x}
           y2={coneAxisEnd.y}
           stroke="transparent"
@@ -293,18 +309,18 @@ export function ChamberScheme({
         />
         <line
           x1={apex.x}
-          y1={top}
+          y1={apex.y}
           x2={coneAxisEnd.x}
           y2={coneAxisEnd.y}
           stroke="var(--color-text-muted)"
           strokeWidth={1}
           strokeDasharray="14 4 2 4"
         >
-          <title>Ось конуса (наклонена на угол качания θ)</title>
+          <title>Ось конуса (наклонена на угол нутации θ)</title>
         </line>
         {input.theta !== 0 ? (
           <path d={arcPath(apex, R, 0, input.theta)} fill="none" stroke="var(--color-text-muted)" strokeWidth={1}>
-            <title>θ — угол качания конуса: {fmt(input.theta, 1)}°</title>
+            <title>θ — угол нутации конуса: {fmt(input.theta, 1)}°</title>
           </path>
         ) : null}
         <text x={labelPoint.x - 4} y={labelPoint.y + 4} textAnchor="end" fontSize={13} fontStyle="italic" fill="var(--color-text-muted)">
