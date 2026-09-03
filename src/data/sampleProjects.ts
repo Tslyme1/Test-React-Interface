@@ -42,6 +42,14 @@ export function buildSampleProjects(): Project[] {
     const calcDone = i % 3 !== 2;
     const date = pastDate(i * 2 + 1);
 
+    // Исходные значения на момент заведения проекта — опора режима
+    // «Дельта». У первого примера текущие данные слегка отличаются от
+    // исходных, чтобы подсказка «было: X» была видна сразу, без ручной
+    // правки поля, — остальные примеры отличий не несут.
+    const initialData = defaultWizardData();
+    const data = defaultWizardData();
+    if (i === 0) data.geom.beta10 = String(Number(data.geom.beta10) + 2);
+
     return {
       id: `sample-${i}`,
       name: `${crusher.name} · ${CUSTOMERS[i % CUSTOMERS.length]}`,
@@ -62,15 +70,8 @@ export function buildSampleProjects(): Project[] {
       throughput: specs['Q, т/ч'] ? `${specs['Q, т/ч']} т/ч` : '—',
       calc: calcDone ? [true, true, true] : [true, false, false],
       calcDates: calcDone ? [date, date, date] : [date, null, null],
-      data: defaultWizardData(),
-      // Шаг «Геометрия» у примеров всегда посчитан (первый элемент `calc`
-      // всегда `true`) — снимок делаем от тех же значений, что и в форме,
-      // поэтому у свежих примеров дельты быть не должно. «Грансостав»
-      // и «Продукт» посчитаны только у части примеров (`calcDone`) — снимок
-      // есть только у них, у начатых остаётся `null`, как и до расчёта.
-      geomBaseline: defaultWizardData().geom,
-      granBaseline: calcDone ? defaultWizardData().gran : null,
-      prodBaseline: calcDone ? defaultWizardData().prod : null,
+      data,
+      initialData,
     };
   });
 }

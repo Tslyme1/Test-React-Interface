@@ -34,7 +34,6 @@ test.describe('Инженерный визард', () => {
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer).toBeVisible();
-    await expect(drawer.getByText('Рассчитано')).toBeVisible();
 
     // D/2 выводится из введённого D = 1750 — связь формы и результата жива.
     await expect(drawer.getByRole('row').filter({ hasText: 'D/2' })).toContainText('875');
@@ -69,7 +68,7 @@ test.describe('Инженерный визард', () => {
     // Список закрывается сам — клик вне него: свежая метка подвинула «+»
     // левее, и открывать второй список стоит уже после того, как поповер
     // от первого добавления доиграл переезд следом.
-    await drawer.getByText('Рассчитано').click();
+    await drawer.getByText('Дата расчёта').click();
     await expect(page.getByRole('button', { name: 'Новый тег' })).toHaveCount(0);
 
     // Тегов может быть несколько сразу: второй, уже существующий,
@@ -254,17 +253,37 @@ test.describe('Инженерный визард', () => {
     const z0 = page.getByLabel('Параметр Z0');
     await expect(page.getByText('было:')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    // Дельта сравнивает с исходными значениями проекта, а не со снимком
+    // на момент расчёта — правка видна сразу, ещё до «Выполнить расчёт».
     await z0.fill('9.9');
-    // Отредактировано после расчёта этого же шага — подсказка «было: X»
-    // обязана появиться прямо под полем, тем же приёмом, что на «Геометрии».
     await expect(page.getByText('было: 1.2', { exact: true })).toBeVisible();
 
+    // Шаг «Продукт» доступен только после расчёта «Грансостава» — это
+    // про степпер, не про дельту, и не связано с проверкой выше.
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await page.getByRole('button', { name: /Продукт/ }).click();
     const wk = page.getByLabel('Работа разрушения Wk');
     const wkBefore = await wk.inputValue();
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await wk.fill(`${Number(wkBefore) + 1}`);
     await expect(page.getByText(`было: ${wkBefore}`, { exact: true })).toBeVisible();
+  });
+
+  test('дельта видна на совсем новом проекте — не нужно сперва считать шаг', async ({ page }) => {
+    // Регрессия: снимок раньше заводился только при расчёте, и до первого
+    // «Выполнить расчёт» переключатель «Показывать изменения» не показывал
+    // ничего, даже если поле уже отредактировано.
+    const beta10 = page.getByLabel('Угол конуса β10');
+    await beta10.fill('99');
+    await expect(page.getByText('было: 18', { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: 'Не показывать изменения' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('было: 18', { exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: /^Показывать изменения/ }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('было: 18', { exact: true })).toBeVisible();
   });
 });

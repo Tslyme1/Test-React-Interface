@@ -37,8 +37,8 @@ type DeltaMode = 'show' | 'hide';
 export type GeometryStepProps = {
   data: GeomData;
   onChange: (patch: Partial<GeomData>) => void;
-  /** Снимок формы на момент последнего расчёта — опора для режима «Дельта». `null`, пока не считалось. */
-  baseline: GeomData | null;
+  /** Значения на момент создания проекта — опора для режима «Дельта». */
+  baseline: GeomData;
   crusherName: string;
   onChangeCrusher: (name: string) => void;
 };
@@ -99,9 +99,9 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
       children
     );
 
-  /** Пояснение под полем: исходное + отклонение от снимка на момент расчёта, если оно есть и включён показ. */
+  /** Пояснение под полем: исходное + отклонение от значения на момент создания проекта, если оно есть и включён показ. */
   const hintWithDelta = (key: keyof GeomData, base?: string): string | undefined => {
-    if (deltaMode !== 'show' || !baseline) return base;
+    if (deltaMode !== 'show') return base;
     const was = baseline[key];
     if (was === data[key]) return base;
     return base ? `${base} · было: ${was}` : `было: ${was}`;
