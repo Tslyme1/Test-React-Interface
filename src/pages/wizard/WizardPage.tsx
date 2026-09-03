@@ -164,9 +164,10 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
               baseline={project.initialData.gran}
               ore={project.ore}
               onRequestOrePicker={() => setOrePickerOpen(true)}
+              showToast={showToast}
             />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} showToast={showToast} />
+            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} />
           )}
         </Box>
       </div>

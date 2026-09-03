@@ -363,7 +363,7 @@ export function SimplifiedProjectModal({
             />
           </Stack>
         ) : (
-          <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} simplified />
+          <ProdStep data={project.data.prod} onChange={patchProd} simplified />
         )}
       </Stack>
     </Modal>

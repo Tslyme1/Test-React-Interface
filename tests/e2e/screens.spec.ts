@@ -108,8 +108,6 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
       await page.getByRole('button', { name: /Руда/ }).click();
       await pickOre(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-      await page.getByRole('button', { name: /Продукт/ }).click();
       await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
       await shot(page, `09-sieve-${scheme}`);
     });

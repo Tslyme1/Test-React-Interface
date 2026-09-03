@@ -11,6 +11,7 @@ import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
 import { CRUSHERS } from '@/data/crushers';
 import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
+import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { useTags } from '@/state/useTags';
 
 const kvColumns: TableColumn<KvRow>[] = [
@@ -30,6 +31,37 @@ const granColumns: TableColumn<GranRow>[] = [
   { key: 'gamma', title: 'γ', align: 'end' },
   { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
 ];
+
+/**
+ * Отображение таблицы на шаге «Грансостав» — какие столбцы выхода
+ * показывать, независимо друг от друга: по минусу и по плюсу — одна
+ * кривая зеркальна другой (`100 − по минусу`), частные классы — доля
+ * самого класса, а не накопленный итог. Три независимых флажка, а не
+ * выбор одного варианта: сравнить, например, по минусу с частными
+ * классами в одной таблице — обычная надобность, не редкий случай.
+ */
+type GranView = 'minus' | 'plus' | 'classes';
+
+const GRAN_VIEW_COLUMNS: Record<GranView, TableColumn<GranRow>> = {
+  minus: { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
+  plus: { key: 'over', title: 'Выход по плюсу, %', align: 'end', render: (r) => (100 - Number(r.pass)).toFixed(1) },
+  classes: { key: 'gamma', title: 'Частные классы, %', align: 'end', render: (r) => (Number(r.gamma) * 100).toFixed(1) },
+};
+
+const GRAN_VIEW_ORDER: { key: GranView; label: string }[] = [
+  { key: 'minus', label: 'По минусу' },
+  { key: 'plus', label: 'По плюсу' },
+  { key: 'classes', label: 'Частные классы' },
+];
+
+function granDrawerColumns(view: Set<GranView>): TableColumn<GranRow>[] {
+  return [
+    { key: 'class', title: 'Класс крупности, мм' },
+    { key: 'dMid', title: 'D сред', align: 'end' },
+    { key: 'd08', title: '0.8·D пред', align: 'end' },
+    ...GRAN_VIEW_ORDER.filter(({ key }) => view.has(key)).map(({ key }) => GRAN_VIEW_COLUMNS[key]),
+  ];
+}
 
 /** Профиль камеры по точкам — пара «узел чаши · узел конуса» в каждой строке. */
 const profileColumns: TableColumn<ProfileRow>[] = [
@@ -146,6 +178,18 @@ export function ResultsDrawer({
 }) {
   const power = CRUSHERS.find((c) => c.name === project.crusherName)?.values['N, кВт'];
 
+  // ── отображение таблицы «Грансостав» — см. `granDrawerColumns` выше ──
+  const [granViewOpen, setGranViewOpen] = useState(false);
+  const [granView, setGranView] = useState<Set<GranView>>(new Set<GranView>(['minus']));
+  const toggleGranView = (key: GranView) => {
+    setGranView((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <Drawer
       open={open}
@@ -204,11 +248,6 @@ export function ResultsDrawer({
           </MetaField>
         </Stack>
 
-        <Text variant="bodySm" color="textMuted">
-          Значения — иллюстративная оценка на основе введённых параметров, а не результат полной инженерной методики
-          дробления.
-        </Text>
-
         {stepKey === 'geom' ? (
           <>
             <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления" />
@@ -222,12 +261,40 @@ export function ResultsDrawer({
         ) : null}
 
         {stepKey === 'gran' ? (
-          <Table
-            columns={granColumns}
-            rows={estimateGran(project.data.gran)}
-            rowKey={(r) => r.class}
-            caption="Характеристика гранулометрического состава"
-          />
+          <Stack gap="sm" direction="column">
+            <Stack direction="row" justify="end">
+              <Popover
+                open={granViewOpen}
+                onClose={() => setGranViewOpen(false)}
+                placement="bottom-end"
+                width="sm"
+                title="Отображение"
+                trigger={
+                  <Button variant="secondary" iconEnd="chevronDown" onClick={() => setGranViewOpen((o) => !o)}>
+                    Отображение
+                  </Button>
+                }
+              >
+                <Stack direction="column" gap="none">
+                  {GRAN_VIEW_ORDER.map(({ key, label }) => (
+                    <OptionCell
+                      key={key}
+                      kind="checkbox"
+                      label={label}
+                      checked={granView.has(key)}
+                      onSelect={() => toggleGranView(key)}
+                    />
+                  ))}
+                </Stack>
+              </Popover>
+            </Stack>
+            <Table
+              columns={granDrawerColumns(granView)}
+              rows={estimateGran(project.data.gran)}
+              rowKey={(r) => r.class}
+              caption="Характеристика гранулометрического состава"
+            />
+          </Stack>
         ) : null}
 
         {stepKey === 'prod' ? (
@@ -247,6 +314,38 @@ export function ResultsDrawer({
             <Stack gap="xs" direction="column">
               <Text variant="label">Суммарные характеристики крупности продукта</Text>
               <GranulometryChart rows={estimateProdGran(project.data.prod)} />
+            </Stack>
+
+            {/*
+             * Продукт — последний шаг цепочки, и его отчёт по смыслу продолжает
+             * два предыдущих: усилия и грансостав продукта посчитаны из
+             * геометрии камеры и грансостава питания, которые здесь же и
+             * стоит увидеть, не открывая шторки этих шагов отдельно.
+             */}
+            <Text variant="headingSm">Этап 1. Геометрия камеры дробления</Text>
+            <Table
+              columns={kvColumns}
+              rows={estimateGeom(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Параметры камеры дробления"
+            />
+            <Table
+              columns={profileColumns}
+              rows={estimateGeomProfile(project.data.geom)}
+              rowKey={(r) => r.point}
+              caption="Профиль камеры по точкам"
+            />
+
+            <Text variant="headingSm">Этап 2. Характеристический грансостав</Text>
+            <Table
+              columns={granColumns}
+              rows={estimateGran(project.data.gran)}
+              rowKey={(r) => r.class}
+              caption="Характеристика гранулометрического состава"
+            />
+            <Stack gap="xs" direction="column">
+              <Text variant="label">Суммарные характеристики крупности питания</Text>
+              <GranulometryChart rows={estimateGran(project.data.gran)} />
             </Stack>
           </>
         ) : null}

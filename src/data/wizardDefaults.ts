@@ -58,6 +58,22 @@ export function defaultWizardData(): WizardData {
       z0: '1.2',
       s00: '0.85',
       n0: '0.6',
+      a0: '',
+      va0: '',
+      shapeMode: 'direct',
+      sieveMode: 'minus',
+      // Классы крупности заданы по умолчанию — от dMax к dMin этой же
+      // формы, той же геометрической прогрессией, что и расчётная шкала
+      // (см. `buildGranClasses` в `estimates.ts`). Значения выхода пустые:
+      // это заготовка ряда классов, а не готовые данные измерения.
+      sieveRows: [
+        { cls: '-300+150', value: '' },
+        { cls: '-150+75', value: '' },
+        { cls: '-75+35', value: '' },
+        { cls: '-35+15', value: '' },
+        { cls: '-15+5', value: '' },
+        { cls: '-5+0', value: '' },
+      ],
     },
     prod: {
       feedType: 'dry',
@@ -66,10 +82,6 @@ export function defaultWizardData(): WizardData {
       wk: '12',
       wm: '14',
       kpd: '0.82',
-      a0: '',
-      va0: '',
-      shapeMode: 'direct',
-      sieveRows: [],
     },
   };
 }

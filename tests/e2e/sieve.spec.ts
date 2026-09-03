@@ -2,24 +2,44 @@ import { test, expect, type Page } from '@playwright/test';
 import { createProject, pickOre, seedSession, watchConsole } from './helpers';
 
 /**
- * Доходит до шага «Продукт»: расчёт шага «Геометрия» открывает «Грансостав»,
- * расчёт «Грансостава» открывает «Продукт» (см. `available()` в `WizardPage`).
+ * Доходит до шага «Грансостав»: расчёт шага «Геометрия» открывает его,
+ * а выбор пробы снимает заглушку (см. `available()` в `WizardPage`).
  */
-async function goToProdStep(page: Page) {
+async function goToGranStep(page: Page) {
   await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
   await page.getByRole('button', { name: /Руда/ }).click();
-  // «Грансостав» закрыт заглушкой, пока не выбрана проба руды.
   await pickOre(page);
-  await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-  await page.getByRole('button', { name: /Продукт/ }).click();
-  await expect(page.getByRole('heading', { name: 'Грансостав продукта и усилия' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 }
 
-test.describe('Ситовый анализ на шаге «Продукт»', () => {
+/** Убирает все строки (включая заготовку по умолчанию) — дальше тест заводит свои. */
+async function clearRows(page: Page) {
+  while ((await page.getByRole('button', { name: /Удалить строку/ }).count()) > 0) {
+    await page.getByRole('button', { name: /Удалить строку/ }).first().click();
+  }
+}
+
+/**
+ * Две строки классов «-2+1» и «-1+0,5» с введённым «по минусу» — тот же
+ * пример, что раньше проверялся через массу класса (равный вклад, 50/50),
+ * пересобранный под текущую боковую границу: по минусу растёт к самому
+ * крупному классу (50 у row1, 0 у row2, — ничего мельче row2 нет).
+ */
+async function fillTwoClasses(page: Page) {
+  await clearRows(page);
+  await page.getByRole('button', { name: 'Добавить класс' }).click();
+  await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
+  await page.getByLabel('По минусу, строка 1, %').fill('50');
+  await page.getByRole('button', { name: 'Добавить класс' }).click();
+  await page.getByLabel('Класс крупности, строка 2').fill('-1+0,5');
+  await page.getByLabel('По минусу, строка 2, %').fill('0');
+}
+
+test.describe('Ситовый анализ на шаге «Грансостав»', () => {
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
-    await goToProdStep(page);
+    await goToGranStep(page);
   });
 
   test('по умолчанию — прямой ввод a₀ и Va₀', async ({ page }) => {
@@ -28,13 +48,15 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
     await expect(page.getByLabel('Коэффициент вариации длины Va₀')).toBeVisible();
   });
 
-  test('переключатель уводит в ситовый анализ и показывает пустое состояние', async ({ page }) => {
+  test('переключатель уводит в ситовый анализ и показывает классы крупности по умолчанию', async ({ page }) => {
     const console_ = watchConsole(page);
 
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
 
-    await expect(page.getByText('Нет классов крупности')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Добавить класс' })).toBeVisible();
+    // Таблица не пустая по умолчанию — классы крупности уже заданы,
+    // вводить остаётся только выход.
+    await expect(page.getByText('Нет классов крупности')).toHaveCount(0);
+    await expect(page.getByLabel('Класс крупности, строка 1')).toHaveValue('-300+150');
     // Поля прямого ввода в этом режиме не показываются — способ выбран однозначно.
     await expect(page.getByLabel('Среднее относительное длины куска a₀')).toHaveCount(0);
 
@@ -43,37 +65,39 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
 
   test('добавление и удаление строки класса крупности', async ({ page }) => {
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
+    await clearRows(page);
+    await expect(page.getByText('Нет классов крупности')).toBeVisible();
 
+    await page.getByRole('button', { name: 'Добавить класс' }).click();
     await expect(page.getByLabel('Класс крупности, строка 1')).toBeVisible();
-    await expect(page.getByText('Нет классов крупности')).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Удалить строку 1' }).click();
     await expect(page.getByText('Нет классов крупности')).toBeVisible();
+  });
+
+  test('по умолчанию вводится «по минусу» — по плюсу и частные классы считаются сами и недоступны для ввода', async ({ page }) => {
+    await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
+
+    await expect(page.getByRole('radio', { name: 'По минусу' })).toBeChecked();
+    await expect(page.getByLabel('По минусу, строка 1, %')).toBeVisible();
+    await expect(page.getByLabel('По плюсу, строка 1, %')).toHaveCount(0);
+    await expect(page.getByLabel('Частные классы, строка 1, %')).toHaveCount(0);
   });
 
   test('ситовый анализ считает выход классов, суммы, d̄, σ, a₀ и Va₀', async ({ page }) => {
     const console_ = watchConsole(page);
 
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
+    await fillTwoClasses(page);
 
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
-    await page.getByLabel('Масса класса, строка 1, г').fill('100');
+    // По плюсу и частные классы — пересчитаны сами: по минусу 50/0 даёт
+    // по плюсу 50/100 и частные классы 50/50.
+    await expect(page.getByText('По плюсу 50,0').first()).toBeVisible();
+    await expect(page.getByText('Частные классы 50,0').first()).toBeVisible();
+    await expect(page.getByText('По плюсу 100,0')).toBeVisible();
+    await expect(page.getByText('Частные классы 50,0').nth(1)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 2').fill('-1+0,5');
-    await page.getByLabel('Масса класса, строка 2, г').fill('100');
-
-    // Выход классов: масса поровну — по 50%. Накопленные суммы идут
-    // от 100% по минусу к 100% по плюсу.
-    await expect(page.getByText('γᵢ 50,0').first()).toBeVisible();
-    await expect(page.getByText('Σ+ 50,0')).toBeVisible();
-    await expect(page.getByText('Σ− 100,0')).toBeVisible();
-    await expect(page.getByText('Σ+ 100,0')).toBeVisible();
-    await expect(page.getByText('Σ− 50,0')).toBeVisible();
-
-    await expect(page.getByText('200,0 г')).toBeVisible();
+    await expect(page.getByText('100,0 %')).toBeVisible();
 
     // d̄ = (50·1,5 + 50·0,75) / 100 = 1,125; σ = 0,375; dmax = 2.
     await expect(page.getByText('1.125 мм')).toBeVisible();
@@ -85,14 +109,30 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
     console_.assertClean();
   });
 
-  test('«Записать a₀ и Va₀ в параметры» переносит значения в прямой ввод и показывает тост', async ({ page }) => {
+  test('переключение «что вводить» переносит уже введённые значения, а не стирает их', async ({ page }) => {
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
+    await clearRows(page);
     await page.getByRole('button', { name: 'Добавить класс' }).click();
     await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
-    await page.getByLabel('Масса класса, строка 1, г').fill('100');
+    await page.getByLabel('По минусу, строка 1, %').fill('30');
+
+    await page.getByRole('radio', { name: 'По плюсу' }).check();
+    // По минусу = 30 → по плюсу = 100 − 30 = 70.
+    await expect(page.getByLabel('По плюсу, строка 1, %')).toHaveValue('70');
+  });
+
+  test('действие записи в параметры недоступно без введённого выхода', async ({ page }) => {
+    await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
+    await clearRows(page);
     await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 2').fill('-1+0,5');
-    await page.getByLabel('Масса класса, строка 2, г').fill('100');
+    await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
+
+    await expect(page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' })).toBeDisabled();
+  });
+
+  test('«Записать a₀ и Va₀ в параметры» переносит значения в прямой ввод и показывает тост', async ({ page }) => {
+    await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
+    await fillTwoClasses(page);
 
     await page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' }).click();
 
@@ -103,44 +143,27 @@ test.describe('Ситовый анализ на шаге «Продукт»', ()
     await expect(page.getByLabel('Коэффициент вариации длины Va₀')).toHaveValue('0.333');
   });
 
-  test('действие записи в параметры недоступно без введённой массы', async ({ page }) => {
-    await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
-
-    await expect(page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' })).toBeDisabled();
-  });
-
   test('ситовая таблица и способ ввода переживают переход на другой шаг и обратно', async ({ page }) => {
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 1').fill('-2+1');
-    await page.getByLabel('Масса класса, строка 1, г').fill('100');
-    await page.getByRole('button', { name: 'Добавить класс' }).click();
-    await page.getByLabel('Класс крупности, строка 2').fill('-1+0,5');
-    await page.getByLabel('Масса класса, строка 2, г').fill('100');
+    await fillTwoClasses(page);
 
     await page.getByRole('button', { name: /Дробилка/ }).click();
     await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Продукт/ }).click();
-    await expect(page.getByRole('heading', { name: 'Грансостав продукта и усилия' })).toBeVisible();
+    await page.getByRole('button', { name: /Руда/ }).click();
+    await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
     // Способ ввода остался «Ситовый анализ», строки и посчитанные по ним
-    // величины на месте — состояние живёт в `ProdData`, а не в самом шаге.
+    // величины на месте — состояние живёт в `GranData`, а не в самом шаге.
     await expect(page.getByRole('radio', { name: 'Ситовый анализ' })).toBeChecked();
     await expect(page.getByLabel('Класс крупности, строка 1')).toHaveValue('-2+1');
-    await expect(page.getByLabel('Масса класса, строка 1, г')).toHaveValue('100');
-    await expect(page.getByLabel('Класс крупности, строка 2')).toHaveValue('-1+0,5');
-    await expect(page.getByLabel('Масса класса, строка 2, г')).toHaveValue('100');
-    await expect(page.getByText('1.125 мм')).toBeVisible();
+    await expect(page.getByLabel('По минусу, строка 1, %')).toHaveValue('50');
 
     // Записанные a₀/Va₀ тоже пережили переход и видны при возврате к прямому вводу.
     await page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' }).click();
     await page.getByRole('button', { name: /Дробилка/ }).click();
-    await page.getByRole('button', { name: /Продукт/ }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
     await page.getByRole('radio', { name: 'Прямой ввод' }).check();
     await expect(page.getByLabel('Среднее относительное длины куска a₀')).toHaveValue('0.563');
-    await expect(page.getByLabel('Коэффициент вариации длины Va₀')).toHaveValue('0.333');
   });
 });

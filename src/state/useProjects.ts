@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { GeomData, GranData, ProdData, Project, ProjectMode, WizardData } from '@/types';
+import type { GeomData, GranData, ProdData, Project, ProjectMode, SieveRowData, WizardData } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { CRUSHERS } from '@/data/crushers';
@@ -51,11 +51,21 @@ const STORAGE_KEY = 'uztm-projects';
  * включила бы предупреждение о несохранённых правках на каждом уже
  * посчитанном проекте. Настоящий снимок появится у шага при ближайшем
  * расчёте.
+ * Версия 15 — «Параметры формы куска» (`a0`, `va0`, `shapeMode`,
+ * `sieveRows`) переехали с шага «Продукт» на «Грансостав»: они описывают
+ * кусок питания, а не продукта дробления. Заодно ситовая таблица потеряла
+ * столбец «масса класса» — вместо него вводится одна из трёх процентных
+ * величин (`sieveMode`), а масса, если она уже была введена, при переносе
+ * пересчитывается в частный класс (тот же смысл, что и была). Пустая
+ * таблица получает набор классов крупности по умолчанию, а не остаётся
+ * пустой. `calcSnapshot` при этом сбрасывается на `null` по всем шагам —
+ * старый снимок был снят с прежней формы `GranData`/`ProdData` и сравнение
+ * с ним после переноса полей означало бы неправду.
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -88,25 +98,28 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 14) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15), trash, seeded });
+    }
     if (payload.version === 13) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
     }
     if (payload.version === 12) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
     }
     if (payload.version === 11) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
     }
     if (payload.version === 10) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14),
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
     }
     if (payload.version === 9) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14),
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -118,7 +131,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -130,7 +143,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -143,7 +156,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -156,7 +169,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -170,7 +183,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -184,7 +197,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded,
       });
@@ -198,7 +211,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded: false,
       });
@@ -213,7 +226,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
         trash,
         seeded: false,
       });
@@ -390,6 +403,50 @@ function migrateCalcSnapshotV14(project: Project): Project {
   const withSnapshot = project as Project & { calcSnapshot?: unknown };
   if (Array.isArray(withSnapshot.calcSnapshot)) return project;
   return { ...project, calcSnapshot: [null, null, null] };
+}
+
+/** Классы крупности по умолчанию для ситовой таблицы — та же заготовка, что и у нового проекта. */
+const DEFAULT_SIEVE_ROWS: SieveRowData[] = [
+  { cls: '-300+150', value: '' },
+  { cls: '-150+75', value: '' },
+  { cls: '-75+35', value: '' },
+  { cls: '-35+15', value: '' },
+  { cls: '-15+5', value: '' },
+  { cls: '-5+0', value: '' },
+];
+
+/** Перенос «Параметров формы куска» с «Продукта» на «Грансостав», см. версию 15 выше. */
+function migrateShapeToGranV15(project: Project): Project {
+  const convert = (data: WizardData): WizardData => {
+    const gran = data.gran as GranData & { a0?: string };
+    if (typeof gran.a0 === 'string') return data; // уже перенесено
+
+    const prod = data.prod as ProdData & {
+      a0?: string;
+      va0?: string;
+      shapeMode?: 'direct' | 'sieve';
+      sieveRows?: Array<{ cls: string; mass?: string; value?: string }>;
+    };
+
+    const legacyRows = Array.isArray(prod.sieveRows) ? prod.sieveRows : [];
+    const masses = legacyRows.map((r) => Number(String(r.mass ?? r.value ?? '').replace(',', '.')) || 0);
+    const total = masses.reduce((a, b) => a + b, 0);
+    // Старая таблица хранила массу класса — пересчитываем в частный
+    // класс (тот же смысл, что и раньше был у массы: доля класса от
+    // целого), чтобы измеренные данные не пропали при переносе поля.
+    const sieveRows: SieveRowData[] = legacyRows.length
+      ? legacyRows.map((r, i) => ({ cls: r.cls ?? '', value: total ? String(Math.round((masses[i] / total) * 1000) / 10) : '' }))
+      : DEFAULT_SIEVE_ROWS;
+
+    const { a0, va0, shapeMode, sieveRows: _oldRows, ...prodRest } = prod;
+    return {
+      ...data,
+      gran: { ...gran, a0: a0 ?? '', va0: va0 ?? '', shapeMode: shapeMode ?? 'direct', sieveMode: 'classes', sieveRows },
+      prod: prodRest as ProdData,
+    };
+  };
+
+  return { ...project, data: convert(project.data), initialData: convert(project.initialData), calcSnapshot: [null, null, null] };
 }
 
 /**

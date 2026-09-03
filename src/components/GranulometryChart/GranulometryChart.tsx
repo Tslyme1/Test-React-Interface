@@ -31,10 +31,19 @@ function round(v: number): number {
  */
 export function GranulometryChart({ rows }: GranulometryChartProps) {
   const points = useMemo(() => {
-    return [...rows]
+    const sorted = [...rows]
       .map((r) => ({ size: Number(r.dTop), under: Number(r.pass) }))
       .filter((p) => Number.isFinite(p.size) && Number.isFinite(p.under))
       .sort((a, b) => a.size - b.size);
+
+    // Первый класс сам по себе не начинается с нуля — у него уже есть
+    // накопленный выход по минусу. Без точки (0, 0) синяя кривая (и
+    // зеркальная ей красная) обрывалась бы на середине высоты графика,
+    // не доходя ни до нуля, ни до сотни у левого края.
+    if (sorted.length > 0 && sorted[0].size > 0) {
+      return [{ size: 0, under: 0 }, ...sorted];
+    }
+    return sorted;
   }, [rows]);
 
   if (points.length === 0) return null;
