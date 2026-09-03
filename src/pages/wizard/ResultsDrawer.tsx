@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
-import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd } from '@/domain/estimates';
+import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd, estimateProdGran } from '@/domain/estimates';
 import type { GranRow, KvRow, ProfileRow } from '@/domain/estimates';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
 import { CRUSHERS } from '@/data/crushers';
+import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
 import { useTags } from '@/state/useTags';
 
@@ -210,12 +211,24 @@ export function ResultsDrawer({
         ) : null}
 
         {stepKey === 'prod' ? (
-          <Table
-            columns={kvColumns}
-            rows={estimateProd(project.data.prod, project.data.geom)}
-            rowKey={(r) => r.label}
-            caption="Продукт дробления"
-          />
+          <>
+            <Table
+              columns={kvColumns}
+              rows={estimateProd(project.data.prod, project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Продукт дробления"
+            />
+            <Table
+              columns={granColumns}
+              rows={estimateProdGran(project.data.prod)}
+              rowKey={(r) => r.class}
+              caption="Грансостав продукта дробления"
+            />
+            <Stack gap="xs" direction="column">
+              <Text variant="label">Суммарные характеристики крупности продукта</Text>
+              <GranulometryChart rows={estimateProdGran(project.data.prod)} />
+            </Stack>
+          </>
         ) : null}
       </Stack>
     </Drawer>

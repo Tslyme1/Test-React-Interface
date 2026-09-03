@@ -55,6 +55,24 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
   </table>`
       : '';
 
+  /**
+   * Грансостав продукта печатается второй таблицей у шага «Продукт» —
+   * та же роль, что у профиля камеры на «Геометрии»: развёрнутые данные
+   * под сводными величинами. График на печать не идёт: печатная страница
+   * своя, без токенов системы, и рисовать его заново — сложность больше,
+   * чем стоит вопрос ради статичной распечатки.
+   */
+  const granHtml =
+    report.kind === 'kv' && report.gran
+      ? `<h2>Грансостав продукта дробления</h2>
+  <table>
+    <thead><tr><th>Класс крупности, мм</th><th class="num">D сред</th><th class="num">0.8·D пред</th><th class="num">γ</th><th class="num">Выход по минусу, %</th></tr></thead>
+    <tbody>${report.gran
+      .map((r) => `<tr><td>${escapeHtml(r.class)}</td>${num(r.dMid)}${num(r.d08)}${num(r.gamma)}${num(r.pass)}</tr>`)
+      .join('')}</tbody>
+  </table>`
+      : '';
+
   win.document.write(`<!doctype html>
 <html lang="ru">
 <head>
@@ -81,6 +99,7 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
     <tbody>${rowsHtml}</tbody>
   </table>
   ${profileHtml}
+  ${granHtml}
 </body>
 </html>`);
   win.document.close();

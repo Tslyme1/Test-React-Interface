@@ -1,6 +1,8 @@
-import { Button, Chip, EmptyState, Field, Input, Stack, Text } from '@uralmash/design-system';
+import { useState } from 'react';
+import { Box, Button, Chip, EmptyState, Field, Input, Popover, Stack, Text } from '@uralmash/design-system';
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
+import { OptionCell } from '@/components/OptionCell/OptionCell';
 
 export type GranStepProps = {
   data: GranData;
@@ -28,33 +30,60 @@ export type GranStepProps = {
  * на случай, если проба всё же оказалась пустой.
  */
 export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: GranStepProps) {
+  // ── режим отображения: только дельта — диаграммы на этом шаге нет ──
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
+
   /** Пояснение под полем: было ли отредактировано после создания проекта — и на что. */
   const hintWithDelta = (key: keyof GranData): string | undefined => {
+    if (deltaMode !== 'show') return undefined;
     const was = baseline[key];
     return was === data[key] ? undefined : `было: ${was}`;
   };
 
   return ore ? (
     <Stack gap="xl" direction="column">
-      <Stack gap="xs" direction="column">
+      {/* Заголовок и его действия — одной строкой, как на шаге «Геометрия»:
+          подпись слева, плашка пробы и режим отображения справа. Отдельная
+          подпись «Проба руды» над чипсом убрана — назначение плашки понятно
+          и без неё, а строка с чипсом под подписью разводила заголовок
+          с действиями по разной высоте. */}
+      <Stack direction="row" justify="between" align="center" gap="md" wrap>
         <Text variant="headingMd">Характеристический грансостав</Text>
-        <Text variant="bodySm" color="textMuted">
-          Границы крупности питания и параметры характеристики распределения.
-        </Text>
-      </Stack>
 
-      {/* Плашка выбранной пробы: на этом шаге все числа относятся именно
-          к ней, и без неё непонятно, для какой руды заполняется форма. */}
-      <Stack gap="2xs" direction="column" align="start">
-        <Text variant="label">Проба руды</Text>
-        <Chip
-          icon="folder"
-          active
-          onClick={onRequestOrePicker}
-          action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}
-        >
-          {ore}
-        </Chip>
+        <Stack direction="row" align="center" gap="sm">
+          <Chip icon="fileText" action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}>
+            {ore}
+          </Chip>
+
+          <Popover
+            open={displayOpen}
+            onClose={() => setDisplayOpen(false)}
+            placement="bottom-end"
+            width="md"
+            title="Режим отображения"
+            trigger={
+              <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
+                Отображение
+              </Button>
+            }
+          >
+            <Stack gap="2xs" direction="column">
+              <Box paddingX="sm">
+                <Text variant="label">Дельта</Text>
+              </Box>
+              <Stack direction="column" gap="none">
+                <OptionCell
+                  label="Показывать изменения"
+                  description="Отклонение от значений расчёта"
+                  checked={deltaMode === 'show'}
+                  onSelect={() => setDeltaMode('show')}
+                />
+                <OptionCell label="Не показывать изменения" checked={deltaMode === 'hide'} onSelect={() => setDeltaMode('hide')} />
+              </Stack>
+            </Stack>
+          </Popover>
+        </Stack>
       </Stack>
 
       <Stack direction="column" gap="md">
