@@ -143,7 +143,7 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
   await fillNewProjectForm(page, project);
   await page.getByRole('button', { name: 'Продолжить' }).click();
   // Признак попадания в визард — первый шаг.
-  await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
   /**
    * Ждём, пока окно уйдёт из разметки, а не только с глаз.

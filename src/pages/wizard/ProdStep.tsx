@@ -32,7 +32,7 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
 
   if (simplified) {
     return (
-      <Stack gap="xl" direction="column">
+      <Stack gap="2xl" direction="column">
         <Stack gap="2xs" direction="column" align="start">
           <Text variant="label">Тип питания</Text>
           <SegmentedControl
@@ -60,7 +60,7 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
   }
 
   return (
-    <Stack gap="xl" direction="column">
+    <Stack gap="2xl" direction="column">
       <Stack gap="xs" direction="column">
         <Text variant="headingMd">Грансостав продукта и усилия</Text>
         <Text variant="bodySm" color="textMuted">

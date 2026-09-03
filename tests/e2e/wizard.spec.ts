@@ -103,7 +103,7 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
     await page.getByRole('button', { name: /Дробилка/ }).click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
   });
 
   test('переход на «Руда» без выбранной пробы открывает выбор пробы, оставляя шаг «Дробилка»', async ({ page }) => {
@@ -115,7 +115,7 @@ test.describe('Инженерный визард', () => {
     // Степпер не переключился: заглушки «нечем считать» на шаге «Грансостав»
     // быть не должно вовсе — вместо неё сразу открывается выбор пробы,
     // а форма позади него остаётся на шаге «Дробилка».
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
 
@@ -188,7 +188,7 @@ test.describe('Инженерный визард', () => {
     await expect(tab).toBeVisible();
 
     await tab.click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
     // Закрывает проект только крестик на его вкладке.
     await page.getByRole('button', { name: 'Закрыть проект' }).click();
@@ -214,7 +214,7 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(tab).toBeVisible();
     await tab.click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
   });
 
   test('переключение единиц углов меняет постфикс у полей угла', async ({ page }) => {

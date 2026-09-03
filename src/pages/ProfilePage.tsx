@@ -1,4 +1,4 @@
-import { Box, Button, Stack, Text } from '@uralmash/design-system';
+import { Button, Stack, Text } from '@uralmash/design-system';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import type { FontScalePreference } from '@/state/useFontScale';
 import type { ThemePreference } from '@/state/useTheme';
@@ -64,82 +64,86 @@ export function ProfilePage({
   ];
 
   return (
-    <Box paddingX="2xl" paddingY="2xl" fullWidth>
-      <div className={styles.page}>
-        <Stack gap="xl" direction="column">
-          <Text variant="headingMd" as="h1">
-            Профиль
-          </Text>
-
-          <Stack gap="md" direction="column">
-            {rows.map((row) => (
-              <Stack key={row.label} gap="2xs" direction="column">
-                <Text variant="label" color="textMuted">
-                  {row.label}
-                </Text>
-                <Text variant="body">{row.value}</Text>
-              </Stack>
-            ))}
-          </Stack>
-
-          <Stack gap="2xs" direction="column">
-            <Text variant="label" color="textMuted">
-              Режим работы нового проекта
-            </Text>
-            <Stack direction="column" gap="none">
-              {MODE_OPTIONS.map((option) => (
-                <OptionCell
-                  key={option.value}
-                  label={option.label}
-                  description={option.description}
-                  checked={mode === option.value}
-                  onSelect={() => onModeChange(option.value)}
-                />
-              ))}
-            </Stack>
-          </Stack>
-
-          <Stack gap="2xs" direction="column">
-            <Text variant="label" color="textMuted">
-              Тема оформления
-            </Text>
-            <Stack direction="column" gap="none">
-              {THEME_OPTIONS.map((option) => (
-                <OptionCell
-                  key={option.value}
-                  label={option.label}
-                  description={option.description}
-                  checked={theme === option.value}
-                  onSelect={() => onThemeChange(option.value)}
-                />
-              ))}
-            </Stack>
-          </Stack>
-
-          <Stack gap="2xs" direction="column">
-            <Text variant="label" color="textMuted">
-              Размер шрифта
-            </Text>
-            <Stack direction="column" gap="none">
-              {FONT_SCALE_OPTIONS.map((option) => (
-                <OptionCell
-                  key={option.value}
-                  label={option.label}
-                  description={option.description}
-                  checked={fontScale === option.value}
-                  onSelect={() => onFontScaleChange(option.value)}
-                />
-              ))}
-            </Stack>
-          </Stack>
-
-          <div>
-            <Button variant="secondary" iconStart="logOut" onClick={onLogout}>
-              Выйти
-            </Button>
-          </div>
-        </Stack>
+    <div className={styles.root}>
+      <div className={styles.header}>
+        <Text variant="headingMd" as="h1">
+          Профиль
+        </Text>
       </div>
-    </Box>
+
+      <div className={styles.scroll}>
+        <div className={styles.page}>
+          <Stack gap="2xl" direction="column">
+            <Stack gap="lg" direction="column">
+              {rows.map((row) => (
+                <Stack key={row.label} gap="2xs" direction="column">
+                  <Text variant="label" color="textMuted">
+                    {row.label}
+                  </Text>
+                  <Text variant="body">{row.value}</Text>
+                </Stack>
+              ))}
+            </Stack>
+
+            <Stack gap="sm" direction="column">
+              <Text variant="label" color="textMuted">
+                Режим работы нового проекта
+              </Text>
+              <Stack direction="column" gap="none">
+                {MODE_OPTIONS.map((option) => (
+                  <OptionCell
+                    key={option.value}
+                    label={option.label}
+                    description={option.description}
+                    checked={mode === option.value}
+                    onSelect={() => onModeChange(option.value)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+
+            <Stack gap="sm" direction="column">
+              <Text variant="label" color="textMuted">
+                Тема оформления
+              </Text>
+              <Stack direction="column" gap="none">
+                {THEME_OPTIONS.map((option) => (
+                  <OptionCell
+                    key={option.value}
+                    label={option.label}
+                    description={option.description}
+                    checked={theme === option.value}
+                    onSelect={() => onThemeChange(option.value)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+
+            <Stack gap="sm" direction="column">
+              <Text variant="label" color="textMuted">
+                Размер шрифта
+              </Text>
+              <Stack direction="column" gap="none">
+                {FONT_SCALE_OPTIONS.map((option) => (
+                  <OptionCell
+                    key={option.value}
+                    label={option.label}
+                    description={option.description}
+                    checked={fontScale === option.value}
+                    onSelect={() => onFontScaleChange(option.value)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+
+            <div>
+              <Button variant="secondary" iconStart="logOut" onClick={onLogout}>
+                Выйти
+              </Button>
+            </div>
+          </Stack>
+        </div>
+      </div>
+    </div>
   );
 }
