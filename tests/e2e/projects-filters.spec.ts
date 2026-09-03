@@ -164,6 +164,32 @@ test.describe('Главный экран со списком проектов', 
   });
 
   /**
+   * Поле даты — настоящий `input`: дату можно напечатать, а не только
+   * выбрать в сетке. Тот же граничный случай, что и у выбора кликом:
+   * сегодняшним числом в примерах ничего нет, выборка пустеет.
+   */
+  test('дату можно напечатать в поле — без клика по сетке', async ({ page }) => {
+    const today = new Date();
+    const typed = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
+
+    const drawer = await openFilters(page);
+    const field = drawer.getByLabel('Дата проекта');
+    await field.fill(typed);
+    await field.blur();
+    await expect(field).toHaveValue(typed);
+    await drawer.getByRole('button', { name: 'Готово' }).click();
+    await expect(page.getByText(/Проекты: 0 из 18/)).toBeVisible();
+
+    // Нераспознанный текст откатывается к последнему настоящему значению,
+    // а не принимается молча и не роняет фильтр.
+    const drawer2 = await openFilters(page);
+    const field2 = drawer2.getByLabel('Дата проекта');
+    await field2.fill('не дата');
+    await field2.blur();
+    await expect(field2).toHaveValue(typed);
+  });
+
+  /**
    * Селекты фильтров не показывают подставной вариант вроде «Все» первой
    * строкой списка: он выглядел бы выбранным с самого начала, хотя ничего
    * не отобрано. Пустое состояние поля — плейсхолдер, а не строка списка.
