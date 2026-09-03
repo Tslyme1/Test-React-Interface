@@ -31,6 +31,12 @@
   overflow-y: auto;
 }
 
+/**
+ * `height: 100%` — таблица системы при `stickyHeader` сама прокручивается
+ * и обрезает содержимое по рамке (см. `ProjectsPage.module.css`), но
+ * только когда у неё есть определённая высота родителя.
+ */
 .tableWrap {
+  height: 100%;
   padding: 0 var(--space-2xl) var(--space-2xl);
 }
