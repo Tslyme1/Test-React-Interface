@@ -185,11 +185,13 @@ export function SimplifiedProjectModal({
   const comboReport = combo && project ? buildComboReport(combo, project) : null;
   const comboOptions: SelectOption[] = combos.map((c, i) => ({ value: String(i), label: `${c.crusherName} — ${c.oreName}` }));
 
-  const title = !project
-    ? 'Новый проект — упрощённый расчёт'
-    : resultOpen
-      ? 'Результат расчёта'
-      : `Упрощённый расчёт — ${STEP_META[step].label}`;
+  /**
+   * Заголовок окна называет сам шаг, а не режим целиком: «Упрощённый расчёт —
+   * Дробилка» было понятно только тем, кто уже знает про упрощённый режим,
+   * а «Выбор дробилки» говорит, что сейчас нужно сделать, даже до того, как
+   * открылось тело окна.
+   */
+  const title = resultOpen ? 'Результат расчёта' : step === 0 ? 'Выбор дробилки' : step === 1 ? 'Выбор руды' : 'Продукт';
 
   // Степпер — в футере слева (`aside`), а не в теле: тело в упрощённом
   // режиме и так короткое, и степпер сверху отрывал шаг от кнопки,
@@ -261,7 +263,8 @@ export function SimplifiedProjectModal({
         {!project ? (
           <Stack gap="md" direction="column">
             <Text variant="bodySm" color="textMuted">
-              Можно выбрать несколько дробилок — расчёт на шаге «Продукт» пройдёт по каждой отдельно.
+              Выбрано дробилок: {draftCrushers.length}. Можно выбрать несколько — расчёт на шаге «Продукт» пройдёт по
+              каждой отдельно.
             </Text>
             <CatalogPicker
               specs={CRUSHER_SPECS}
@@ -273,6 +276,7 @@ export function SimplifiedProjectModal({
               onPickMultiple={pickDraftCrushers}
               nameLabel="Дробилка"
               searchPlaceholder="КМД-2200, 2200, 500-655…"
+              inlineSpecs={['D, мм', 'Q, т/ч']}
             />
           </Stack>
         ) : resultOpen ? (
@@ -314,29 +318,41 @@ export function SimplifiedProjectModal({
             )}
           </Stack>
         ) : step === 0 ? (
-          <CatalogPicker
-            specs={CRUSHER_SPECS}
-            items={CRUSHERS}
-            value={null}
-            onPick={() => {}}
-            multiple
-            selected={project.crusherNames}
-            onPickMultiple={changeCrusherNames}
-            nameLabel="Дробилка"
-            searchPlaceholder="КМД-2200, 2200, 500-655…"
-          />
+          <Stack gap="md" direction="column">
+            <Text variant="bodySm" color="textMuted">
+              Выбрано дробилок: {project.crusherNames.length}
+            </Text>
+            <CatalogPicker
+              specs={CRUSHER_SPECS}
+              items={CRUSHERS}
+              value={null}
+              onPick={() => {}}
+              multiple
+              selected={project.crusherNames}
+              onPickMultiple={changeCrusherNames}
+              nameLabel="Дробилка"
+              searchPlaceholder="КМД-2200, 2200, 500-655…"
+              inlineSpecs={['D, мм', 'Q, т/ч']}
+            />
+          </Stack>
         ) : step === 1 ? (
-          <CatalogPicker
-            specs={ORE_SPECS}
-            items={ORE_SAMPLES}
-            value={null}
-            onPick={() => {}}
-            multiple
-            selected={project.oreNames}
-            onPickMultiple={changeOreNames}
-            nameLabel="Проба руды"
-            searchPlaceholder="Костомукшская, X, 14-16…"
-          />
+          <Stack gap="md" direction="column">
+            <Text variant="bodySm" color="textMuted">
+              Выбрано проб: {project.oreNames.length}
+            </Text>
+            <CatalogPicker
+              specs={ORE_SPECS}
+              items={ORE_SAMPLES}
+              value={null}
+              onPick={() => {}}
+              multiple
+              selected={project.oreNames}
+              onPickMultiple={changeOreNames}
+              nameLabel="Проба руды"
+              searchPlaceholder="Костомукшская, X, 14-16…"
+              inlineSpecs={['f', 'ρ, т/м³']}
+            />
+          </Stack>
         ) : (
           <ProdStep data={project.data.prod} onChange={patchProd} showToast={showToast} simplified />
         )}

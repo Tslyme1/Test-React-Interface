@@ -203,6 +203,7 @@ export function App() {
             onNewProject={startNewProject}
             initialCustomerFilter={customerFilter}
             onCustomerFilterChange={setCustomerFilter}
+            onGoCustomers={() => goView('customers')}
           />
         )}
       </AppShell>

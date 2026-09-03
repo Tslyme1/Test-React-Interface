@@ -1,4 +1,5 @@
-import { Box, Button, SegmentedControl, Stack, Text } from '@uralmash/design-system';
+import { Box, Button, Stack, Text } from '@uralmash/design-system';
+import { OptionCell } from '@/components/OptionCell/OptionCell';
 import type { ProjectMode, User } from '@/types';
 import styles from './ProfilePage.module.css';
 
@@ -10,9 +11,9 @@ export type ProfilePageProps = {
   onLogout: () => void;
 };
 
-const MODE_OPTIONS: { value: ProjectMode; label: string }[] = [
-  { value: 'engineering', label: 'Инженерный' },
-  { value: 'simplified', label: 'Упрощённый' },
+const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
+  { value: 'engineering', label: 'Инженерный', description: 'Ручная настройка всех параметров на каждом этапе.' },
+  { value: 'simplified', label: 'Упрощённый', description: 'Три коротких шага и готовый отчёт.' },
 ];
 
 /**
@@ -53,14 +54,21 @@ export function ProfilePage({ user, mode, onModeChange, onLogout }: ProfilePageP
             ))}
           </Stack>
 
-          {/* Не `Field`: `SegmentedControl` не принимает `id`, обёртка
-              оставила бы подпись без контрола — то же исключение, что и
-              на шагах визарда. */}
-          <Stack gap="2xs" direction="column" align="start">
+          <Stack gap="2xs" direction="column">
             <Text variant="label" color="textMuted">
               Режим работы нового проекта
             </Text>
-            <SegmentedControl legend="Режим работы нового проекта" options={MODE_OPTIONS} value={mode} onChange={onModeChange} />
+            <Stack direction="column" gap="none">
+              {MODE_OPTIONS.map((option) => (
+                <OptionCell
+                  key={option.value}
+                  label={option.label}
+                  description={option.description}
+                  checked={mode === option.value}
+                  onSelect={() => onModeChange(option.value)}
+                />
+              ))}
+            </Stack>
           </Stack>
 
           <div>

@@ -380,10 +380,10 @@ export function CatalogPicker({
         ) : null}
       </div>
 
-      {/* Прокрутка каталога — снаружи таблицы: липкой шапки в системе нет
-          намеренно (sticky требует предка с ограниченной высотой, а шкалы
-          высот в системе не существует), поэтому шапка уезжает вместе
-          со строками. Заявка на «область с ограниченной высотой» — в систему. */}
+      {/* `.scroll` — фиксированная высота (52vh) и собственный `overflow-y`:
+          ровно предок с ограниченной высотой, которого требует `stickyHeader`,
+          так что шапка каталога остаётся на месте при прокрутке тридцати
+          строк, а не уезжает вместе с ними. */}
       <div className={styles.scroll}>
         <Table
           columns={columns}
@@ -394,6 +394,7 @@ export function CatalogPicker({
           sort={sort}
           onSortChange={setSort}
           rowActionKey="name"
+          stickyHeader
           onRowClick={(item) => toggle(item.name)}
           empty={
             <EmptyState

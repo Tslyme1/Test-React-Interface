@@ -190,3 +190,29 @@
 .breadcrumbMuted {
   color: var(--color-text-muted);
 }
+
+/**
+ * «Заказчики» в крошке — переход на страницу заказчиков, а не просто
+ * название раздела: сброс сброшенного `<button>` до вида текста, тот же
+ * приглушённый цвет, что и у `.breadcrumbMuted`, плюс подчёркивание при
+ * наведении и фокусе — единственная подсказка, что часть заголовка кликабельна.
+ */
+.breadcrumbLink {
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.breadcrumbLink:hover,
+.breadcrumbLink:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.breadcrumbLink:focus-visible {
+  outline: var(--border-strong) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

@@ -39,13 +39,6 @@ export function ProdStep({ data, onChange, baseline = null, showToast, simplifie
   if (simplified) {
     return (
       <Stack gap="xl" direction="column">
-        <Stack gap="xs" direction="column">
-          <Text variant="headingMd">Продукт</Text>
-          <Text variant="bodySm" color="textMuted">
-            Тип питания и желаемая крупность продукта — расчёт пройдёт по каждой выбранной паре «дробилка — проба».
-          </Text>
-        </Stack>
-
         <Stack gap="2xs" direction="column" align="start">
           <Text variant="label">Тип питания</Text>
           <SegmentedControl
