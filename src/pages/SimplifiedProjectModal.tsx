@@ -6,22 +6,24 @@ import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
 import { buildComboReport, buildSimplifiedCombos } from '@/domain/simplifiedEstimates';
+import type { GranRow, KvRow } from '@/domain/estimates';
 import type { Project } from '@/types';
 import { ProdStep } from './wizard/ProdStep';
 import styles from './SimplifiedProjectModal.module.css';
 
 const STEP_META: Step[] = [{ label: 'Дробилка' }, { label: 'Руда' }, { label: 'Продукт' }];
 
-type KvRow = { label: string; value: string; unit: string };
 const kvColumns: TableColumn<KvRow>[] = [
   { key: 'label', title: 'Величина' },
   { key: 'value', title: 'Значение', align: 'end' },
   { key: 'unit', title: 'Ед.', align: 'end' },
 ];
 
-type GranRow = { class: string; pass: string };
+/** Те же столбцы, что и в шторке инженерного режима: отчёт один на оба. */
 const granColumns: TableColumn<GranRow>[] = [
   { key: 'class', title: 'Класс крупности, мм' },
+  { key: 'dMid', title: 'D сред', align: 'end' },
+  { key: 'gamma', title: 'γ', align: 'end' },
   { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
 ];
 

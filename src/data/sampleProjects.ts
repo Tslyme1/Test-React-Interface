@@ -48,7 +48,7 @@ export function buildSampleProjects(): Project[] {
     // правки поля, — остальные примеры отличий не несут.
     const initialData = defaultWizardData();
     const data = defaultWizardData();
-    if (i === 0) data.geom.beta10 = String(Number(data.geom.beta10) + 2);
+    if (i === 0) data.geom.b10 = String(Number(data.geom.b10) + 2);
 
     return {
       id: `sample-${i}`,

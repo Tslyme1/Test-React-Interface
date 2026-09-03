@@ -95,8 +95,15 @@ test.describe('Шаг «Геометрия»: режим отображения'
       .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
 
-    // Размерная линия «D / 2» на схеме — участок поля «Диаметр основания D».
-    await page.getByTestId('chamber-scheme').locator('g').filter({ hasText: 'D / 2' }).first().hover();
+    // Наводим на прозрачную линию-цель внутри участка «D / 2», а не на
+    // группу целиком: в середине рамки группы пусто, и туда попадает фон
+    // схемы. Цель лежит ровно на размерной линии и от шрифта не зависит.
+    //
+    // `force` — потому что у горизонтальной линии рамка нулевой высоты, и
+    // Playwright считает её невидимой. Указатель при этом реально ставится
+    // на линию, попадание проверяется браузером как обычно: у цели штрих
+    // в 18 единиц и `pointer-events: stroke`.
+    await page.getByTestId('chamber-scheme').locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
     // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
@@ -121,7 +128,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
 
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
-    await svg.locator('g').filter({ hasText: 'D / 2' }).first().hover();
+    await svg.locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await page.waitForTimeout(150);
     expect(await svg.innerHTML()).toBe(before);
   });
@@ -162,25 +169,47 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await createProject(page);
   });
 
-  test('число зон дробления — выпадающий список, вторая зона появляется полем', async ({ page }) => {
-    await expect(page.getByLabel('Длина второй зоны l12, мм')).toHaveCount(0);
+  test('число зон дробления — выпадающий список коэффициентов методики', async ({ page }) => {
+    // Сегменты цепочки больше не зависят от этого поля: l12 — узел профиля
+    // (41→42) и стоит в форме всегда, а число зон осталось коэффициентом
+    // методики грансостава, к построению профиля отношения не имеющим.
+    await expect(page.getByLabel('Длина l12 — 41→42, мм')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Число зон дробления' }).click();
+    const zones = page.getByRole('button', { name: 'Число зон дробления' });
+    await expect(zones).toContainText('1');
+    await zones.click();
     await page.getByRole('option', { name: '2', exact: true }).click();
+    await expect(zones).toContainText('2');
 
-    await expect(page.getByLabel('Длина второй зоны l12, мм')).toBeVisible();
+    await expect(page.getByLabel('Длина l12 — 41→42, мм')).toBeVisible();
   });
 
   test('поповер «Слои» — строка сама переключает видимость участка схемы', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
-    await expect(svg.locator('title', { hasText: 'Броня чаши' })).not.toHaveCount(0);
+    // Заливка зон входит в пресет «Обычный» — она видна с самого начала.
+    await expect(svg.locator('title', { hasText: 'Зона входа' })).not.toHaveCount(0);
 
     await page.getByRole('button', { name: 'Слои' }).click();
-    const bowlOption = page.getByRole('option', { name: 'Броня чаши' });
-    await bowlOption.click();
-    await expect(bowlOption).toHaveAttribute('aria-selected', 'false');
+    const zonesOption = page.getByRole('option', { name: 'Заливка зон' });
+    await zonesOption.click();
+    await expect(zonesOption).toHaveAttribute('aria-selected', 'false');
     await page.keyboard.press('Escape');
 
-    await expect(svg.locator('title', { hasText: 'Броня чаши' })).toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'Зона входа — участок' })).toHaveCount(0);
+  });
+
+  test('режим «Линии построения» показывает лучи, дуги углов и зазоры', async ({ page }) => {
+    const svg = page.getByTestId('chamber-scheme');
+    // В обычном режиме дуг узловых углов нет.
+    await expect(svg.locator('title', { hasText: /^β40/ })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Диаграмма' }).click();
+    await page.getByRole('option', { name: 'Линии построения' }).click();
+    await page.keyboard.press('Escape');
+
+    // Пресет разом включает лучи, дуги и все пять зазоров.
+    await expect(svg.locator('title', { hasText: /^β40/ })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'r40 =' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'S₁₁ — зазор' })).not.toHaveCount(0);
   });
 });

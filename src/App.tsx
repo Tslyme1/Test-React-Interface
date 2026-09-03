@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useSession } from '@/state/useSession';
+import { useTheme } from '@/state/useTheme';
 import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
@@ -29,6 +30,7 @@ export function App() {
     purgeProject,
   } = useProjects();
   const { message, showToast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   /**
    * Открытые вкладки инженерных проектов — как вкладки браузера: список id
@@ -189,7 +191,14 @@ export function App() {
             onNewProject={startNewProject}
           />
         ) : view === 'profile' ? (
-          <ProfilePage user={user} mode={defaultMode} onModeChange={setDefaultMode} onLogout={logout} />
+          <ProfilePage
+            user={user}
+            mode={defaultMode}
+            onModeChange={setDefaultMode}
+            theme={theme}
+            onThemeChange={setTheme}
+            onLogout={logout}
+          />
         ) : (
           <ProjectsPage
             projects={projects}

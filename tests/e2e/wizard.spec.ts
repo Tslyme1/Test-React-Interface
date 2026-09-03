@@ -35,8 +35,11 @@ test.describe('Инженерный визард', () => {
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer).toBeVisible();
 
-    // D/2 выводится из введённого D = 1750 — связь формы и результата жива.
-    await expect(drawer.getByRole('row').filter({ hasText: 'D/2' })).toContainText('875');
+    // D / 2 выводится из введённого D = 1750 — связь формы и результата жива.
+    await expect(drawer.getByRole('row').filter({ hasText: 'D / 2' })).toContainText('875');
+
+    // Профиль камеры по точкам — вторая таблица отчёта, значения из цепочки.
+    await expect(drawer.getByRole('row').filter({ hasText: '40 · 10' })).toBeVisible();
 
     await drawer.getByRole('button', { name: 'Закрыть', exact: true }).click();
     await expect(drawer).toBeHidden();
@@ -274,16 +277,16 @@ test.describe('Инженерный визард', () => {
     // ничего, даже если поле уже отредактировано.
     const beta10 = page.getByLabel('Угол конуса β10');
     await beta10.fill('99');
-    await expect(page.getByText('было: 18', { exact: true })).toBeVisible();
+    await expect(page.getByText('было: 163', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('было: 18', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('было: 163', { exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: /^Показывать изменения/ }).click();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('было: 18', { exact: true })).toBeVisible();
+    await expect(page.getByText('было: 163', { exact: true })).toBeVisible();
   });
 });

@@ -25,22 +25,35 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
   const win = window.open('', '_blank', 'width=800,height=1000');
   if (!win) return; // блокировщик всплывающих окон — молча, без падения интерфейса
 
+  const num = (v: string) => `<td class="num">${escapeHtml(v)}</td>`;
+
   const rowsHtml =
     report.kind === 'gran'
       ? report.rows
-          .map((r) => `<tr><td>${escapeHtml(r.class)}</td><td class="num">${escapeHtml(r.pass)}</td></tr>`)
+          .map((r) => `<tr><td>${escapeHtml(r.class)}</td>${num(r.dMid)}${num(r.d08)}${num(r.gamma)}${num(r.pass)}</tr>`)
           .join('')
-      : report.rows
-          .map(
-            (r) =>
-              `<tr><td>${escapeHtml(r.label)}</td><td class="num">${escapeHtml(r.value)}</td><td class="num">${escapeHtml(r.unit)}</td></tr>`
-          )
-          .join('');
+      : report.rows.map((r) => `<tr><td>${escapeHtml(r.label)}</td>${num(r.value)}${num(r.unit)}</tr>`).join('');
 
   const headHtml =
     report.kind === 'gran'
-      ? '<tr><th>Класс крупности, мм</th><th class="num">Выход по минусу, %</th></tr>'
+      ? '<tr><th>Класс крупности, мм</th><th class="num">D сред</th><th class="num">0.8·D пред</th><th class="num">γ</th><th class="num">Выход по минусу, %</th></tr>'
       : '<tr><th>Величина</th><th class="num">Значение</th><th class="num">Ед.</th></tr>';
+
+  /**
+   * Профиль камеры по точкам печатается второй таблицей — он есть только
+   * у шага «Геометрия», и в распечатке программы-источника стоит там же,
+   * отдельным блоком под параметрами камеры.
+   */
+  const profileHtml =
+    report.kind === 'kv' && report.profile
+      ? `<h2>Профиль камеры по точкам</h2>
+  <table>
+    <thead><tr><th>Точки</th><th class="num">r₁, мм</th><th class="num">α₁, град</th><th class="num">r₄, мм</th><th class="num">α₄, град</th><th class="num">L, мм</th><th class="num">L сум, мм</th><th class="num">S, мм</th></tr></thead>
+    <tbody>${report.profile
+      .map((r) => `<tr><td>${escapeHtml(r.point)}</td>${num(r.r1)}${num(r.a1)}${num(r.r4)}${num(r.a4)}${num(r.l)}${num(r.lSum)}${num(r.s)}</tr>`)
+      .join('')}</tbody>
+  </table>`
+      : '';
 
   win.document.write(`<!doctype html>
 <html lang="ru">
@@ -50,6 +63,7 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
 <style>
   body { font-family: system-ui, sans-serif; color: black; background: white; margin: 24px; }
   h1 { font-size: 18px; margin: 0 0 4px; } /* ds-lint-disable: печатный CSS отдельного документа, у токенов системы сюда нет доступа */
+  h2 { font-size: 15px; margin: 20px 0 4px; } /* ds-lint-disable: печатный CSS отдельного документа */
   .meta { font-size: 13px; color: gray; margin-bottom: 4px; }
   .note { font-size: 12px; color: gray; margin-bottom: 20px; }
   table { border-collapse: collapse; width: 100%; }
@@ -66,6 +80,7 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
     <thead>${headHtml}</thead>
     <tbody>${rowsHtml}</tbody>
   </table>
+  ${profileHtml}
 </body>
 </html>`);
   win.document.close();
