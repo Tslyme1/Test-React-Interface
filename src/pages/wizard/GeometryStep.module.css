@@ -53,9 +53,9 @@
 
 .zoomControls {
   position: absolute;
-  left: 50%;
-  bottom: var(--space-sm);
-  transform: translateX(-50%);
+  top: 50%;
+  right: var(--space-sm);
+  transform: translateY(-50%);
   z-index: var(--z-raised);
 }
 

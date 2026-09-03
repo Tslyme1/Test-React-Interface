@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Field, Input, Modal, Select, Stack, Stepper, Table, Text } from '@uralmash/design-system';
+import { Button, Field, Input, Modal, Select, Stack, Stepper, Table, Text } from '@uralmash/design-system';
 import type { SelectOption, Step, TableColumn } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
@@ -277,7 +277,6 @@ export function SimplifiedProjectModal({
           </Stack>
         ) : resultOpen ? (
           <Stack gap="lg" direction="column">
-            <Badge tone="success">Рассчитано</Badge>
             <Text variant="bodySm" color="textMuted">
               Значения — иллюстративная оценка на основе введённых параметров, а не результат полной инженерной методики
               дробления.

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Badge, Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import { Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGran, estimateProd } from '@/domain/estimates';
@@ -142,8 +142,6 @@ export function ResultsDrawer({
       }
     >
       <Stack gap="lg" direction="column">
-        <Badge tone="success">Рассчитано</Badge>
-
         {/*
          * Кто, когда и на какой машине — контекст расчёта, который не виден
          * из самих цифр ниже. Дата и дробилка — по этому шагу конкретно

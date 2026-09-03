@@ -84,16 +84,10 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
       nextCalcDates[i] = null;
     }
 
-    // Снимок «Дельта» держится только для шага, который остался посчитанным:
-    // форк с изменённого шага и дальше сбрасывает `calc` (выше), и снимок,
-    // сравнивать который стало не с чем, сбрасывается вместе с ним.
     const forked = onForkProject(project.id, {
       ...pendingFork.patch,
       calc: nextCalc,
       calcDates: nextCalcDates,
-      geomBaseline: pendingFork.calcIndex <= 0 ? null : project.geomBaseline,
-      granBaseline: pendingFork.calcIndex <= 1 ? null : project.granBaseline,
-      prodBaseline: pendingFork.calcIndex <= 2 ? null : project.prodBaseline,
     });
 
     setPendingFork(null);
@@ -132,16 +126,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     nextCalc[step] = true;
     const nextCalcDates = [...project.calcDates] as Project['calcDates'];
     nextCalcDates[step] = formatDate();
-    onUpdateProject(project.id, {
-      calc: nextCalc,
-      calcDates: nextCalcDates,
-      // Снимок шага на момент расчёта — опора для режима отображения
-      // «Дельта»: он сравнивает текущие поля с тем, что было в форме
-      // в момент именно этого расчёта.
-      ...(stepKey === 'geom' ? { geomBaseline: { ...project.data.geom } } : {}),
-      ...(stepKey === 'gran' ? { granBaseline: { ...project.data.gran } } : {}),
-      ...(stepKey === 'prod' ? { prodBaseline: { ...project.data.prod } } : {}),
-    });
+    onUpdateProject(project.id, { calc: nextCalc, calcDates: nextCalcDates });
     showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
 
@@ -156,7 +141,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             <GeometryStep
               data={project.data.geom}
               onChange={patchGeom}
-              baseline={project.geomBaseline}
+              baseline={project.initialData.geom}
               crusherName={project.crusherName}
               onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
             />
@@ -164,12 +149,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             <GranStep
               data={project.data.gran}
               onChange={patchGran}
-              baseline={project.granBaseline}
+              baseline={project.initialData.gran}
               ore={project.ore}
               onRequestOrePicker={() => setOrePickerOpen(true)}
             />
           ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.prodBaseline} showToast={showToast} />
+            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} showToast={showToast} />
           )}
         </Box>
       </div>
@@ -179,16 +164,28 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           <Stepper steps={steps} current={step} onStepClick={goToStep} />
 
           {calculated ? (
-            <Button
-              variant="primary"
-              iconStart="fileText"
-              onClick={() => {
-                setResultStep(stepKey);
-                setResultOpen(true);
-              }}
-            >
-              Смотреть результат
-            </Button>
+            <Stack direction="row" align="center" gap="sm">
+              {/* Вторичная — «Смотреть результат» рядом уже несёт основное
+                  действие этого состояния, а эта лишь подсказывает, куда
+                  идти дальше, когда шаг посчитан и это не очевидно само
+                  по себе. Только пока следующий шаг вообще есть — на
+                  «Продукте» идти уже некуда. */}
+              {step < 2 ? (
+                <Button variant="secondary" iconEnd="chevronRight" onClick={() => goToStep(step + 1)}>
+                  Следующий этап
+                </Button>
+              ) : null}
+              <Button
+                variant="primary"
+                iconStart="fileText"
+                onClick={() => {
+                  setResultStep(stepKey);
+                  setResultOpen(true);
+                }}
+              >
+                Смотреть результат
+              </Button>
+            </Stack>
           ) : (
             <Button variant="primary" disabled={!ready} onClick={runCalc}>
               Выполнить расчёт

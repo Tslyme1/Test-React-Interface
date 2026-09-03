@@ -6,9 +6,9 @@ export type ProdStepProps = {
   data: ProdData;
   onChange: (patch: Partial<ProdData>) => void;
   /**
-   * Снимок формы на момент последнего расчёта — опора для подсказки
-   * «было: X». `null`, пока не считалось или в упрощённом режиме (там
-   * шаг не форкается и не сравнивается с прошлым расчётом постфактум).
+   * Значения на момент создания проекта — опора для подсказки «было: X».
+   * `null` в упрощённом режиме: там шаг не сравнивается с исходным
+   * состоянием постфактум.
    */
   baseline?: ProdData | null;
   /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
@@ -28,7 +28,7 @@ export function ProdStep({ data, onChange, baseline = null, showToast, simplifie
     showToast?.(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
   };
 
-  /** Пояснение под полем: исходное + было ли отредактировано после последнего расчёта. */
+  /** Пояснение под полем: исходное + было ли отредактировано после создания проекта. */
   const hintWithDelta = (key: keyof ProdData, base?: string): string | undefined => {
     if (!baseline) return base;
     const was = baseline[key];

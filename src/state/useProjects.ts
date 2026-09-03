@@ -25,11 +25,18 @@ const STORAGE_KEY = 'uztm-projects';
  * Версия 10 — `tag: string | null` заменён на `tags: string[]`: у проекта
  * теперь может быть несколько меток. Старое значение переносится как список
  * из одного элемента (или пустой, если тега не было).
+ * Версия 11 — `geomBaseline`/`granBaseline`/`prodBaseline` (снимок на момент
+ * расчёта) заменены на один `initialData` — снимок на момент создания
+ * проекта. Старый снимок обнулялся до первого расчёта, и режим «Дельта»
+ * на свежем проекте не показывал вообще ничего — сравнивать было не с чем.
+ * `initialData` есть с самого начала. У старых записей истинных исходных
+ * значений уже не восстановить — переносится текущий `data` (для них
+ * дельта покажет разницу только по правкам после миграции).
  * Данные прежних версий не выбрасываются, а дополняются значениями по
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -62,22 +69,33 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 10) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateInitialDataV11), trash, seeded });
+    }
     if (payload.version === 9) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateTagsV10), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11), trash, seeded });
     }
     if (payload.version === 8) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10), trash, seeded });
+      return seedIfNeeded({
+        projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10).map(migrateInitialDataV11),
+        trash,
+        seeded,
+      });
     }
     if (payload.version === 7) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateBaselineV8).map(migrateCalcDatesV9).map(migrateTagsV10),
+        projects: payload.projects.map(migrateCalcDatesV9).map(migrateTagsV10).map(migrateInitialDataV11),
         trash,
         seeded,
       });
     }
     if (payload.version === 6) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateModeV7).map(migrateBaselineV8).map(migrateCalcDatesV9).map(migrateTagsV10),
+        projects: payload.projects
+          .map(migrateModeV7)
+          .map(migrateCalcDatesV9)
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded,
       });
@@ -85,11 +103,10 @@ function readState(): StoredState {
     if (payload.version === 5) {
       return seedIfNeeded({
         projects: payload.projects
-          .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8)
           .map(migrateCalcDatesV9)
-          .map(migrateTagsV10),
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded,
       });
@@ -98,11 +115,10 @@ function readState(): StoredState {
       return seedIfNeeded({
         projects: payload.projects
           .map(migrateGeomV5)
-          .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8)
           .map(migrateCalcDatesV9)
-          .map(migrateTagsV10),
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded,
       });
@@ -111,11 +127,10 @@ function readState(): StoredState {
       return seedIfNeeded({
         projects: payload.projects
           .map(migrateGeomV5)
-          .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8)
           .map(migrateCalcDatesV9)
-          .map(migrateTagsV10),
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded,
       });
@@ -124,11 +139,10 @@ function readState(): StoredState {
       return seedIfNeeded({
         projects: payload.projects
           .map(migrateGeomV5)
-          .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8)
           .map(migrateCalcDatesV9)
-          .map(migrateTagsV10),
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded: false,
       });
@@ -138,11 +152,10 @@ function readState(): StoredState {
         projects: payload.projects
           .map(migrateFromV1)
           .map(migrateGeomV5)
-          .map(migrateBaselineV6)
           .map(migrateModeV7)
-          .map(migrateBaselineV8)
           .map(migrateCalcDatesV9)
-          .map(migrateTagsV10),
+          .map(migrateTagsV10)
+          .map(migrateInitialDataV11),
         trash,
         seeded: false,
       });
@@ -195,26 +208,6 @@ function migrateGeomV5(project: Project): Project {
   };
 }
 
-/** До версии 6 у проекта не было `geomBaseline` — записи без него не считались. */
-function migrateBaselineV6(project: Project): Project {
-  return { ...project, geomBaseline: project.geomBaseline ?? null };
-}
-
-/**
- * До версии 8 у проекта не было `granBaseline`/`prodBaseline` — режим
- * «Дельта» существовал только на шаге «Геометрия». Как и `geomBaseline`
- * ниже, `null` значит «шаг ни разу не считался с тех пор», а не «дельты
- * не будет никогда»: следующий расчёт этого шага заведёт снимок сам.
- */
-function migrateBaselineV8(project: Project): Project {
-  const legacy = project as Partial<Pick<Project, 'granBaseline' | 'prodBaseline'>> & Project;
-  return {
-    ...project,
-    granBaseline: legacy.granBaseline ?? null,
-    prodBaseline: legacy.prodBaseline ?? null,
-  };
-}
-
 /**
  * До версии 9 у проекта не было `calcDates`. Шаг, уже отмеченный посчитанным
  * (`calc[i]`), получает дату самого проекта — точнее взять неоткуда, а
@@ -241,6 +234,22 @@ function migrateTagsV10(project: Project): Project {
   if (legacy.tags) return project;
   const { tag, ...rest } = legacy;
   return { ...rest, tags: tag ? [tag] : [] };
+}
+
+/**
+ * До версии 11 у проекта был снимок на момент расчёта каждого шага
+ * (`geomBaseline`/`granBaseline`/`prodBaseline`), а не на момент создания.
+ * Истинные исходные значения для уже существующих записей неизвестны —
+ * переносится текущий `data`: для них «Дельта» покажет разницу только
+ * по правкам, сделанным после этой миграции, что честнее, чем выдумывать
+ * значения, которых мы не сохраняли.
+ */
+function migrateInitialDataV11(project: Project): Project {
+  const legacy = project as Partial<Pick<Project, 'initialData'>> &
+    Project & { geomBaseline?: unknown; granBaseline?: unknown; prodBaseline?: unknown };
+  if (legacy.initialData) return project;
+  const { geomBaseline, granBaseline, prodBaseline, ...rest } = legacy;
+  return { ...rest, initialData: project.data };
 }
 
 /**
@@ -334,9 +343,8 @@ export function useProjects() {
       calc: [false, false, false],
       calcDates: [null, null, null],
       data: input.data,
-      geomBaseline: null,
-      granBaseline: null,
-      prodBaseline: null,
+      // Опора «Дельта» с самого начала — не только после первого расчёта.
+      initialData: input.data,
     };
     setState((prev) => ({ ...prev, projects: [project, ...prev.projects] }));
     return project;

@@ -5,8 +5,8 @@ import { ORE_SAMPLES } from '@/data/oreSamples';
 export type GranStepProps = {
   data: GranData;
   onChange: (patch: Partial<GranData>) => void;
-  /** Снимок формы на момент последнего расчёта — опора для подсказки «было: X». `null`, пока не считалось. */
-  baseline: GranData | null;
+  /** Значения на момент создания проекта — опора для подсказки «было: X». */
+  baseline: GranData;
   /** Месторождение выбранной пробы. Пусто — шаг закрыт заглушкой. */
   ore: string;
   /**
@@ -28,9 +28,8 @@ export type GranStepProps = {
  * на случай, если проба всё же оказалась пустой.
  */
 export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: GranStepProps) {
-  /** Пояснение под полем: было ли отредактировано после последнего расчёта — и на что. */
+  /** Пояснение под полем: было ли отредактировано после создания проекта — и на что. */
   const hintWithDelta = (key: keyof GranData): string | undefined => {
-    if (!baseline) return undefined;
     const was = baseline[key];
     return was === data[key] ? undefined : `было: ${was}`;
   };
