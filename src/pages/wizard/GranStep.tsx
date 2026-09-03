@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Box, Button, Chip, EmptyState, Field, Input, Popover, Stack, Text } from '@uralmash/design-system';
+import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
+import { SieveAnalysis } from './SieveAnalysis';
 
 export type GranStepProps = {
   data: GranData;
@@ -18,6 +19,8 @@ export type GranStepProps = {
    * от того, смонтирован ли этот компонент вообще.
    */
   onRequestOrePicker: () => void;
+  /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
+  showToast: (message: string) => void;
 };
 
 /**
@@ -29,16 +32,22 @@ export type GranStepProps = {
  * `WizardPage` перехватывает переход без неё раньше; ветка ниже — подстраховка
  * на случай, если проба всё же оказалась пустой.
  */
-export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: GranStepProps) {
+export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, showToast }: GranStepProps) {
   // ── режим отображения: только дельта — диаграммы на этом шаге нет ──
   const [displayOpen, setDisplayOpen] = useState(false);
   const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
 
+  const applySieveToParams = (nextA0: number, nextVa0: number) => {
+    onChange({ a0: String(nextA0), va0: String(nextVa0) });
+    showToast(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
+  };
+
   /** Пояснение под полем: было ли отредактировано после создания проекта — и на что. */
-  const hintWithDelta = (key: keyof GranData): string | undefined => {
-    if (deltaMode !== 'show') return undefined;
+  const hintWithDelta = (key: keyof GranData, base?: string): string | undefined => {
+    if (deltaMode !== 'show') return base;
     const was = baseline[key];
-    return was === data[key] ? undefined : `было: ${was}`;
+    if (was === data[key]) return base;
+    return base ? `${base} · было: ${was}` : `было: ${was}`;
   };
 
   return ore ? (
@@ -120,6 +129,63 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker }: 
             <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
           )}
         </Field>
+      </Stack>
+
+      <Stack gap="lg" direction="column">
+        <Stack direction="row" justify="between" align="start" gap="md" wrap>
+          <Stack gap="xs" direction="column">
+            <Text variant="headingSm">Параметры формы куска</Text>
+            <Text variant="bodySm" color="textMuted">
+              a₀ и Va₀ задаются напрямую или получаются из ситового анализа пробы питания.
+            </Text>
+          </Stack>
+
+          {/* Не `Field` — см. пояснение выше по файлу и в GeometryStep: SegmentedControl
+              не принимает id, обёртка оставила бы подпись без контрола. */}
+          <Stack gap="2xs" direction="column" align="start">
+            <Text variant="label">Способ задания a₀ и Va₀</Text>
+            <SegmentedControl
+              legend="Способ задания a₀ и Va₀"
+              options={[
+                { value: 'direct', label: 'Прямой ввод' },
+                { value: 'sieve', label: 'Ситовый анализ' },
+              ]}
+              value={data.shapeMode}
+              onChange={(v) => onChange({ shapeMode: v })}
+            />
+          </Stack>
+        </Stack>
+
+        {data.shapeMode === 'direct' ? (
+          <Stack direction="column" gap="md">
+            <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')}>
+              {(props) => (
+                <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
+              )}
+            </Field>
+
+            <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')}>
+              {(props) => (
+                <Input
+                  {...props}
+                  fullWidth
+                  type="number"
+                  step="0.001"
+                  value={data.va0}
+                  onChange={(e) => onChange({ va0: e.target.value })}
+                />
+              )}
+            </Field>
+          </Stack>
+        ) : (
+          <SieveAnalysis
+            rows={data.sieveRows}
+            onRowsChange={(rows) => onChange({ sieveRows: rows })}
+            mode={data.sieveMode}
+            onModeChange={(sieveMode, sieveRows) => onChange({ sieveMode, sieveRows })}
+            onApply={applySieveToParams}
+          />
+        )}
       </Stack>
     </Stack>
   ) : (

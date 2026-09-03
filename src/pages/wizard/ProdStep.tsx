@@ -1,6 +1,5 @@
 import { Field, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { ProdData } from '@/types';
-import { SieveAnalysis } from './SieveAnalysis';
 
 export type ProdStepProps = {
   data: ProdData;
@@ -11,23 +10,16 @@ export type ProdStepProps = {
    * состоянием постфактум.
    */
   baseline?: ProdData | null;
-  /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
-  showToast?: (message: string) => void;
   /**
    * Упрощённый режим: только тип питания и максимальная крупность
    * продукта — единственный ввод во всём режиме. Остальные параметры
-   * (работа разрушения, форма куска, ситовый анализ) не показываются
-   * и остаются на значениях по умолчанию.
+   * (работа разрушения) не показываются и остаются на значениях
+   * по умолчанию.
    */
   simplified?: boolean;
 };
 
-export function ProdStep({ data, onChange, baseline = null, showToast, simplified = false }: ProdStepProps) {
-  const applySieveToParams = (nextA0: number, nextVa0: number) => {
-    onChange({ a0: String(nextA0), va0: String(nextVa0) });
-    showToast?.(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
-  };
-
+export function ProdStep({ data, onChange, baseline = null, simplified = false }: ProdStepProps) {
   /** Пояснение под полем: исходное + было ли отредактировано после создания проекта. */
   const hintWithDelta = (key: keyof ProdData, base?: string): string | undefined => {
     if (!baseline) return base;
@@ -115,57 +107,6 @@ export function ProdStep({ data, onChange, baseline = null, showToast, simplifie
             <Input {...props} fullWidth type="number" step="0.01" value={data.kpd} onChange={(e) => onChange({ kpd: e.target.value })} />
           )}
         </Field>
-      </Stack>
-
-      <Stack gap="lg" direction="column">
-        <Stack direction="row" justify="between" align="start" gap="md" wrap>
-          <Stack gap="xs" direction="column">
-            <Text variant="headingSm">Параметры формы куска</Text>
-            <Text variant="bodySm" color="textMuted">
-              a₀ и Va₀ задаются напрямую или получаются из ситового анализа пробы.
-            </Text>
-          </Stack>
-
-          {/* Не `Field` — см. пояснение выше по файлу и в GeometryStep: SegmentedControl
-              не принимает id, обёртка оставила бы подпись без контрола. */}
-          <Stack gap="2xs" direction="column" align="start">
-            <Text variant="label">Способ задания a₀ и Va₀</Text>
-            <SegmentedControl
-              legend="Способ задания a₀ и Va₀"
-              options={[
-                { value: 'direct', label: 'Прямой ввод' },
-                { value: 'sieve', label: 'Ситовый анализ' },
-              ]}
-              value={data.shapeMode}
-              onChange={(v) => onChange({ shapeMode: v })}
-            />
-          </Stack>
-        </Stack>
-
-        {data.shapeMode === 'direct' ? (
-          <Stack direction="column" gap="md">
-            <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')}>
-              {(props) => (
-                <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
-              )}
-            </Field>
-
-            <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')}>
-              {(props) => (
-                <Input
-                  {...props}
-                  fullWidth
-                  type="number"
-                  step="0.001"
-                  value={data.va0}
-                  onChange={(e) => onChange({ va0: e.target.value })}
-                />
-              )}
-            </Field>
-          </Stack>
-        ) : (
-          <SieveAnalysis rows={data.sieveRows} onRowsChange={(rows) => onChange({ sieveRows: rows })} onApply={applySieveToParams} />
-        )}
       </Stack>
     </Stack>
   );

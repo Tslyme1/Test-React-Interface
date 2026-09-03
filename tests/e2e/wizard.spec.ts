@@ -318,6 +318,36 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByText('было: 1.2', { exact: true })).toHaveCount(0);
   });
 
+  test('результат «Грансостав»: отображение переключает по минусу / по плюсу / частные классы независимо', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
+    await pickOre(page);
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 2 этапа' }).click();
+
+    const drawer = page.getByRole('dialog', { name: /Результат/ });
+    // По умолчанию — только по минусу, как было до появления переключателя.
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по плюсу, %' })).toHaveCount(0);
+    await expect(drawer.getByRole('columnheader', { name: 'Частные классы, %' })).toHaveCount(0);
+
+    await drawer.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: 'По плюсу' }).click();
+    await page.getByRole('option', { name: 'Частные классы' }).click();
+    await page.keyboard.press('Escape');
+
+    // Все три показаны вместе — переключатель не эксклюзивный.
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по плюсу, %' })).toBeVisible();
+    await expect(drawer.getByRole('columnheader', { name: 'Частные классы, %' })).toBeVisible();
+
+    await drawer.getByRole('button', { name: 'Отображение' }).click();
+    await page.getByRole('option', { name: 'По минусу' }).click();
+    await page.keyboard.press('Escape');
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toHaveCount(0);
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по плюсу, %' })).toBeVisible();
+  });
+
   test('результат «Продукт» показывает грансостав продукта таблицей и графиком', async ({ page }) => {
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await page.getByRole('button', { name: /Руда/ }).click();
@@ -331,13 +361,35 @@ test.describe('Инженерный визард', () => {
     await expect(drawer).toBeVisible();
 
     await expect(drawer.getByText('Грансостав продукта дробления')).toBeVisible();
-    await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toBeVisible();
+    // Первая (не единственная — в конце шторки дублируется таблица этапа
+    // «Грансостав», см. следующий тест) — колонка «Выход по минусу»
+    // принадлежит именно продукту дробления.
+    await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' }).first()).toBeVisible();
 
     // График — суммарные характеристики крупности, по плюсу и по минусу.
-    const chart = drawer.getByRole('img', { name: /Суммарные характеристики крупности/ });
+    const chart = drawer.getByRole('img', { name: /Суммарные характеристики крупности/ }).first();
     await expect(chart).toBeVisible();
     await expect(chart.locator('path')).toHaveCount(2);
-    await expect(drawer.getByText('По минусу — выход зёрен мельче размера')).toBeVisible();
-    await expect(drawer.getByText('По плюсу — выход зёрен крупнее размера')).toBeVisible();
+    await expect(drawer.getByText('По минусу — выход зёрен мельче размера').first()).toBeVisible();
+    await expect(drawer.getByText('По плюсу — выход зёрен крупнее размера').first()).toBeVisible();
+  });
+
+  test('результат «Продукт» в конце шторки показывает результаты этапов «Геометрия» и «Грансостав»', async ({ page }) => {
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Руда/ }).click();
+    await pickOre(page);
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: /Продукт/ }).click();
+    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
+
+    const drawer = page.getByRole('dialog', { name: /Результат/ });
+
+    await expect(drawer.getByText('Этап 1. Геометрия камеры дробления')).toBeVisible();
+    await expect(drawer.getByText('Профиль камеры по точкам')).toBeVisible();
+
+    await expect(drawer.getByText('Этап 2. Характеристический грансостав')).toBeVisible();
+    await expect(drawer.getByText('Характеристика гранулометрического состава')).toBeVisible();
+    await expect(drawer.getByRole('img', { name: /Суммарные характеристики крупности/ })).toHaveCount(2);
   });
 });
