@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
+import { GRAN_GLOSSARY } from '@/data/paramGlossary';
+import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { SieveAnalysis } from './SieveAnalysis';
 
@@ -96,35 +98,35 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
       </Stack>
 
       <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность Dmin, мм" required hint={hintWithDelta('dMin')}>
+        <Field label="Минимальная крупность Dmin, мм" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Кондиционная крупность Dk, мм" hint={hintWithDelta('dk')}>
+        <Field label="Кондиционная крупность Dk, мм" hint={hintWithDelta('dk')} labelHint={<FieldHint>{GRAN_GLOSSARY.dk}</FieldHint>}>
           {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} />}
         </Field>
 
-        <Field label="Максимальная крупность Dmax, мм" required hint={hintWithDelta('dMax')}>
+        <Field label="Максимальная крупность Dmax, мм" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMax}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр Z0" hint={hintWithDelta('z0')}>
+        <Field label="Параметр Z0" hint={hintWithDelta('z0')} labelHint={<FieldHint>{GRAN_GLOSSARY.z0}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.z0} onChange={(e) => onChange({ z0: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр S00" hint={hintWithDelta('s00')}>
+        <Field label="Параметр S00" hint={hintWithDelta('s00')} labelHint={<FieldHint>{GRAN_GLOSSARY.s00}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.s00} onChange={(e) => onChange({ s00: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Параметр N0" hint={hintWithDelta('n0')}>
+        <Field label="Параметр N0" hint={hintWithDelta('n0')} labelHint={<FieldHint>{GRAN_GLOSSARY.n0}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
           )}
@@ -158,13 +160,13 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
 
         {data.shapeMode === 'direct' ? (
           <Stack direction="column" gap="md">
-            <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')}>
+            <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')} labelHint={<FieldHint>{GRAN_GLOSSARY.a0}</FieldHint>}>
               {(props) => (
                 <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
               )}
             </Field>
 
-            <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')}>
+            <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')} labelHint={<FieldHint>{GRAN_GLOSSARY.va0}</FieldHint>}>
               {(props) => (
                 <Input
                   {...props}

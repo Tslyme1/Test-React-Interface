@@ -8,6 +8,8 @@ import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import type { ChamberHighlightKey, ChamberSchemeLayers } from '@/components/ChamberScheme/ChamberScheme';
 import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
+import { FieldHint } from '@/components/FieldHint/FieldHint';
+import { GEOM_GLOSSARY } from '@/data/paramGlossary';
 import { buildChamberSchemeProps } from '@/domain/chamberInput';
 import styles from './GeometryStep.module.css';
 
@@ -281,7 +283,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'a40',
               <div className={styles.pair}>
-                <Field label="Угол луча α40" hint={hintWithDelta('a40')}>
+                <Field label="Угол луча α40" hint={hintWithDelta('a40')} labelHint={<FieldHint>{GEOM_GLOSSARY.a40}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -293,7 +295,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина луча r40, мм" hint={hintWithDelta('r40')}>
+                <Field label="Длина луча r40, мм" hint={hintWithDelta('r40')} labelHint={<FieldHint>{GEOM_GLOSSARY.r40}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.r40} onChange={(e) => onChange({ r40: e.target.value })} />
                   )}
@@ -304,7 +306,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n40',
               <div className={styles.pair}>
-                <Field label="Угол чаши β40" hint={hintWithDelta('b40')}>
+                <Field label="Угол чаши β40" hint={hintWithDelta('b40')} labelHint={<FieldHint>{GEOM_GLOSSARY.b40}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -316,7 +318,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина l11 — 40→41, мм" hint={hintWithDelta('l11')}>
+                <Field label="Длина l11 — 40→41, мм" hint={hintWithDelta('l11')} labelHint={<FieldHint>{GEOM_GLOSSARY.l11}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} />
                   )}
@@ -327,7 +329,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n41',
               <div className={styles.pair}>
-                <Field label="Угол β41" hint={hintWithDelta('b41')}>
+                <Field label="Угол β41" hint={hintWithDelta('b41')} labelHint={<FieldHint>{GEOM_GLOSSARY.b41}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -339,7 +341,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина l12 — 41→42, мм" hint={hintWithDelta('l12')}>
+                <Field label="Длина l12 — 41→42, мм" hint={hintWithDelta('l12')} labelHint={<FieldHint>{GEOM_GLOSSARY.l12}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} />
                   )}
@@ -350,7 +352,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n42',
               <div className={styles.pair}>
-                <Field label="Угол β42" hint={hintWithDelta('b42')}>
+                <Field label="Угол β42" hint={hintWithDelta('b42')} labelHint={<FieldHint>{GEOM_GLOSSARY.b42}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -362,7 +364,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина l1i — 42→4i, мм" hint={hintWithDelta('l1i')}>
+                <Field label="Длина l1i — 42→4i, мм" hint={hintWithDelta('l1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.l1i}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.l1i} onChange={(e) => onChange({ l1i: e.target.value })} />
                   )}
@@ -373,7 +375,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n4i',
               <div className={styles.pair}>
-                <Field label="Угол β4i" hint={hintWithDelta('b4i')}>
+                <Field label="Угол β4i" hint={hintWithDelta('b4i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b4i}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -385,7 +387,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина l2 — 4i→3, калибровка, мм" hint={hintWithDelta('l2')}>
+                <Field label="Длина l2 — 4i→3, калибровка, мм" hint={hintWithDelta('l2')} labelHint={<FieldHint>{GEOM_GLOSSARY.l2}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} />
                   )}
@@ -396,7 +398,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               't3',
               <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Терминальный угол β3" hint={hintWithDelta('b3')}>
+                <Field label="Терминальный угол β3" hint={hintWithDelta('b3')} labelHint={<FieldHint>{GEOM_GLOSSARY.b3}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -420,7 +422,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'a10',
               <div className={styles.pair}>
-                <Field label="Угол луча α10" hint={hintWithDelta('a10')}>
+                <Field label="Угол луча α10" hint={hintWithDelta('a10')} labelHint={<FieldHint>{GEOM_GLOSSARY.a10}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -432,7 +434,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина луча r10, мм" hint={hintWithDelta('r10')}>
+                <Field label="Длина луча r10, мм" hint={hintWithDelta('r10')} labelHint={<FieldHint>{GEOM_GLOSSARY.r10}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.r10} onChange={(e) => onChange({ r10: e.target.value })} />
                   )}
@@ -443,7 +445,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n10',
               <div className={styles.pair}>
-                <Field label="Угол конуса β10" hint={hintWithDelta('b10')}>
+                <Field label="Угол конуса β10" hint={hintWithDelta('b10')} labelHint={<FieldHint>{GEOM_GLOSSARY.b10}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -455,7 +457,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина L 10→11, мм" hint={hintWithDelta('L10')}>
+                <Field label="Длина L 10→11, мм" hint={hintWithDelta('L10')} labelHint={<FieldHint>{GEOM_GLOSSARY.L10}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.L10} onChange={(e) => onChange({ L10: e.target.value })} />
                   )}
@@ -466,7 +468,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n11',
               <div className={styles.pair}>
-                <Field label="Угол β11" hint={hintWithDelta('b11')}>
+                <Field label="Угол β11" hint={hintWithDelta('b11')} labelHint={<FieldHint>{GEOM_GLOSSARY.b11}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -478,7 +480,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина L 11→12, мм" hint={hintWithDelta('L11')}>
+                <Field label="Длина L 11→12, мм" hint={hintWithDelta('L11')} labelHint={<FieldHint>{GEOM_GLOSSARY.L11}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.L11} onChange={(e) => onChange({ L11: e.target.value })} />
                   )}
@@ -489,7 +491,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n12',
               <div className={styles.pair}>
-                <Field label="Угол β12" hint={hintWithDelta('b12')}>
+                <Field label="Угол β12" hint={hintWithDelta('b12')} labelHint={<FieldHint>{GEOM_GLOSSARY.b12}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -501,7 +503,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина L 12→1i, мм" hint={hintWithDelta('L12')}>
+                <Field label="Длина L 12→1i, мм" hint={hintWithDelta('L12')} labelHint={<FieldHint>{GEOM_GLOSSARY.L12}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.L12} onChange={(e) => onChange({ L12: e.target.value })} />
                   )}
@@ -512,7 +514,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'n1i',
               <div className={styles.pair}>
-                <Field label="Угол β1i" hint={hintWithDelta('b1i')}>
+                <Field label="Угол β1i" hint={hintWithDelta('b1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b1i}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -524,7 +526,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     />
                   )}
                 </Field>
-                <Field label="Длина L 1i→2, мм" hint={hintWithDelta('L1i')}>
+                <Field label="Длина L 1i→2, мм" hint={hintWithDelta('L1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.L1i}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.L1i} onChange={(e) => onChange({ L1i: e.target.value })} />
                   )}
@@ -535,7 +537,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               't2',
               <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Угол на выходе конуса β2" hint={hintWithDelta('b2')}>
+                <Field label="Угол на выходе конуса β2" hint={hintWithDelta('b2')} labelHint={<FieldHint>{GEOM_GLOSSARY.b2}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -559,7 +561,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'theta',
               <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Угол нутации θ" hint={hintWithDelta('theta')}>
+                <Field label="Угол нутации θ" hint={hintWithDelta('theta')} labelHint={<FieldHint>{GEOM_GLOSSARY.theta}</FieldHint>}>
                   {(props) => (
                     <Input
                       {...props}
@@ -586,7 +588,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             <div className={styles.pair}>
               {zoned(
                 'dim-d',
-                <Field label="Диаметр основания D, мм" required hint={hintWithDelta('D')}>
+                <Field label="Диаметр основания D, мм" required hint={hintWithDelta('D')} labelHint={<FieldHint>{GEOM_GLOSSARY.D}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.D} onChange={(e) => onChange({ D: e.target.value })} />
                   )}
@@ -595,7 +597,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
               {zoned(
                 'dim-h',
-                <Field label="Высота камеры H, мм" required hint={hintWithDelta('H')}>
+                <Field label="Высота камеры H, мм" required hint={hintWithDelta('H')} labelHint={<FieldHint>{GEOM_GLOSSARY.H}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.H} onChange={(e) => onChange({ H: e.target.value })} />
                   )}
@@ -606,7 +608,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoned(
               'gap4',
               <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Ширина разгрузочной щели S0, мм" required hint={hintWithDelta('S0')}>
+                <Field label="Ширина разгрузочной щели S0, мм" required hint={hintWithDelta('S0')} labelHint={<FieldHint>{GEOM_GLOSSARY.S0}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.S0} onChange={(e) => onChange({ S0: e.target.value })} />
                   )}
@@ -623,20 +625,20 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             <Text variant="headingSm">Коэффициенты профиля</Text>
 
             <div className={styles.pair}>
-              <Field label="Коэффициент R" hint={hintWithDelta('R')}>
+              <Field label="Коэффициент R" hint={hintWithDelta('R')} labelHint={<FieldHint>{GEOM_GLOSSARY.R}</FieldHint>}>
                 {(props) => (
                   <Input {...props} fullWidth type="number" value={data.R} onChange={(e) => onChange({ R: e.target.value })} />
                 )}
               </Field>
 
-              <Field label="Коэффициент a" hint={hintWithDelta('a')}>
+              <Field label="Коэффициент a" hint={hintWithDelta('a')} labelHint={<FieldHint>{GEOM_GLOSSARY.a}</FieldHint>}>
                 {(props) => (
                   <Input {...props} fullWidth type="number" value={data.a} onChange={(e) => onChange({ a: e.target.value })} />
                 )}
               </Field>
             </div>
 
-            <Field label="Число зон дробления">
+            <Field label="Число зон дробления" labelHint={<FieldHint>{GEOM_GLOSSARY.zones}</FieldHint>}>
               {(props) => (
                 <Select
                   {...props}
