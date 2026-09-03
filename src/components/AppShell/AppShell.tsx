@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { AppHeader, Button, Field, HeaderButton, HeaderDivider, HeaderLogo, HeaderTab, Input, Popover, Stack } from '@uralmash/design-system';
+import { HelpModal } from '@/components/HelpModal/HelpModal';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import logoSrc from '@/uztm-logo.png';
@@ -59,6 +60,8 @@ export function AppShell({
   trashCount,
   children,
 }: AppShellProps) {
+  const [helpOpen, setHelpOpen] = useState(false);
+
   return (
     <div className={styles.shell}>
       <AppHeader>
@@ -104,6 +107,10 @@ export function AppShell({
 
           <HeaderButton icon="plus" aria-label="Новый проект" onClick={onNewProject} />
         </AppHeader.Left>
+
+        <AppHeader.Right>
+          <HeaderButton icon="help" aria-label="Справка по параметрам" onClick={() => setHelpOpen(true)} />
+        </AppHeader.Right>
       </AppHeader>
 
       <div className={styles.body}>
@@ -120,6 +127,8 @@ export function AppShell({
           </div>
         </main>
       </div>
+
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

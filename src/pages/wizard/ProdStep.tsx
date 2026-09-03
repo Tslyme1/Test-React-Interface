@@ -1,5 +1,7 @@
 import { Field, Input, SegmentedControl, Stack, Text } from '@uralmash/design-system';
 import type { ProdData } from '@/types';
+import { FieldHint } from '@/components/FieldHint/FieldHint';
+import { PROD_GLOSSARY } from '@/data/paramGlossary';
 
 export type ProdStepProps = {
   data: ProdData;
@@ -44,7 +46,11 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
           />
         </Stack>
 
-        <Field label="Максимальная крупность продукта Dmax, мм" required>
+        <Field
+          label="Максимальная крупность продукта Dmax, мм"
+          required
+          labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}
+        >
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
           )}
@@ -78,31 +84,31 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
       </Stack>
 
       <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность продукта Dmin, мм" required hint={hintWithDelta('dMin')}>
+        <Field label="Минимальная крупность продукта Dmin, мм" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{PROD_GLOSSARY.dMin}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Максимальная крупность продукта Dmax, мм" required hint={hintWithDelta('dMax')}>
+        <Field label="Максимальная крупность продукта Dmax, мм" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Работа разрушения Wk" hint={hintWithDelta('wk')}>
+        <Field label="Работа разрушения Wk" hint={hintWithDelta('wk')} labelHint={<FieldHint>{PROD_GLOSSARY.wk}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.wk} onChange={(e) => onChange({ wk: e.target.value })} />
           )}
         </Field>
 
-        <Field label="Работа измельчения Wm" hint={hintWithDelta('wm')}>
+        <Field label="Работа измельчения Wm" hint={hintWithDelta('wm')} labelHint={<FieldHint>{PROD_GLOSSARY.wm}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" value={data.wm} onChange={(e) => onChange({ wm: e.target.value })} />
           )}
         </Field>
 
-        <Field label="КПД дробления" required hint={hintWithDelta('kpd')}>
+        <Field label="КПД дробления" required hint={hintWithDelta('kpd')} labelHint={<FieldHint>{PROD_GLOSSARY.kpd}</FieldHint>}>
           {(props) => (
             <Input {...props} fullWidth type="number" step="0.01" value={data.kpd} onChange={(e) => onChange({ kpd: e.target.value })} />
           )}
