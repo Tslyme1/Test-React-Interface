@@ -275,7 +275,6 @@ export function SimplifiedProjectModal({
               selected={draftCrushers}
               onPickMultiple={pickDraftCrushers}
               nameLabel="Дробилка"
-              searchPlaceholder="КМД-2200, 2200, 500-655…"
               inlineSpecs={['D, мм', 'Q, т/ч']}
             />
           </Stack>
@@ -331,7 +330,6 @@ export function SimplifiedProjectModal({
               selected={project.crusherNames}
               onPickMultiple={changeCrusherNames}
               nameLabel="Дробилка"
-              searchPlaceholder="КМД-2200, 2200, 500-655…"
               inlineSpecs={['D, мм', 'Q, т/ч']}
             />
           </Stack>
@@ -349,7 +347,6 @@ export function SimplifiedProjectModal({
               selected={project.oreNames}
               onPickMultiple={changeOreNames}
               nameLabel="Проба руды"
-              searchPlaceholder="Костомукшская, X, 14-16…"
               inlineSpecs={['f', 'ρ, т/м³']}
             />
           </Stack>

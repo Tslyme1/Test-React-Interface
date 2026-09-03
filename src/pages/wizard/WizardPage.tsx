@@ -233,7 +233,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             pickOre(picked);
           }}
           nameLabel="Проба руды"
-          searchPlaceholder="Костомукшская, X, 14-16…"
           inlineSpecs={['f', 'ρ, т/м³']}
         />
       </Modal>
