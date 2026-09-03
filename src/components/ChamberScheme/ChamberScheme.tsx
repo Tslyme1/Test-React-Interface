@@ -213,8 +213,17 @@ export function ChamberScheme({
   /** Приглушение всего, что не подсвечено: активный участок читается сразу. */
   const dim = highlight != null;
 
-  const zone = (key: ChamberHighlightKey) =>
-    onZoneHover ? { onMouseEnter: () => onZoneHover(key), onMouseLeave: () => onZoneHover(null) } : {};
+  /**
+   * Группа участка: свой ключ в разметке плюс обработчики наведения.
+   *
+   * `data-zone` стоит всегда, даже когда наведение выключено: по нему
+   * участок находят тесты, и искать его по подписи было бы гаданием —
+   * рамка группы зависит от метрик шрифта и в разных системах разная.
+   */
+  const zone = (key: ChamberHighlightKey) => ({
+    'data-zone': key,
+    ...(onZoneHover ? { onMouseEnter: () => onZoneHover(key), onMouseLeave: () => onZoneHover(null) } : {}),
+  });
 
   /** Класс элемента: подсвеченный, приглушённый или обычный. */
   const cls = (key: ChamberHighlightKey): string | undefined => {

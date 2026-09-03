@@ -95,8 +95,15 @@ test.describe('Шаг «Геометрия»: режим отображения'
       .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
 
-    // Размерная линия «D / 2» на схеме — участок поля «Диаметр основания D».
-    await page.getByTestId('chamber-scheme').locator('g').filter({ hasText: 'D / 2' }).first().hover();
+    // Наводим на прозрачную линию-цель внутри участка «D / 2», а не на
+    // группу целиком: в середине рамки группы пусто, и туда попадает фон
+    // схемы. Цель лежит ровно на размерной линии и от шрифта не зависит.
+    //
+    // `force` — потому что у горизонтальной линии рамка нулевой высоты, и
+    // Playwright считает её невидимой. Указатель при этом реально ставится
+    // на линию, попадание проверяется браузером как обычно: у цели штрих
+    // в 18 единиц и `pointer-events: stroke`.
+    await page.getByTestId('chamber-scheme').locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
     // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
@@ -121,7 +128,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
 
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
-    await svg.locator('g').filter({ hasText: 'D / 2' }).first().hover();
+    await svg.locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await page.waitForTimeout(150);
     expect(await svg.innerHTML()).toBe(before);
   });
