@@ -91,7 +91,20 @@ export function CustomersPage({ projects, onOpenCustomer, onNewProject }: Custom
   const [sort, setSort] = useState<TableSort | null>({ key: 'lastDateMs', direction: 'desc' });
 
   const executorOptions = useMemo(() => toOptions(uniqueSorted(projects.map((p) => p.executor))), [projects]);
-  const tagOptions = useMemo(() => toOptions(uniqueSorted(projects.flatMap((p) => p.tags))), [projects]);
+  /**
+   * Теги показываются тегами — тем же приёмом, что и в фильтрах «Проектов»:
+   * список слов заставлял бы держать в голове, какой тег какого цвета,
+   * а цвет виден только в самой таблице ниже.
+   */
+  const tagOptions = useMemo<SelectOption[]>(
+    () =>
+      uniqueSorted(projects.flatMap((p) => p.tags)).map((name) => ({
+        value: name,
+        label: name,
+        content: <Tag color={colorOf(name)}>{name}</Tag>,
+      })),
+    [projects, colorOf]
+  );
 
   const rows = useMemo(() => {
     const all = buildCustomerRows(projects);

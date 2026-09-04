@@ -28,27 +28,43 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByRole('dialog', { name: 'Есть непересчитанные изменения' })).toBeVisible();
   });
 
-  test('«Остаться в проекте» не закрывает вкладку', async ({ page }) => {
+  test('«Отмена» не закрывает вкладку', async ({ page }) => {
     await page.getByLabel('Диаметр основания D, мм').fill('1900');
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
-    await page.getByRole('dialog', { name: 'Есть непересчитанные изменения' }).getByRole('button', { name: 'Остаться в проекте' }).click();
+    await page.getByRole('dialog', { name: 'Есть непересчитанные изменения' }).getByRole('button', { name: 'Отмена' }).click();
 
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toBeVisible();
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
   });
 
-  test('«Закрыть проект» закрывает вкладку, изменения остаются сохранёнными', async ({ page }) => {
+  test('«Оставить как есть» закрывает вкладку, изменения остаются сохранёнными', async ({ page }) => {
     await page.getByLabel('Диаметр основания D, мм').fill('1900');
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
-    await page.getByRole('dialog', { name: 'Есть непересчитанные изменения' }).getByRole('button', { name: 'Закрыть проект' }).click();
+    await page.getByRole('dialog', { name: 'Есть непересчитанные изменения' }).getByRole('button', { name: 'Оставить как есть' }).click();
 
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
     await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+  });
+
+  test('«Пересчитать» в диалоге закрывает вкладку и снимает предупреждение о расхождении', async ({ page }) => {
+    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
+
+    await page
+      .getByRole('dialog', { name: 'Есть непересчитанные изменения' })
+      .getByRole('button', { name: 'Пересчитать' })
+      .click();
+
+    await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
+
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
   });
 
   test('закрытие без правок после расчёта не спрашивает ничего', async ({ page }) => {

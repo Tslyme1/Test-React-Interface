@@ -22,6 +22,8 @@ test.describe('Профиль', () => {
 
   test('переключение на «Упрощённый» меняет, что открывает «Новый проект»', async ({ page }) => {
     await page.getByRole('option', { name: 'Упрощённый' }).click();
+    // Смена режима спрашивает подтверждение — затрагивает следующий новый проект.
+    await page.getByRole('button', { name: 'Сменить' }).click();
 
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
@@ -33,6 +35,10 @@ test.describe('Профиль', () => {
     await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
 
     await page.getByRole('option', { name: 'Упрощённый' }).click();
+    // Смена режима спрашивает подтверждение — до него выбор в списке не меняется.
+    await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'false');
+    await page.getByRole('button', { name: 'Сменить' }).click();
+
     await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'false');
   });

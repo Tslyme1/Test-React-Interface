@@ -1,5 +1,8 @@
-import { Button, Stack, Text } from '@uralmash/design-system';
+import { useState } from 'react';
+import { Button, Cell, Icon, Modal, Stack, Text } from '@uralmash/design-system';
+import type { ToastTone } from '@uralmash/design-system';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
+import { HowToModal } from '@/components/HowToModal/HowToModal';
 import type { FontScalePreference } from '@/state/useFontScale';
 import type { ThemePreference } from '@/state/useTheme';
 import type { ProjectMode, User } from '@/types';
@@ -15,6 +18,7 @@ export type ProfilePageProps = {
   fontScale: FontScalePreference;
   onFontScaleChange: (scale: FontScalePreference) => void;
   onLogout: () => void;
+  showToast: (message: string, tone?: ToastTone) => void;
 };
 
 const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
@@ -55,6 +59,7 @@ export function ProfilePage({
   fontScale,
   onFontScaleChange,
   onLogout,
+  showToast,
 }: ProfilePageProps) {
   const rows: { label: string; value: string }[] = [
     { label: 'Имя', value: user.name },
@@ -62,6 +67,24 @@ export function ProfilePage({
     { label: 'Логин', value: user.login },
     { label: 'Роль', value: user.role },
   ];
+
+  /**
+   * Смена режима не пишется по первому клику — режим определяет форму всех
+   * трёх шагов визарда, и случайный клик посреди списка стоил бы дороже,
+   * чем лишнее окно подтверждения. Подтверждение хранит выбранный вариант
+   * отдельно от применённого — `OptionCell` в списке при этом остаётся
+   * отмечен на прежнем значении, пока подтверждение не пройдено.
+   */
+  const [pendingMode, setPendingMode] = useState<ProjectMode | null>(null);
+  const [howToOpen, setHowToOpen] = useState(false);
+
+  const confirmModeChange = () => {
+    if (!pendingMode) return;
+    onModeChange(pendingMode);
+    setPendingMode(null);
+    const label = MODE_OPTIONS.find((o) => o.value === pendingMode)?.label ?? pendingMode;
+    showToast(`Режим работы изменён на «${label}»`, 'success');
+  };
 
   return (
     <div className={styles.root}>
@@ -85,22 +108,9 @@ export function ProfilePage({
               ))}
             </Stack>
 
-            <Stack gap="sm" direction="column">
-              <Text variant="label" color="textMuted">
-                Режим работы нового проекта
-              </Text>
-              <Stack direction="column" gap="none">
-                {MODE_OPTIONS.map((option) => (
-                  <OptionCell
-                    key={option.value}
-                    label={option.label}
-                    description={option.description}
-                    checked={mode === option.value}
-                    onSelect={() => onModeChange(option.value)}
-                  />
-                ))}
-              </Stack>
-            </Stack>
+            <Cell leading={<Icon name="help" size="sm" />} onClick={() => setHowToOpen(true)}>
+              Как пользоваться программой
+            </Cell>
 
             <Stack gap="sm" direction="column">
               <Text variant="label" color="textMuted">
@@ -136,6 +146,23 @@ export function ProfilePage({
               </Stack>
             </Stack>
 
+            <Stack gap="sm" direction="column">
+              <Text variant="label" color="textMuted">
+                Режим работы нового проекта
+              </Text>
+              <Stack direction="column" gap="none">
+                {MODE_OPTIONS.map((option) => (
+                  <OptionCell
+                    key={option.value}
+                    label={option.label}
+                    description={option.description}
+                    checked={mode === option.value}
+                    onSelect={() => setPendingMode(option.value)}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+
             <div>
               <Button variant="secondary" iconStart="logOut" onClick={onLogout}>
                 Выйти
@@ -144,6 +171,31 @@ export function ProfilePage({
           </Stack>
         </div>
       </div>
+
+      <Modal
+        open={pendingMode !== null}
+        onClose={() => setPendingMode(null)}
+        title="Сменить режим работы?"
+        size="sm"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setPendingMode(null)}>
+              Отмена
+            </Button>
+            <Button variant="primary" onClick={confirmModeChange}>
+              Сменить
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <Text variant="bodySm" color="textMuted">
+          Режим определяет форму всех шагов расчёта — какой из них показать, вводить всё вручную или выбирать из
+          каталога. Затрагивает только следующий новый проект: уже открытые и посчитанные проекты останутся в том
+          режиме, в котором были созданы.
+        </Text>
+      </Modal>
+
+      <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} mode={mode} />
     </div>
   );
 }

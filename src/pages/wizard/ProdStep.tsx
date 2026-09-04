@@ -61,12 +61,7 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
 
   return (
     <Stack gap="2xl" direction="column">
-      <Stack gap="xs" direction="column">
-        <Text variant="headingMd">Грансостав продукта и усилия</Text>
-        <Text variant="bodySm" color="textMuted">
-          Параметры продукта дробления и режима нагружения.
-        </Text>
-      </Stack>
+      <Text variant="headingMd">Грансостав продукта и усилия</Text>
 
       {/* Не `Field` — см. пояснение в GeometryStep: SegmentedControl не принимает id,
           и обёртка оставила бы подпись без контрола. */}

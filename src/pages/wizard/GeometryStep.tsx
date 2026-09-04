@@ -659,6 +659,8 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
         </Stack>
       </div>
 
+      <div className={styles.colDivider} />
+
       <InlineSidebar
         open={sidebarOpen}
         onOpenChange={setSidebarOpen}
