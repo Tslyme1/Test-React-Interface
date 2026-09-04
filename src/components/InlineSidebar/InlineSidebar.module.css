@@ -16,16 +16,28 @@
   align-self: stretch;
 }
 
+/**
+ * `max-height` по высоте видимой области прокрутки (`100cqh`, см.
+ * `container-type: size` у `.body` в `WizardPage.module.css`) минус отступ
+ * сверху и такой же снизу. Панель прилипшая, то есть не прокручивается:
+ * всё, что вылезло за нижнюю кромку экрана, стало бы недостижимым —
+ * ровно так низ схемы и обрезался на широких невысоких экранах, где её
+ * высота считается от ширины и обгоняет высоту окна. Содержимое внутри
+ * при этом ужимается (см. `.panelInner`), а не обрезается.
+ */
 .root {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--space-sm);
   position: sticky;
   top: var(--space-xl);
+  max-height: calc(100cqh - var(--space-xl) * 2);
 }
 
+/** Рейка — по верхнему краю: растягивать кнопку-шеврон на всю высоту панели незачем. */
 .rail {
   flex: 0 0 auto;
+  align-self: flex-start;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -55,6 +67,7 @@
   position: relative;
   overflow: hidden;
   width: 50cqi;
+  min-height: 0;
   transition: width var(--duration-slow) var(--easing-standard);
 }
 
@@ -62,8 +75,24 @@
   width: 0;
 }
 
+/**
+ * Колонка: заголовок по содержимому, содержимое — во весь остаток высоты
+ * панели. `min-height: 0` у второй строки обязателен, иначе она не даёт
+ * себя ужать ниже собственного содержимого, и ограничение высоты у `.root`
+ * не доходит до схемы — та снова вылезает за нижнюю кромку.
+ */
 .panelInner {
   width: 50cqi;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--space-sm);
+}
+
+.panelContent {
+  min-height: 0;
+  min-width: 0;
 }
 
 /**
@@ -102,9 +131,18 @@
   left: 50%;
   width: var(--border-hairline);
   background: var(--color-border);
+  transition:
+    width var(--duration-fast) var(--easing-standard),
+    background-color var(--duration-fast) var(--easing-standard);
 }
 
-.resizeHandle:hover,
-.resizeHandle:active {
+/**
+ * На наведении толстеет и темнеет сама черта, а не заливается вся зона
+ * захвата: залитая целиком, она шириной в `--space-sm` читалась рядом
+ * с собственной чертой как второй, отдельный элемент.
+ */
+.resizeHandle:hover::before,
+.resizeHandle:active::before {
+  width: var(--border-strong);
   background: var(--color-border-hover);
 }
