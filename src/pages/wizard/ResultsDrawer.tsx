@@ -326,13 +326,15 @@ export function ResultsDrawer({
         </Stack>
 
         {stepKey === 'prod' ? (
-          <nav ref={navRef} className={styles.nav} aria-label="Навигация по отчёту">
-            {PROD_SECTIONS.map(({ key, label }) => (
-              <Tab key={key} active={activeSection === key} onClick={() => scrollToSection(key)}>
-                {label}
-              </Tab>
-            ))}
-          </nav>
+          <div className={styles.navBleed}>
+            <nav ref={navRef} className={styles.nav} aria-label="Навигация по отчёту">
+              {PROD_SECTIONS.map(({ key, label }) => (
+                <Tab key={key} active={activeSection === key} onClick={() => scrollToSection(key)}>
+                  {label}
+                </Tab>
+              ))}
+            </nav>
+          </div>
         ) : null}
 
         {stepKey === 'geom' ? (

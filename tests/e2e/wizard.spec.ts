@@ -239,9 +239,14 @@ test.describe('Инженерный визард', () => {
     const handleBox = await handle.boundingBox();
     if (!handleBox) throw new Error('ручка ширины не найдена');
 
-    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    // Ручка растянута на всю высоту строки (по самому высокому соседу —
+    // форме), которая может быть выше видимой области экрана: центр её
+    // рамки — не гарантированно видимая точка. Берём отступ от верха ручки,
+    // заведомо попадающий в вьюпорт.
+    const grabY = handleBox.y + 40;
+    await page.mouse.move(handleBox.x + handleBox.width / 2, grabY);
     await page.mouse.down();
-    await page.mouse.move(handleBox.x - 150, handleBox.y + handleBox.height / 2, { steps: 10 });
+    await page.mouse.move(handleBox.x - 150, grabY, { steps: 10 });
     await page.mouse.up();
 
     const after = await panel.boundingBox();
