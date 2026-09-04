@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MouseEvent as ReactMouseEvent, ReactNode, WheelEvent as ReactWheelEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { Box, Button, Chip, Field, Input, Modal, Popover, Select, Stack, Surface, Text } from '@uralmash/design-system';
 import type { GeomData, ZoneCount } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
@@ -153,10 +153,26 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   };
   const resetView = () => setView({ k: 1, x: 0, y: 0 });
 
-  const handleWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    zoomBy(e.deltaY < 0 ? 1.12 : 0.89);
-  };
+  /**
+   * Не `onWheel` из React: с React 18 синтетическое событие `wheel`
+   * навешено на документ пассивным слушателем (ради производительности
+   * скролла), и `preventDefault()` внутри него молча ничего не делает —
+   * браузер всё равно прокручивает и масштабирует страницу целиком поверх
+   * зума схемы. Обычный `addEventListener` с `{ passive: false }` — рабочий.
+   */
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setView((v) => ({ ...v, k: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, v.k * (e.deltaY < 0 ? 1.12 : 0.89))) }));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   const handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -723,8 +739,8 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
       >
         <Surface level="flat" padding="sm" fullWidth border={false}>
           <div
+            ref={viewportRef}
             className={panning ? `${styles.viewport} ${styles.viewportPanning}` : styles.viewport}
-            onWheel={handleWheel}
             onMouseDown={handleMouseDown}
           >
             <div
@@ -751,12 +767,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             <div className={styles.zoomControls}>
               <Surface level="raised" radius="sm" padding="2xs" border={false}>
                 <Stack direction="column" gap="2xs">
-                  <Button variant="secondary" size="sm" aria-label="Приблизить" onClick={() => zoomBy(1.25)}>
-                    +
-                  </Button>
-                  <Button variant="secondary" size="sm" aria-label="Отдалить" onClick={() => zoomBy(0.8)}>
-                    −
-                  </Button>
+                  {/* `icon`, а не текстовый символ: у кнопки-иконки ширина
+                      равна высоте контрола, у кнопки с текстом — считается
+                      по содержимому и паддингу. Разница в пару пикселей
+                      делала кнопку «сбросить вид» ниже уже колонки. */}
+                  <Button variant="secondary" size="sm" icon="plus" aria-label="Приблизить" onClick={() => zoomBy(1.25)} />
+                  <Button variant="secondary" size="sm" icon="minus" aria-label="Отдалить" onClick={() => zoomBy(0.8)} />
                   <Button variant="secondary" size="sm" icon="maximize" aria-label="Сбросить вид" onClick={resetView} />
                 </Stack>
               </Surface>
