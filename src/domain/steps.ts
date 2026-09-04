@@ -1,4 +1,5 @@
 import type { Project, StepKey } from '@/types';
+import { formatDate } from '@/domain/date';
 
 /**
  * Три шага визарда, в порядке, в котором с ними работает `calc: [boolean, boolean, boolean]`
@@ -39,4 +40,30 @@ export function isStepStale(project: Project, index: number): boolean {
 /** Есть ли в проекте хотя бы один такой шаг — см. `isStepStale`. */
 export function hasUncalculatedChanges(project: Project): boolean {
   return STEP_KEYS.some((_key, i) => isStepStale(project, i));
+}
+
+/**
+ * Снимок каждого разошедшегося (`isStepStale`) шага подтягивается к его
+ * текущим данным — без открытия самого визарда. Нужно окну подтверждения
+ * при закрытии вкладки («Пересчитать» вместо того, чтобы уходить с
+ * закрытием, ничего не решив): пересчитывает не какой-то один шаг
+ * (`step` там, где его правят, — у `WizardPage`), а сразу все, что
+ * успели разойтись к этому моменту.
+ *
+ * Уже посчитанные и совпадающие со снимком шаги (и ещё не посчитанные
+ * вовсе) не трогает — `calc` не меняется, меняются только даты и снимки
+ * тех, что были `isStepStale`.
+ */
+export function recalculateStaleSteps(project: Project): Pick<Project, 'calc' | 'calcDates' | 'calcSnapshot'> {
+  const calc = [...project.calc] as Project['calc'];
+  const calcDates = [...project.calcDates] as Project['calcDates'];
+  const calcSnapshot = [...project.calcSnapshot] as Project['calcSnapshot'];
+
+  STEP_KEYS.forEach((key, i) => {
+    if (!isStepStale(project, i)) return;
+    calcDates[i] = formatDate();
+    calcSnapshot[i] = project.data[key];
+  });
+
+  return { calc, calcDates, calcSnapshot };
 }

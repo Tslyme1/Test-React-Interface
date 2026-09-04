@@ -1,4 +1,4 @@
-import { Box, Cell, Icon, Stack, Text } from '@uralmash/design-system';
+import { Box, Cell, Icon, Stack } from '@uralmash/design-system';
 import styles from './Sidebar.module.css';
 
 export type SidebarView = 'projects' | 'customers' | 'profile' | 'trash';
@@ -6,7 +6,6 @@ export type SidebarView = 'projects' | 'customers' | 'profile' | 'trash';
 export type SidebarProps = {
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
-  trashCount: number;
 };
 
 /**
@@ -25,7 +24,7 @@ export type SidebarProps = {
  * есть в `AppShell.module.css` (`var(--color-surface)`, `var(--color-border)`
  * напрямую в CSS-модуле), только по правому краю, а не со всех сторон.
  */
-export function Sidebar({ view, onViewChange, trashCount }: SidebarProps) {
+export function Sidebar({ view, onViewChange }: SidebarProps) {
   return (
     <div className={styles.sidebar}>
       <Box paddingX="sm" paddingY="lg" fullWidth>
@@ -60,13 +59,6 @@ export function Sidebar({ view, onViewChange, trashCount }: SidebarProps) {
           </Cell>
           <Cell
             leading={<Icon name="trash" size="sm" />}
-            trailing={
-              trashCount > 0 ? (
-                <Text variant="caption" color="textMuted">
-                  {trashCount}
-                </Text>
-              ) : null
-            }
             selected={view === 'trash'}
             onClick={() => onViewChange('trash')}
           >

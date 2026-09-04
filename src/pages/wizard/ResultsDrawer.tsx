@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Cell, Checkbox, Drawer, Popover, SegmentedControl, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import { Button, Cell, Checkbox, Drawer, Popover, Stack, Tab, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd, estimateProdGran } from '@/domain/estimates';
@@ -326,14 +326,13 @@ export function ResultsDrawer({
         </Stack>
 
         {stepKey === 'prod' ? (
-          <div ref={navRef} className={styles.nav}>
-            <SegmentedControl
-              legend="Навигация по отчёту"
-              options={PROD_SECTIONS.map(({ key, label }) => ({ value: key, label }))}
-              value={activeSection}
-              onChange={(v) => scrollToSection(v as ProdSection)}
-            />
-          </div>
+          <nav ref={navRef} className={styles.nav} aria-label="Навигация по отчёту">
+            {PROD_SECTIONS.map(({ key, label }) => (
+              <Tab key={key} active={activeSection === key} onClick={() => scrollToSection(key)}>
+                {label}
+              </Tab>
+            ))}
+          </nav>
         ) : null}
 
         {stepKey === 'geom' ? (
@@ -349,8 +348,12 @@ export function ResultsDrawer({
         ) : null}
 
         {stepKey === 'gran' ? (
-          <Stack gap="sm" direction="column">
-            <Stack direction="row" justify="end">
+          <Table
+            columns={granDrawerColumns(granView)}
+            rows={estimateGran(project.data.gran)}
+            rowKey={(r) => r.class}
+            caption="Характеристика гранулометрического состава"
+            captionActions={
               <Popover
                 open={granViewOpen}
                 onClose={() => setGranViewOpen(false)}
@@ -358,7 +361,7 @@ export function ResultsDrawer({
                 width="sm"
                 title="Отображение"
                 trigger={
-                  <Button variant="secondary" iconEnd="chevronDown" onClick={() => setGranViewOpen((o) => !o)}>
+                  <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setGranViewOpen((o) => !o)}>
                     Отображение
                   </Button>
                 }
@@ -375,14 +378,8 @@ export function ResultsDrawer({
                   ))}
                 </Stack>
               </Popover>
-            </Stack>
-            <Table
-              columns={granDrawerColumns(granView)}
-              rows={estimateGran(project.data.gran)}
-              rowKey={(r) => r.class}
-              caption="Характеристика гранулометрического состава"
-            />
-          </Stack>
+            }
+          />
         ) : null}
 
         {stepKey === 'prod' ? (

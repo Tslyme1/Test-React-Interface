@@ -11,6 +11,9 @@ import { seedSession, watchConsole } from './helpers';
 async function switchToSimplified(page: Page) {
   await page.getByRole('button', { name: 'Профиль' }).click();
   await page.getByRole('option', { name: 'Упрощённый' }).click();
+  // Смена режима спрашивает подтверждение — затрагивает следующий новый
+  // проект, и случайный клик посреди списка стоил бы дороже.
+  await page.getByRole('button', { name: 'Сменить' }).click();
   await page.getByRole('button', { name: 'Проекты' }).click();
 }
 

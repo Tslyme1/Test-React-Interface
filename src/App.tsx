@@ -6,7 +6,7 @@ import { useFontScale } from '@/state/useFontScale';
 import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
-import { hasUncalculatedChanges } from '@/domain/steps';
+import { hasUncalculatedChanges, recalculateStaleSteps } from '@/domain/steps';
 import { AppShell } from '@/components/AppShell/AppShell';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import { LoginPage } from '@/pages/LoginPage';
@@ -32,7 +32,7 @@ export function App() {
     restoreProject,
     purgeProject,
   } = useProjects();
-  const { message, showToast } = useToast();
+  const { message, tone, showToast } = useToast();
   const { theme, setTheme } = useTheme();
   const { scale: fontScale, setScale: setFontScale } = useFontScale();
 
@@ -97,7 +97,7 @@ export function App() {
           onGoRegister={() => showToast('Регистрация — в следующей итерации')}
           onGoForgot={() => showToast('Восстановление пароля — в следующей итерации')}
         />
-        <Toast message={message} />
+        <Toast message={message} tone={tone} />
       </>
     );
   }
@@ -188,7 +188,6 @@ export function App() {
         onNewProject={startNewProject}
         view={sidebarView}
         onViewChange={goView}
-        trashCount={trash.length}
       >
         {shownProject ? (
           <WizardPage
@@ -226,6 +225,7 @@ export function App() {
             fontScale={fontScale}
             onFontScaleChange={setFontScale}
             onLogout={logout}
+            showToast={showToast}
           />
         ) : (
           <ProjectsPage
@@ -278,29 +278,45 @@ export function App() {
         title="Есть непересчитанные изменения"
         size="sm"
         footer={
-          <Modal.Footer>
+          <Modal.Footer aside={
             <Button variant="secondary" onClick={() => setCloseConfirmId(null)}>
-              Остаться в проекте
+              Отмена
             </Button>
+          }>
             <Button
-              variant="primary"
+              variant="secondary"
               onClick={() => {
                 if (closeConfirmId) closeProject(closeConfirmId);
                 setCloseConfirmId(null);
               }}
             >
-              Закрыть проект
+              Оставить как есть
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                if (closeConfirmId) {
+                  const project = projects.find((p) => p.id === closeConfirmId);
+                  if (project) updateProject(project.id, recalculateStaleSteps(project));
+                  closeProject(closeConfirmId);
+                  showToast('Изменения пересчитаны', 'success');
+                }
+                setCloseConfirmId(null);
+              }}
+            >
+              Пересчитать
             </Button>
           </Modal.Footer>
         }
       >
         <Text variant="bodySm" color="textMuted">
           Значения на посчитанном шаге изменились после расчёта — отчёт в шторке результата по нему больше не отражает
-          текущий ввод. Правки уже сохранены и не потеряются, но для верного отчёта шаг стоит пересчитать заново.
+          текущий ввод. Пересчитайте перед закрытием, чтобы отчёт отражал текущие данные, или оставьте как есть —
+          правки уже сохранены и не потеряются, отчёт останется по старым данным до следующего расчёта.
         </Text>
       </Modal>
 
-      <Toast message={message} />
+      <Toast message={message} tone={tone} />
     </>
   );
 }

@@ -41,8 +41,6 @@ export type AppShellProps = {
   /** Раздел приложения — сайдбар слева. Скрыт, пока открытый проект показан на экране: там должен быть виден только он. */
   view: SidebarView;
   onViewChange: (view: SidebarView) => void;
-  /** Только для бейджа-счётчика у пункта «Корзина» — сама корзина открывается разделом («Корзина» в `view`), а не отсюда. */
-  trashCount: number;
   children: ReactNode;
 };
 
@@ -57,7 +55,6 @@ export function AppShell({
   onNewProject,
   view,
   onViewChange,
-  trashCount,
   children,
 }: AppShellProps) {
   const [helpOpen, setHelpOpen] = useState(false);
@@ -120,7 +117,7 @@ export function AppShell({
             прячется, когда проект показан на экране: там должен быть виден
             только он, а не список разделов рядом. */}
         {!shownProjectId ? (
-          <Sidebar view={view} onViewChange={onViewChange} trashCount={trashCount} />
+          <Sidebar view={view} onViewChange={onViewChange} />
         ) : null}
 
         <main className={styles.main}>
