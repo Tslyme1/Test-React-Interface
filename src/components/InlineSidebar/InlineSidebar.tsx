@@ -105,14 +105,15 @@ export function InlineSidebar({
         </div>
 
         <div ref={panelRef} className={styles.panel} data-open={open} aria-hidden={!open} style={widthStyle}>
+          {/* Не `Stack` для вертикали: содержимому нужно занять весь остаток
+              высоты панели и уметь ужиматься вместе с ней (см. `.panelInner`
+              в CSS), а `Stack` раскладывает по содержимому. */}
           <div className={styles.panelInner} style={widthStyle}>
-            <Stack gap="sm" direction="column">
-              <Stack direction="row" justify="between" align="center" gap="sm">
-                <Text variant="headingMd">{title}</Text>
-                {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
-              </Stack>
-              {children}
+            <Stack direction="row" justify="between" align="center" gap="sm">
+              <Text variant="headingMd">{title}</Text>
+              {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
             </Stack>
+            <div className={styles.panelContent}>{children}</div>
           </div>
         </div>
       </div>

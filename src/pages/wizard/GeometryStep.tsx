@@ -737,12 +737,16 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </>
         }
       >
-        <Surface level="flat" padding="sm" fullWidth border={false}>
-          <div
-            ref={viewportRef}
-            className={panning ? `${styles.viewport} ${styles.viewportPanning}` : styles.viewport}
-            onMouseDown={handleMouseDown}
-          >
+        {/* Без обёртки-`Surface`: она рисовала только внутренний отступ
+            (`flat`, `border={false}`), но рвала цепочку определённых высот
+            от липкой панели к самой схеме — с ней ограничение высоты не
+            доходило до `.viewport`, и низ схемы обрезался. Отступ вернулся
+            внутрь, на `.zoomLayer`. */}
+        <div
+          ref={viewportRef}
+          className={panning ? `${styles.viewport} ${styles.viewportPanning}` : styles.viewport}
+          onMouseDown={handleMouseDown}
+        >
             <div
               className={styles.zoomLayer}
               style={{
@@ -777,8 +781,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 </Stack>
               </Surface>
             </div>
-          </div>
-        </Surface>
+        </div>
       </InlineSidebar>
 
       <Modal open={crusherPickerOpen} onClose={() => setCrusherPickerOpen(false)} title="Сменить дробилку" size="lg">
