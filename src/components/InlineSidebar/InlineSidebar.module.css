@@ -70,6 +70,22 @@
   z-index: var(--z-raised);
 }
 
+/**
+ * Черта посередине зоны захвата — постоянно видимая граница между формой
+ * и схемой, а не только на наведении. Область под курсор шире неё
+ * (`--space-sm`), чтобы попасть в ручку с первой попытки, но сама граница —
+ * тонкая линия токеном хайрлайна, как и остальные разделители экрана.
+ */
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--border-hairline);
+  background: var(--color-border);
+}
+
 .resizeHandle:hover,
 .resizeHandle:active {
   background: var(--color-border-hover);

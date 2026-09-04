@@ -37,7 +37,6 @@ export function Sidebar({ view, onViewChange, trashCount }: SidebarProps) {
           >
             Проекты
           </Cell>
-          <div className={styles.divider} />
           <Cell
             leading={<Icon name="users" size="sm" />}
             selected={view === 'customers'}
@@ -59,7 +58,6 @@ export function Sidebar({ view, onViewChange, trashCount }: SidebarProps) {
           >
             Профиль
           </Cell>
-          <div className={styles.divider} />
           <Cell
             leading={<Icon name="trash" size="sm" />}
             trailing={

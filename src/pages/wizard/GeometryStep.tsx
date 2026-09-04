@@ -11,6 +11,7 @@ import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { GEOM_GLOSSARY } from '@/data/paramGlossary';
 import { buildChamberSchemeProps } from '@/domain/chamberInput';
+import { convertAngleUnit } from '@/domain/angleUnit';
 import styles from './GeometryStep.module.css';
 
 /** Границы масштаба схемы — те же, что и в прототипе-источнике. */
@@ -259,12 +260,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                       <OptionCell
                         label="Градусы"
                         checked={data.angleUnit === 'deg'}
-                        onSelect={() => onChange({ angleUnit: 'deg' })}
+                        onSelect={() => onChange(convertAngleUnit(data, 'deg'))}
                       />
                       <OptionCell
                         label="Радианы"
                         checked={data.angleUnit === 'рад'}
-                        onSelect={() => onChange({ angleUnit: 'рад' })}
+                        onSelect={() => onChange(convertAngleUnit(data, 'рад'))}
                       />
                     </Stack>
                   </Stack>
@@ -720,7 +721,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           </>
         }
       >
-        <Surface level="flat" padding="sm" fullWidth>
+        <Surface level="flat" padding="sm" fullWidth border={false}>
           <div
             className={panning ? `${styles.viewport} ${styles.viewportPanning}` : styles.viewport}
             onWheel={handleWheel}
