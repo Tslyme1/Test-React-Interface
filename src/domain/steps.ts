@@ -43,18 +43,16 @@ export function hasUncalculatedChanges(project: Project): boolean {
 }
 
 /**
- * Снимок каждого разошедшегося (`isStepStale`) шага подтягивается к его
- * текущим данным — без открытия самого визарда. Нужно окну подтверждения
- * при закрытии вкладки («Пересчитать» вместо того, чтобы уходить с
- * закрытием, ничего не решив): пересчитывает не какой-то один шаг
- * (`step` там, где его правят, — у `WizardPage`), а сразу все, что
- * успели разойтись к этому моменту.
+ * «Сохранить»: правки, сделанные после расчёта, становятся сохранённым
+ * состоянием проекта — снимок каждого разошедшегося (`isStepStale`) шага
+ * подтягивается к его текущим данным. Отчёт по шагу и так считается
+ * от текущих данных, поэтому дата расчёта обновляется вместе со снимком.
  *
  * Уже посчитанные и совпадающие со снимком шаги (и ещё не посчитанные
  * вовсе) не трогает — `calc` не меняется, меняются только даты и снимки
  * тех, что были `isStepStale`.
  */
-export function recalculateStaleSteps(project: Project): Pick<Project, 'calc' | 'calcDates' | 'calcSnapshot'> {
+export function commitStaleSteps(project: Project): Pick<Project, 'calc' | 'calcDates' | 'calcSnapshot'> {
   const calc = [...project.calc] as Project['calc'];
   const calcDates = [...project.calcDates] as Project['calcDates'];
   const calcSnapshot = [...project.calcSnapshot] as Project['calcSnapshot'];
@@ -66,4 +64,22 @@ export function recalculateStaleSteps(project: Project): Pick<Project, 'calc' | 
   });
 
   return { calc, calcDates, calcSnapshot };
+}
+
+/**
+ * «Не сохранять»: правки, сделанные после расчёта, откатываются —
+ * данные каждого разошедшегося шага возвращаются к снимку, с которым
+ * его считали. Шаги, не уходившие от снимка, остаются как есть.
+ */
+export function discardStaleSteps(project: Project): Pick<Project, 'data'> {
+  const data = { ...project.data };
+  // Пошагово, а не циклом: `calcSnapshot` — кортеж со своим типом на каждой
+  // позиции, и только поимённое обращение сохраняет соответствие снимка шагу.
+  const [geom, gran, prod] = project.calcSnapshot;
+
+  if (isStepStale(project, 0) && geom) data.geom = geom;
+  if (isStepStale(project, 1) && gran) data.gran = gran;
+  if (isStepStale(project, 2) && prod) data.prod = prod;
+
+  return { data };
 }

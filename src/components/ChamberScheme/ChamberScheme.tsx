@@ -323,7 +323,7 @@ export function ChamberScheme({
             <title>θ — угол нутации конуса: {fmt(input.theta, 1)}°</title>
           </path>
         ) : null}
-        <text x={labelPoint.x - 4} y={labelPoint.y + 4} textAnchor="end" fontSize={13} fontStyle="italic" fill="var(--color-text-muted)">
+        <text x={labelPoint.x - 4} y={labelPoint.y + 4} textAnchor="end" className={styles.fsXl} fontStyle="italic" fill="var(--color-text-muted)">
           θ
         </text>
       </g>
@@ -369,9 +369,9 @@ export function ChamberScheme({
           <g key={`rlab-${packIndex}-${i}`} className={cls(key)} {...zone(key)}>
             <rect x={lx - 3} y={ly - 13} width={34} height={19} fill="transparent" />
             <line x1={lx + 11} y1={ly + 5} x2={mid.x} y2={mid.y} stroke="var(--color-border-strong)" strokeWidth={0.7} />
-            <text x={lx} y={ly} fontSize={11.5} fontStyle="italic" fill="var(--color-text-muted)">
+            <text x={lx} y={ly} className={styles.fsMd} fontStyle="italic" fill="var(--color-text-muted)">
               r
-              <tspan fontSize={8.5} dy={3}>
+              <tspan className={styles.fsXs} dy={3}>
                 {name}
               </tspan>
               {i < 4 ? <tspan dy={-3}>,</tspan> : null}
@@ -411,7 +411,7 @@ export function ChamberScheme({
               {SLAB[i]} — зазор {NAMES_B[i]}–{NAMES_C[i]}: {fmt(raw)} мм
             </title>
           </line>
-          <text x={mid.x} y={mid.y - 6} textAnchor="middle" fontSize={11.5} fontStyle="italic" fill="var(--color-accent-text)">
+          <text x={mid.x} y={mid.y - 6} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-accent-text)">
             {SLAB[i]}
           </text>
         </g>
@@ -461,7 +461,7 @@ export function ChamberScheme({
               y={mid.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={11.5}
+              className={styles.fsMd}
               fontStyle="italic"
               fill="var(--color-text-muted)"
             >
@@ -511,12 +511,12 @@ export function ChamberScheme({
               y={labelPoint.y}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize={11.5}
+              className={styles.fsMd}
               fontStyle="italic"
               fill="var(--color-text-muted)"
             >
               β
-              <tspan fontSize={8.5} dy={3}>
+              <tspan className={styles.fsXs} dy={3}>
                 {names[i]}
               </tspan>
               {isCone ? <tspan dy={-3}>−θ</tspan> : null}
@@ -549,7 +549,7 @@ export function ChamberScheme({
             strokeWidth={active ? 1.8 : 1.2}
           />
           <circle cx={p.x} cy={p.y} r={1.1} fill="var(--color-text)" />
-          <text x={p.x + dx} y={p.y + dy} textAnchor="end" fontSize={10.5} fill="var(--color-text)">
+          <text x={p.x + dx} y={p.y + dy} textAnchor="end" className={styles.fsSm} fill="var(--color-text)">
             {names[i]}
           </text>
           <title>
@@ -594,12 +594,12 @@ export function ChamberScheme({
             y={labelPoint.y}
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize={11.5}
+            className={styles.fsMd}
             fontStyle="italic"
             fill="var(--color-text-muted)"
           >
             α
-            <tspan fontSize={8.5} dy={3}>
+            <tspan className={styles.fsXs} dy={3}>
               {sub}
             </tspan>
           </text>
@@ -653,7 +653,7 @@ export function ChamberScheme({
           y={(apex.y + p2.y) / 2}
           textAnchor="end"
           dominantBaseline="middle"
-          fontSize={13}
+          className={styles.fsXl}
           fontStyle="italic"
           fill="var(--color-text-muted)"
         >
@@ -679,7 +679,7 @@ export function ChamberScheme({
           <title>D/2 = {fmt(diameterRaw / 2)} мм</title>
         </line>
         <line x1={p2.x} y1={p2.y} x2={p2.x} y2={dy + 8} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-        <text x={(p2.x + apex.x) / 2} y={dy - 7} textAnchor="middle" fontSize={11.5} fontStyle="italic" fill="var(--color-text-muted)">
+        <text x={(p2.x + apex.x) / 2} y={dy - 7} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-text-muted)">
           D / 2
         </text>
       </g>
@@ -716,7 +716,7 @@ export function ChamberScheme({
             strokeWidth={0.7}
           />
           <line x1={RX - 10} y1={r.y} x2={RX + 118} y2={r.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-          <text x={RX - 6} y={r.y - 7} fontSize={12} fill="var(--color-text-muted)">
+          <text x={RX - 6} y={r.y - 7} className={styles.fsLg} fill="var(--color-text-muted)">
             {r.text}
             <title>{r.text}</title>
           </text>
@@ -728,7 +728,7 @@ export function ChamberScheme({
       <g key="callout-apex" className={cls('apex')} {...zone('apex')}>
         <rect x={RX - 8} y={apex.y - 21} width={140} height={20} fill="transparent" />
         <line x1={apex.x + 6} y1={apex.y} x2={RX + 118} y2={apex.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
-        <text x={RX - 6} y={apex.y - 7} fontSize={12} fill="var(--color-text-muted)">
+        <text x={RX - 6} y={apex.y - 7} className={styles.fsLg} fill="var(--color-text-muted)">
           Точка подвеса
           <title>Точка подвеса — начало отсчёта всех лучей</title>
         </text>
@@ -746,7 +746,7 @@ export function ChamberScheme({
           stroke="var(--color-border-strong)"
           strokeWidth={0.7}
         />
-        <text x={LX} y={bandY} textAnchor="end" fontSize={12} fill="var(--color-text-muted)">
+        <text x={LX} y={bandY} textAnchor="end" className={styles.fsLg} fill="var(--color-text-muted)">
           Броня чаши
           <title>Броня чаши — неподвижный профиль камеры</title>
         </text>
@@ -763,7 +763,7 @@ export function ChamberScheme({
         <g key={`band-${band.key}`} className={cls(band.key)} {...zone(band.key)}>
           <rect x={LX - 120} y={(band.y1 + band.y2) / 2 - 11} width={128} height={20} fill="transparent" />
           <path d={bracket(BRX, band.y1 + 3, band.y2 - 3, 9)} fill="none" stroke="var(--color-text-muted)" strokeWidth={0.7} />
-          <text x={LX} y={(band.y1 + band.y2) / 2 + 4} textAnchor="end" fontSize={12} fill="var(--color-text-muted)">
+          <text x={LX} y={(band.y1 + band.y2) / 2 + 4} textAnchor="end" className={styles.fsLg} fill="var(--color-text-muted)">
             {band.text}
             <title>{band.text}</title>
           </text>

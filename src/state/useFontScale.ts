@@ -101,6 +101,17 @@ export function useFontScale() {
       }
     }
 
+    /*
+     * Сам множитель, без единиц — для того, что не выражается в ролях
+     * типографики и потому не масштабируется автоматически вместе с ними:
+     * подписи внутри чертежа схемы (они в единицах `viewBox`, а не в кеглях
+     * ролей) и ширина сайдбара (её задаёт самая длинная подпись пункта).
+     * Читается как `var(--ui-scale, 1)` — с запасным значением на случай,
+     * когда масштаб обычный и переменная снята.
+     */
+    if (factor === 1) root.style.removeProperty('--ui-scale');
+    else root.style.setProperty('--ui-scale', String(factor));
+
     try {
       localStorage.setItem(STORAGE_KEY, scale);
     } catch {

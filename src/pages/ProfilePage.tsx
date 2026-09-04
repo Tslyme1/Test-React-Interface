@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Button, Cell, Icon, Modal, Stack, Text } from '@uralmash/design-system';
 import type { ToastTone } from '@uralmash/design-system';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
@@ -20,6 +20,18 @@ export type ProfilePageProps = {
   onLogout: () => void;
   showToast: (message: string, tone?: ToastTone) => void;
 };
+
+/**
+ * Чем режимы отличаются шаг за шагом — по короткой строке на ячейку.
+ * Показывается в окне подтверждения при смене режима: абзац словами
+ * не отвечал на вопрос «что именно поменяется».
+ */
+const MODE_STEP_DIFF: { step: string; engineering: string; simplified: string }[] = [
+  { step: 'Дробилка', engineering: 'Геометрия камеры вручную, поле за полем', simplified: 'Выбор из каталога, можно несколько' },
+  { step: 'Руда', engineering: 'Грансостав вручную или ситовым анализом', simplified: 'Выбор проб из каталога, можно несколько' },
+  { step: 'Продукт', engineering: 'Крупность, работа разрушения, КПД', simplified: 'Тип питания и максимальная крупность' },
+  { step: 'Результат', engineering: 'Отчёт по шагам, экспорт в Excel и NX', simplified: 'Отчёт по каждой паре «дробилка × проба»' },
+];
 
 const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
   { value: 'engineering', label: 'Инженерный', description: 'Ручная настройка всех параметров на каждом этапе.' },
@@ -188,11 +200,38 @@ export function ProfilePage({
           </Modal.Footer>
         }
       >
-        <Text variant="bodySm" color="textMuted">
-          Режим определяет форму всех шагов расчёта — какой из них показать, вводить всё вручную или выбирать из
-          каталога. Затрагивает только следующий новый проект: уже открытые и посчитанные проекты останутся в том
-          режиме, в котором были созданы.
-        </Text>
+        <Stack gap="lg" direction="column">
+          {/* Не абзац словами, а построчная сверка: видно, что именно
+              меняется на каждом шаге расчёта. Колонка режима, в который
+              переходим, — обычным цветом, прежняя — приглушённой. */}
+          <div className={styles.modeCompare}>
+            <span />
+            <Text variant="label" color={pendingMode === 'engineering' ? 'text' : 'textMuted'}>
+              Инженерный
+            </Text>
+            <Text variant="label" color={pendingMode === 'simplified' ? 'text' : 'textMuted'}>
+              Упрощённый
+            </Text>
+
+            {MODE_STEP_DIFF.map((row) => (
+              <Fragment key={row.step}>
+                <Text variant="label" color="textMuted">
+                  {row.step}
+                </Text>
+                <Text variant="bodySm" color={pendingMode === 'engineering' ? 'text' : 'textMuted'}>
+                  {row.engineering}
+                </Text>
+                <Text variant="bodySm" color={pendingMode === 'simplified' ? 'text' : 'textMuted'}>
+                  {row.simplified}
+                </Text>
+              </Fragment>
+            ))}
+          </div>
+
+          <Text variant="bodySm" color="textMuted">
+            Затрагивает только следующий новый проект — уже созданные останутся в своём режиме.
+          </Text>
+        </Stack>
       </Modal>
 
       <HowToModal open={howToOpen} onClose={() => setHowToOpen(false)} mode={mode} />
