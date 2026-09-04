@@ -84,52 +84,56 @@ export function InlineSidebar({
     customWidth !== undefined ? { width: customWidth, transition: resizing ? 'none' : undefined } : undefined;
 
   return (
-    <div className={styles.root}>
-      <div className={styles.rail}>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={open ? 'chevronRight' : 'chevronLeft'}
-          aria-label={open ? `Свернуть: ${title}` : `Развернуть: ${title}`}
-          aria-expanded={open}
-          onClick={() => onOpenChange(!open)}
-        />
-        {!open ? (
-          <div className={styles.railLabel}>
-            <Text variant="caption" color="textMuted">
-              {title}
-            </Text>
-          </div>
-        ) : null}
-      </div>
-
-      <div
-        ref={panelRef}
-        className={styles.panel}
-        data-open={open}
-        aria-hidden={!open}
-        style={widthStyle}
-      >
-        {onWidthChange && open ? (
-          <div
-            className={styles.resizeHandle}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label={`Ширина панели «${title}»`}
-            onMouseDown={startResize}
+    <div className={styles.outer}>
+      <div className={styles.root}>
+        <div className={styles.rail}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={open ? 'chevronRight' : 'chevronLeft'}
+            aria-label={open ? `Свернуть: ${title}` : `Развернуть: ${title}`}
+            aria-expanded={open}
+            onClick={() => onOpenChange(!open)}
           />
-        ) : null}
+          {!open ? (
+            <div className={styles.railLabel}>
+              <Text variant="caption" color="textMuted">
+                {title}
+              </Text>
+            </div>
+          ) : null}
+        </div>
 
-        <div className={styles.panelInner} style={widthStyle}>
-          <Stack gap="sm" direction="column">
-            <Stack direction="row" justify="between" align="center" gap="sm">
-              <Text variant="headingMd">{title}</Text>
-              {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
+        <div ref={panelRef} className={styles.panel} data-open={open} aria-hidden={!open} style={widthStyle}>
+          <div className={styles.panelInner} style={widthStyle}>
+            <Stack gap="sm" direction="column">
+              <Stack direction="row" justify="between" align="center" gap="sm">
+                <Text variant="headingMd">{title}</Text>
+                {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
+              </Stack>
+              {children}
             </Stack>
-            {children}
-          </Stack>
+          </div>
         </div>
       </div>
+
+      {/*
+       * Вне `.root` (липкой, короткой по высоте своего содержимого) —
+       * граница обязана идти во всю высоту строки, которую задаёт снаружи
+       * более высокий сосед (форма слева), а не только высоту схемы.
+       * Сделать высоким сам `.root` нельзя: `position: sticky` тогда
+       * перестаёт иметь запас хода и почти сразу перестаёт липнуть — см.
+       * `.outer` в CSS.
+       */}
+      {onWidthChange && open ? (
+        <div
+          className={styles.resizeHandle}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Ширина панели «${title}»`}
+          onMouseDown={startResize}
+        />
+      ) : null}
     </div>
   );
 }
