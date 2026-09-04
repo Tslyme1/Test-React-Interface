@@ -82,15 +82,24 @@
  * `aspect-ratio`, а не фиксированная высота: `fixed-height-css` в
  * `ds-lint` запрещает `height`/`min-height` в px вообще, без исключения
  * для не-текстовых блоков. `aspect-ratio` даёт тот же эффект честно —
- * пропорции те же, что и у `viewBox` схемы (1180×840), поэтому
- * `<ChamberScheme>` внутри (`width: 100%; height: auto`) заполняет
- * область без искажений.
+ * пропорции те же, что и у `viewBox` схемы (1180×840).
+ *
+ * `min-height` в `vh` (не запрещён линтером — тот ловит только px/rem/em)
+ * добавлен отдельно: ширина панели растёт вместе с шириной строки формы
+ * (`50cqi`), а не с высотой экрана, и на высоком мониторе, где форма слева
+ * помещается без прокрутки, чистый `aspect-ratio` оставлял под схемой
+ * пустую область — контейнер выглядел обрезанным сверху, а не занимающим
+ * весь свой рост. `<ChamberScheme>` внутри при этом переключён на
+ * `height: 100%` (было `auto`) — сам `viewBox` со своим `preserveAspectRatio`
+ * держит пропорции без искажений уже на уровне SVG, значит контейнеру
+ * снаружи можно расти по высоте свободно.
  */
 .viewport {
   position: relative;
   overflow: hidden;
   width: 100%;
   aspect-ratio: 1180 / 840;
+  min-height: 60vh;
   cursor: grab;
 }
 
@@ -106,10 +115,16 @@
   transition: transform var(--duration-base) var(--easing-standard);
 }
 
+/**
+ * `right: 0`, не `var(--space-sm)`: `.viewport` уже вписан в `Surface`
+ * с `padding="sm"` вокруг — свой ещё один такой же отступ поверх нёс блок
+ * заметно левее правого края заголовка панели («Слои» в `actions`), с
+ * которым он визуально должен встать по одной вертикали.
+ */
 .zoomControls {
   position: absolute;
   top: 50%;
-  right: var(--space-sm);
+  right: 0;
   transform: translateY(-50%);
   z-index: var(--z-raised);
 }
