@@ -134,28 +134,21 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
       </Stack>
 
       <Stack gap="lg" direction="column">
-        <Stack direction="row" justify="between" align="start" gap="md" wrap>
-          <Stack gap="xs" direction="column">
-            <Text variant="headingSm">Параметры формы куска</Text>
-            <Text variant="bodySm" color="textMuted">
-              a₀ и Va₀ задаются напрямую или получаются из ситового анализа пробы питания.
-            </Text>
-          </Stack>
-
-          {/* Не `Field` — см. пояснение выше по файлу и в GeometryStep: SegmentedControl
-              не принимает id, обёртка оставила бы подпись без контрола. */}
-          <Stack gap="2xs" direction="column" align="start">
-            <Text variant="label">Способ задания a₀ и Va₀</Text>
-            <SegmentedControl
-              legend="Способ задания a₀ и Va₀"
-              options={[
-                { value: 'direct', label: 'Прямой ввод' },
-                { value: 'sieve', label: 'Ситовый анализ' },
-              ]}
-              value={data.shapeMode}
-              onChange={(v) => onChange({ shapeMode: v })}
-            />
-          </Stack>
+        <Stack gap="sm" direction="column" align="start">
+          <Text variant="headingSm">Параметры формы куска</Text>
+          {/* `legend` уже даёт контролу доступное имя для читалки экрана
+              (сам он визуально скрыт — см. `SegmentedControl.module.css`),
+              поэтому видимая подпись над ним была бы вторым, дублирующим
+              названием одного и того же контрола. */}
+          <SegmentedControl
+            legend="Способ задания a₀ и Va₀"
+            options={[
+              { value: 'direct', label: 'Прямой ввод' },
+              { value: 'sieve', label: 'Ситовый анализ' },
+            ]}
+            value={data.shapeMode}
+            onChange={(v) => onChange({ shapeMode: v })}
+          />
         </Stack>
 
         {data.shapeMode === 'direct' ? (

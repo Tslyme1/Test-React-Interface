@@ -1,6 +1,7 @@
-import { Badge, Box, Button, EmptyState, Grid, Input, SegmentedControl, Stack, Surface, Text } from '@uralmash/design-system';
+import { Badge, Button, EmptyState, Input, SegmentedControl, Stack, Surface, Text } from '@uralmash/design-system';
 import type { SieveInputMode } from '@/types';
 import { computeSieve, convertSieveRows, fmt1, round3, type SieveRow } from '@/domain/sieve';
+import styles from './SieveAnalysis.module.css';
 
 export type SieveAnalysisProps = {
   rows: SieveRow[];
@@ -74,9 +75,7 @@ export function SieveAnalysis({ rows, onRowsChange, mode, onModeChange, onApply 
     onModeChange(next, convertSieveRows(rows, mode, next));
   };
 
-  const activeLabel = MODE_OPTIONS.find((o) => o.value === mode)!.label;
-  const passive = MODE_OPTIONS.filter((o) => o.value !== mode);
-  const passiveValue = (key: SieveInputMode, row: (typeof computed.rows)[number]) =>
+  const valueOf = (key: SieveInputMode, row: (typeof computed.rows)[number]) =>
     key === 'minus' ? row.minus : key === 'plus' ? row.plus : row.gamma;
 
   return (
@@ -103,21 +102,20 @@ export function SieveAnalysis({ rows, onRowsChange, mode, onModeChange, onApply 
         ) : (
           <Stack gap="lg" direction="column">
             <Stack gap="sm" direction="column">
-              <Grid columns={4} gap="md">
+              <div className={styles.grid}>
                 <Text variant="label" color="textMuted">
                   Класс крупности, мм
                 </Text>
-                <Text variant="label" color="textMuted">
-                  {activeLabel}, %
-                </Text>
-                <Text variant="label" color="textMuted">
-                  {passive.map((o) => o.label).join(' / ')}, %
-                </Text>
+                {MODE_OPTIONS.map((o) => (
+                  <Text key={o.value} variant="label" color="textMuted">
+                    {o.label}, %
+                  </Text>
+                ))}
                 <span />
-              </Grid>
+              </div>
 
               {computed.rows.map((row, i) => (
-                <Grid key={i} columns={4} gap="md" rowGap="xs">
+                <div key={i} className={styles.grid}>
                   <Input
                     fullWidth
                     type="text"
@@ -126,38 +124,28 @@ export function SieveAnalysis({ rows, onRowsChange, mode, onModeChange, onApply 
                     value={row.cls}
                     onChange={(e) => updateRow(i, { cls: e.target.value })}
                   />
-                  <Input
-                    fullWidth
-                    type="number"
-                    aria-label={`${activeLabel}, строка ${i + 1}, %`}
-                    value={rows[i].value}
-                    onChange={(e) => updateRow(i, { value: e.target.value })}
-                  />
-                  <Stack direction="row" gap="md" wrap align="baseline">
-                    {passive.map((o) => (
+                  {MODE_OPTIONS.map((o) =>
+                    o.value === mode ? (
+                      <Input
+                        key={o.value}
+                        fullWidth
+                        type="number"
+                        aria-label={`${o.label}, строка ${i + 1}, %`}
+                        value={rows[i].value}
+                        onChange={(e) => updateRow(i, { value: e.target.value })}
+                      />
+                    ) : (
                       <Text key={o.value} variant="bodySm" color="textMuted">
                         {/* Пустая строка ввода — не то же самое, что введённый ноль:
                             пересчёт от пустоты показал бы «100» или «0» на пустом
                             месте, как будто что-то посчитано, хотя не введено ничего. */}
-                        {o.label} {row.value.trim() === '' ? '—' : fmt1(passiveValue(o.value, row))}
+                        {row.value.trim() === '' ? '—' : fmt1(valueOf(o.value, row))}
                       </Text>
-                    ))}
-                  </Stack>
+                    )
+                  )}
                   <Button icon="trash" variant="ghost" aria-label={`Удалить строку ${i + 1}`} onClick={() => removeRow(i)} />
-                </Grid>
+                </div>
               ))}
-
-              {/* `paddingX`+`paddingY`, а не `padding` — см. комментарий у `Box`
-                  в `ProjectsPage.tsx`: одиночный `padding` в этой версии
-                  компонента гасит сам себя. */}
-              <Box background="surfaceSunken" radius="md" paddingX="sm" paddingY="sm" fullWidth>
-                <Grid columns={4} gap="md">
-                  <Text variant="label">Σ частных классов</Text>
-                  <span />
-                  <Text variant="label">{fmt1(computed.total)} %</Text>
-                  <span />
-                </Grid>
-              </Box>
             </Stack>
 
             <Button variant="ghost" iconStart="plus" onClick={addRow}>

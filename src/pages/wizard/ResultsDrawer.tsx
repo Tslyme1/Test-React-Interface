@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
-import { Button, Cell, Checkbox, Drawer, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Cell, Checkbox, Drawer, Popover, SegmentedControl, Stack, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd, estimateProdGran } from '@/domain/estimates';
@@ -13,6 +13,7 @@ import { GranulometryChart } from '@/components/GranulometryChart/GranulometryCh
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { useTags } from '@/state/useTags';
+import styles from './ResultsDrawer.module.css';
 
 const kvColumns: TableColumn<KvRow>[] = [
   { key: 'label', title: 'Величина' },
@@ -62,6 +63,19 @@ function granDrawerColumns(view: Set<GranView>): TableColumn<GranRow>[] {
     ...GRAN_VIEW_ORDER.filter(({ key }) => view.has(key)).map(({ key }) => GRAN_VIEW_COLUMNS[key]),
   ];
 }
+
+/**
+ * Разделы шторки «Продукт» — единственный шаг с несколькими разделами
+ * подряд (свой отчёт, затем этапы 1 и 2 целиком, см. ниже). Навигация по
+ * ним — переключатель, который прокручивает к разделу по клику и сам
+ * переключается по мере прокрутки (`IntersectionObserver` в компоненте).
+ */
+const PROD_SECTIONS = [
+  { key: 'product', label: 'Продукт' },
+  { key: 'stage1', label: 'Этап 1' },
+  { key: 'stage2', label: 'Этап 2' },
+] as const;
+type ProdSection = (typeof PROD_SECTIONS)[number]['key'];
 
 /** Профиль камеры по точкам — пара «узел чаши · узел конуса» в каждой строке. */
 const profileColumns: TableColumn<ProfileRow>[] = [
@@ -190,6 +204,68 @@ export function ResultsDrawer({
     });
   };
 
+  // ── навигация по разделам шторки «Продукт» — см. `PROD_SECTIONS` выше ──
+  const contentRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Record<ProdSection, HTMLDivElement | null>>({ product: null, stage1: null, stage2: null });
+  const [activeSection, setActiveSection] = useState<ProdSection>('product');
+  // Подавляет обновления от наблюдателя во время программной прокрутки
+  // по клику — иначе переключатель на середине пути дёргался бы между
+  // разделом, который проезжает мимо, и тем, куда едет клик.
+  const scrollingToSection = useRef(false);
+
+  useEffect(() => {
+    if (stepKey !== 'prod' || !open) return;
+    // `.content` дизайн-системы — прокручиваемый предок, которого сама
+    // шторка не отдаёт наружу: это родитель обёртки, которую рендерит
+    // сюда `Drawer` как `children` (см. её анатомию в инвентаре).
+    const container = contentRef.current?.parentElement;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (scrollingToSection.current) return;
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length === 0) return;
+        const topMost = visible.reduce((a, b) => (a.boundingClientRect.top < b.boundingClientRect.top ? a : b));
+        const key = (topMost.target as HTMLElement).dataset.section as ProdSection | undefined;
+        if (key) setActiveSection(key);
+      },
+      // Полоса-триггер — верхняя треть области прокрутки: раздел становится
+      // активным, когда его заголовок входит в неё, а не только когда
+      // целиком попадает в видимую область (иначе короткий раздел «Продукт»
+      // никогда не активировался бы целиком одновременно с длинным «Этап 1»).
+      { root: container, rootMargin: '0px 0px -66% 0px', threshold: 0 }
+    );
+
+    PROD_SECTIONS.forEach(({ key }) => {
+      const el = sectionRefs.current[key];
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [stepKey, open]);
+
+  const scrollToSection = (key: ProdSection) => {
+    const el = sectionRefs.current[key];
+    const container = contentRef.current?.parentElement;
+    if (!el || !container) return;
+
+    scrollingToSection.current = true;
+    setActiveSection(key);
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    // Выше цели ровно на высоту закреплённой панели навигации — иначе
+    // заголовок раздела оказывался бы под ней, а не сразу под кромкой.
+    const navHeight = navRef.current?.offsetHeight ?? 0;
+    container.scrollTo({ top: container.scrollTop + (elRect.top - containerRect.top) - navHeight, behavior: 'smooth' });
+    // Прокрутка smooth не даёт единого события «закончилось» без доп. API —
+    // фиксированная задержка проще, чем ловить конец инерции.
+    window.setTimeout(() => {
+      scrollingToSection.current = false;
+    }, 500);
+  };
+
   return (
     <Drawer
       open={open}
@@ -222,6 +298,7 @@ export function ResultsDrawer({
         </Stack>
       }
     >
+      <div ref={contentRef}>
       <Stack gap="lg" direction="column">
         {/*
          * Кто, когда и на какой машине — контекст расчёта, который не виден
@@ -247,6 +324,17 @@ export function ResultsDrawer({
             <TagsField project={project} onUpdateProject={onUpdateProject} />
           </MetaField>
         </Stack>
+
+        {stepKey === 'prod' ? (
+          <div ref={navRef} className={styles.nav}>
+            <SegmentedControl
+              legend="Навигация по отчёту"
+              options={PROD_SECTIONS.map(({ key, label }) => ({ value: key, label }))}
+              value={activeSection}
+              onChange={(v) => scrollToSection(v as ProdSection)}
+            />
+          </div>
+        ) : null}
 
         {stepKey === 'geom' ? (
           <>
@@ -299,22 +387,26 @@ export function ResultsDrawer({
 
         {stepKey === 'prod' ? (
           <>
-            <Table
-              columns={kvColumns}
-              rows={estimateProd(project.data.prod, project.data.geom)}
-              rowKey={(r) => r.label}
-              caption="Продукт дробления"
-            />
-            <Table
-              columns={granColumns}
-              rows={estimateProdGran(project.data.prod)}
-              rowKey={(r) => r.class}
-              caption="Грансостав продукта дробления"
-            />
-            <Stack gap="xs" direction="column">
-              <Text variant="label">Суммарные характеристики крупности продукта</Text>
-              <GranulometryChart rows={estimateProdGran(project.data.prod)} />
+            <div ref={(el: HTMLDivElement | null) => (sectionRefs.current.product = el)} data-section="product">
+            <Stack gap="lg" direction="column">
+              <Table
+                columns={kvColumns}
+                rows={estimateProd(project.data.prod, project.data.geom)}
+                rowKey={(r) => r.label}
+                caption="Продукт дробления"
+              />
+              <Table
+                columns={granColumns}
+                rows={estimateProdGran(project.data.prod)}
+                rowKey={(r) => r.class}
+                caption="Грансостав продукта дробления"
+              />
+              <Stack gap="xs" direction="column">
+                <Text variant="label">Суммарные характеристики крупности продукта</Text>
+                <GranulometryChart rows={estimateProdGran(project.data.prod)} />
+              </Stack>
             </Stack>
+            </div>
 
             {/*
              * Продукт — последний шаг цепочки, и его отчёт по смыслу продолжает
@@ -322,34 +414,43 @@ export function ResultsDrawer({
              * геометрии камеры и грансостава питания, которые здесь же и
              * стоит увидеть, не открывая шторки этих шагов отдельно.
              */}
-            <Text variant="headingSm">Этап 1. Геометрия камеры дробления</Text>
-            <Table
-              columns={kvColumns}
-              rows={estimateGeom(project.data.geom)}
-              rowKey={(r) => r.label}
-              caption="Параметры камеры дробления"
-            />
-            <Table
-              columns={profileColumns}
-              rows={estimateGeomProfile(project.data.geom)}
-              rowKey={(r) => r.point}
-              caption="Профиль камеры по точкам"
-            />
-
-            <Text variant="headingSm">Этап 2. Характеристический грансостав</Text>
-            <Table
-              columns={granColumns}
-              rows={estimateGran(project.data.gran)}
-              rowKey={(r) => r.class}
-              caption="Характеристика гранулометрического состава"
-            />
-            <Stack gap="xs" direction="column">
-              <Text variant="label">Суммарные характеристики крупности питания</Text>
-              <GranulometryChart rows={estimateGran(project.data.gran)} />
+            <div ref={(el: HTMLDivElement | null) => (sectionRefs.current.stage1 = el)} data-section="stage1">
+            <Stack gap="lg" direction="column">
+              <Text variant="headingSm">Этап 1. Геометрия камеры дробления</Text>
+              <Table
+                columns={kvColumns}
+                rows={estimateGeom(project.data.geom)}
+                rowKey={(r) => r.label}
+                caption="Параметры камеры дробления"
+              />
+              <Table
+                columns={profileColumns}
+                rows={estimateGeomProfile(project.data.geom)}
+                rowKey={(r) => r.point}
+                caption="Профиль камеры по точкам"
+              />
             </Stack>
+            </div>
+
+            <div ref={(el: HTMLDivElement | null) => (sectionRefs.current.stage2 = el)} data-section="stage2">
+            <Stack gap="lg" direction="column">
+              <Text variant="headingSm">Этап 2. Характеристический грансостав</Text>
+              <Table
+                columns={granColumns}
+                rows={estimateGran(project.data.gran)}
+                rowKey={(r) => r.class}
+                caption="Характеристика гранулометрического состава"
+              />
+              <Stack gap="xs" direction="column">
+                <Text variant="label">Суммарные характеристики крупности питания</Text>
+                <GranulometryChart rows={estimateGran(project.data.gran)} />
+              </Stack>
+            </Stack>
+            </div>
           </>
         ) : null}
       </Stack>
+      </div>
     </Drawer>
   );
 }

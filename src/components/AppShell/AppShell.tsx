@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AppHeader, Button, Field, HeaderButton, HeaderDivider, HeaderLogo, HeaderTab, Input, Popover, Stack } from '@uralmash/design-system';
 import { HelpModal } from '@/components/HelpModal/HelpModal';
@@ -80,26 +80,28 @@ export function AppShell({
           {projectTabs.length > 0 ? (
             <>
               <HeaderDivider />
-              {projectTabs.map((tab) => (
-                <HeaderTab
-                  key={tab.id}
-                  active={tab.id === shownProjectId}
-                  onClick={() => onSelectProject(tab.id)}
-                  actions={
-                    <>
-                      <RenameProject name={tab.name} onRename={(next) => onRenameProject(tab.id, next)} />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        icon="x"
-                        aria-label={`Закрыть проект: ${tab.name}`}
-                        onClick={() => onCloseProject(tab.id)}
-                      />
-                    </>
-                  }
-                >
-                  {tab.name}
-                </HeaderTab>
+              {projectTabs.map((tab, index) => (
+                <Fragment key={tab.id}>
+                  {index > 0 ? <HeaderDivider /> : null}
+                  <HeaderTab
+                    active={tab.id === shownProjectId}
+                    onClick={() => onSelectProject(tab.id)}
+                    actions={
+                      <>
+                        <RenameProject name={tab.name} onRename={(next) => onRenameProject(tab.id, next)} />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon="x"
+                          aria-label={`Закрыть проект: ${tab.name}`}
+                          onClick={() => onCloseProject(tab.id)}
+                        />
+                      </>
+                    }
+                  >
+                    {tab.name}
+                  </HeaderTab>
+                </Fragment>
               ))}
               <HeaderDivider />
             </>

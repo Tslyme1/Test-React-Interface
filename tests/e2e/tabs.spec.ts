@@ -90,16 +90,30 @@ test.describe('Несколько открытых проектов', () => {
     await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
   });
 
-  test('короткое название вкладки остаётся кликабельным при наведении и после него', async ({ page }) => {
-    // Регрессия на Tslyme1/design-system#1: оверлей действий раньше
-    // перехватывал клик по подписи, если название вкладки короткое.
+  test('короткая вкладка показывает оба действия при наведении и переключается с клавиатуры', async ({ page }) => {
+    // Резерв под действия сократили до ширины одной кнопки (было — под обе
+    // сразу, см. `HeaderTab` дизайн-системы, 04.09.2026): у совсем короткой
+    // подписи вроде «Тест» оверлей на наведении теперь может закрыть её
+    // целиком — осознанный размен, вкладка в покое от резерва не раздувается.
+    // Сами действия при этом остаются доступны, а после того как курсор
+    // ушёл с вкладки, её подпись снова кликабельна как обычно.
     await createProject(page, { name: 'Тест', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
 
     const shortTab = page.getByRole('button', { name: 'Тест', exact: true });
-    await hoverTab(shortTab);
-    await clickTabLabel(shortTab);
+    await shortTab.hover({ position: { x: 4, y: 12 } });
+    await expect(page.getByRole('button', { name: 'Переименовать проект' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Закрыть проект: Тест' })).toBeVisible();
+
+    // Мышью после этого наведения у такой короткой подписи попасть уже
+    // некуда — оверлей может закрывать вкладку целиком, без единого
+    // пропускающего клик просвета. Переключение остаётся доступно
+    // с клавиатуры: сама кнопка вкладки не заблокирована, только
+    // визуально перекрыта на время наведения.
+    await page.mouse.move(0, 0);
+    await shortTab.focus();
+    await page.keyboard.press('Enter');
 
     await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
   });

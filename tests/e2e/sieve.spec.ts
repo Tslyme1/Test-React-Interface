@@ -90,14 +90,11 @@ test.describe('Ситовый анализ на шаге «Грансостав�
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
     await fillTwoClasses(page);
 
-    // По плюсу и частные классы — пересчитаны сами: по минусу 50/0 даёт
-    // по плюсу 50/100 и частные классы 50/50.
-    await expect(page.getByText('По плюсу 50,0').first()).toBeVisible();
-    await expect(page.getByText('Частные классы 50,0').first()).toBeVisible();
-    await expect(page.getByText('По плюсу 100,0')).toBeVisible();
-    await expect(page.getByText('Частные классы 50,0').nth(1)).toBeVisible();
-
-    await expect(page.getByText('100,0 %')).toBeVisible();
+    // По плюсу и частные классы — пересчитаны сами, каждая в своей колонке:
+    // по минусу 50/0 даёт по плюсу 50/100 и частные классы 50/50 — «50,0»
+    // встречается трижды (плюс строки 1, частные строки 1 и 2), «100,0» один раз.
+    await expect(page.getByText('50,0', { exact: true })).toHaveCount(3);
+    await expect(page.getByText('100,0', { exact: true })).toBeVisible();
 
     // d̄ = (50·1,5 + 50·0,75) / 100 = 1,125; σ = 0,375; dmax = 2.
     await expect(page.getByText('1.125 мм')).toBeVisible();

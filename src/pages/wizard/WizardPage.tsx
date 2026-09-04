@@ -172,7 +172,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         </Box>
       </div>
 
-      <Surface level="flat" border padding="lg" fullWidth>
+      <Surface level="flat" border radius="none" padding="lg" fullWidth>
         <Stack direction="row" justify="between" align="center" gap="xl">
           <Stepper steps={steps} current={step} onStepClick={goToStep} />
 
