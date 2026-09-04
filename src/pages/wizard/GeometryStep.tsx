@@ -18,6 +18,14 @@ import styles from './GeometryStep.module.css';
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 6;
 
+/**
+ * Слои за каждым режимом отображения схемы. Наборы не пересекаются,
+ * поэтому режимы включаются независимо друг от друга — см.
+ * `toggleDiagramGroup` в самом компоненте.
+ */
+const DIAGRAM_NORMAL_LAYERS = ['zones', 'dims'] as const satisfies readonly (keyof ChamberSchemeLayers)[];
+const DIAGRAM_BUILD_LAYERS = ['rays', 'arcs', 'gaps'] as const satisfies readonly (keyof ChamberSchemeLayers)[];
+
 /** Режим полей ввода: обычный или с подсветкой участка схемы при наведении. */
 type FieldMode = 'input' | 'highlight';
 /** Показывать ли отклонение текущего значения от снимка на момент расчёта. */
@@ -114,7 +122,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   // ── меню «Диаграмма» и «Слои» над схемой ──
   const [diagramOpen, setDiagramOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
-  const [diagramMode, setDiagramMode] = useState<'normal' | 'build'>('normal');
   const [layers, setLayers] = useState<Required<ChamberSchemeLayers>>({
     zones: true,
     rays: false,
@@ -127,18 +134,25 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   };
 
   /**
-   * Режим отображения — пресет слоёв, как в прототипе: «Обычный» показывает
-   * зоны и размеры, «Линии построения» — лучи, дуги углов и зазоры, то есть
-   * ту часть чертежа, по которой профиль и строится. Слои после этого можно
-   * доложить руками — пресет задаёт начало, а не запрещает.
+   * Режим отображения — не один из двух, а два независимых набора слоёв:
+   * «Обычный» — зоны и размеры, «Линии построения» — лучи, дуги углов
+   * и зазоры, то есть та часть чертежа, по которой профиль строится.
+   * Их включают и вместе: это разные слои одного чертежа, а не
+   * взаимоисключающие виды, поэтому здесь флажки, а не переключатель.
+   *
+   * Своего состояния у режимов нет — оно выводится из самих слоёв. Иначе
+   * отметка врала бы после ручной правки в «Слоях»: выключил зоны там,
+   * а «Обычный» стоит включённым.
    */
-  const applyDiagramMode = (next: 'normal' | 'build') => {
-    setDiagramMode(next);
-    setLayers(
-      next === 'normal'
-        ? { zones: true, rays: false, arcs: false, gaps: false, dims: true }
-        : { zones: false, rays: true, arcs: true, gaps: true, dims: false }
-    );
+  const normalOn = DIAGRAM_NORMAL_LAYERS.some((key) => layers[key]);
+  const buildOn = DIAGRAM_BUILD_LAYERS.some((key) => layers[key]);
+
+  const toggleDiagramGroup = (keys: readonly (keyof ChamberSchemeLayers)[], on: boolean) => {
+    setLayers((prev) => {
+      const next = { ...prev };
+      for (const key of keys) next[key] = !on;
+      return next;
+    });
   };
 
   // ── зум и панорамирование схемы ──
@@ -698,12 +712,19 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               }
             >
               <Stack direction="column" gap="none">
-                <OptionCell label="Обычный" checked={diagramMode === 'normal'} onSelect={() => applyDiagramMode('normal')} />
                 <OptionCell
+                  kind="checkbox"
+                  label="Обычный"
+                  description="Заливка зон и размеры"
+                  checked={normalOn}
+                  onSelect={() => toggleDiagramGroup(DIAGRAM_NORMAL_LAYERS, normalOn)}
+                />
+                <OptionCell
+                  kind="checkbox"
                   label="Линии построения"
                   description="Лучи от подвеса к точкам профиля"
-                  checked={diagramMode === 'build'}
-                  onSelect={() => applyDiagramMode('build')}
+                  checked={buildOn}
+                  onSelect={() => toggleDiagramGroup(DIAGRAM_BUILD_LAYERS, buildOn)}
                 />
               </Stack>
             </Popover>
@@ -758,7 +779,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 input={scheme.input}
                 calibration={scheme.calibration}
                 layers={layers}
-                construction={diagramMode === 'build'}
+                /* Режим построения только прячет описательные выноски
+                   и середины брони — поэтому вместе с «Обычным» он их
+                   не отнимает: включены оба набора, значит нужен и тот,
+                   что подписывает чертёж словами. */
+                construction={buildOn && !normalOn}
                 highlight={hoverZone}
                 /* Связь в обратную сторону работает в том же режиме, что и
                    прямая: «Подсветка участка» включает обе, «Только ввод» —

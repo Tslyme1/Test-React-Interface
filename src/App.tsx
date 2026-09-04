@@ -6,7 +6,7 @@ import { useFontScale } from '@/state/useFontScale';
 import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
-import { hasUncalculatedChanges, recalculateStaleSteps } from '@/domain/steps';
+import { commitStaleSteps, discardStaleSteps, hasUncalculatedChanges } from '@/domain/steps';
 import { AppShell } from '@/components/AppShell/AppShell';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import { LoginPage } from '@/pages/LoginPage';
@@ -275,7 +275,7 @@ export function App() {
       <Modal
         open={closeConfirmId !== null}
         onClose={() => setCloseConfirmId(null)}
-        title="Есть непересчитанные изменения"
+        title="Сохранить изменения?"
         size="sm"
         footer={
           <Modal.Footer aside={
@@ -286,33 +286,35 @@ export function App() {
             <Button
               variant="secondary"
               onClick={() => {
-                if (closeConfirmId) closeProject(closeConfirmId);
+                if (closeConfirmId) {
+                  const project = projects.find((p) => p.id === closeConfirmId);
+                  if (project) updateProject(project.id, discardStaleSteps(project));
+                  closeProject(closeConfirmId);
+                }
                 setCloseConfirmId(null);
               }}
             >
-              Оставить как есть
+              Не сохранять
             </Button>
             <Button
               variant="primary"
               onClick={() => {
                 if (closeConfirmId) {
                   const project = projects.find((p) => p.id === closeConfirmId);
-                  if (project) updateProject(project.id, recalculateStaleSteps(project));
+                  if (project) updateProject(project.id, commitStaleSteps(project));
                   closeProject(closeConfirmId);
-                  showToast('Изменения пересчитаны', 'success');
+                  showToast('Изменения сохранены', 'success');
                 }
                 setCloseConfirmId(null);
               }}
             >
-              Пересчитать
+              Сохранить
             </Button>
           </Modal.Footer>
         }
       >
         <Text variant="bodySm" color="textMuted">
-          Значения на посчитанном шаге изменились после расчёта — отчёт в шторке результата по нему больше не отражает
-          текущий ввод. Пересчитайте перед закрытием, чтобы отчёт отражал текущие данные, или оставьте как есть —
-          правки уже сохранены и не потеряются, отчёт останется по старым данным до следующего расчёта.
+          Вы меняли данные после расчёта. Сохранить их в проекте или закрыть, вернув значения к последнему расчёту?
         </Text>
       </Modal>
 
