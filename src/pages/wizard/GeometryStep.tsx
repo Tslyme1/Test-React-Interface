@@ -67,7 +67,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const DIAGRAM_MIN_WIDTH = 320;
+  // 420, не 320: заголовок панели несёт две кнопки-действия («Диаграмма»,
+  // «Слои») рядом с подписью — вместе они не помещаются в 320px, и до
+  // защитного переноса в самой панели (см. `wrap` у заголовка в
+  // `InlineSidebar`) дело обычно не доходит, но действия при этом почти
+  // упираются в подпись. 420px оставляет им обоим место на одной строке.
+  const DIAGRAM_MIN_WIDTH = 420;
   const FIELDS_MIN_WIDTH = 360;
   const diagramMaxWidth = Math.max(DIAGRAM_MIN_WIDTH, splitWidth - FIELDS_MIN_WIDTH);
 
