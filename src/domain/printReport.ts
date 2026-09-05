@@ -46,11 +46,11 @@ export function printStepReport(project: Project, stepKey: StepKey): void {
    */
   const profileHtml =
     report.kind === 'kv' && report.profile
-      ? `<h2>Профиль камеры по точкам</h2>
+      ? `<h2>Профиль камеры по расчётным сечениям</h2>
   <table>
-    <thead><tr><th>Точки</th><th class="num">r₁, мм</th><th class="num">α₁, град</th><th class="num">r₄, мм</th><th class="num">α₄, град</th><th class="num">L, мм</th><th class="num">L сум, мм</th><th class="num">S, мм</th></tr></thead>
+    <thead><tr><th>I</th><th class="num">L1, мм</th><th class="num">β₁</th><th class="num">R1, мм</th><th class="num">α₁</th><th class="num">β₄</th><th class="num">R4, мм</th><th class="num">α₄</th><th class="num">L сум, мм</th><th class="num">S1, мм</th><th class="num">S1 отк, мм</th></tr></thead>
     <tbody>${report.profile
-      .map((r) => `<tr><td>${escapeHtml(r.point)}</td>${num(r.r1)}${num(r.a1)}${num(r.r4)}${num(r.a4)}${num(r.l)}${num(r.lSum)}${num(r.s)}</tr>`)
+      .map((r) => `<tr><td>${escapeHtml(r.i)}</td>${num(r.l)}${num(r.b1)}${num(r.r1)}${num(r.a1)}${num(r.b4)}${num(r.r4)}${num(r.a4)}${num(r.lSum)}${num(r.s1)}${num(r.sot)}</tr>`)
       .join('')}</tbody>
   </table>`
       : '';

@@ -65,7 +65,7 @@ const STORAGE_KEY = 'uztm-projects';
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -98,28 +98,31 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 15) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomProfileV16), trash, seeded });
+    }
     if (payload.version === 14) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15).map(migrateGeomProfileV16), trash, seeded });
     }
     if (payload.version === 13) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16), trash, seeded });
     }
     if (payload.version === 12) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16), trash, seeded });
     }
     if (payload.version === 11) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16), trash, seeded });
     }
     if (payload.version === 10) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
     }
     if (payload.version === 9) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -131,7 +134,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -143,7 +146,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -156,7 +159,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -169,7 +172,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -183,7 +186,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -197,7 +200,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded,
       });
@@ -211,7 +214,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded: false,
       });
@@ -226,7 +229,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16),
         trash,
         seeded: false,
       });
@@ -351,7 +354,7 @@ function migrateGeomChainV12(project: Project): Project {
   const convert = (data: WizardData): WizardData => {
     const geom = data.geom as GeomData & LegacyGeom;
     // Уже новая форма — цепочка на месте, трогать нечего.
-    if (typeof geom.b40 === 'string' && typeof geom.a40 === 'string') return data;
+    if (typeof geom.b40 === 'string' && typeof geom.b41 === 'string') return data;
 
     return {
       ...data,
@@ -372,7 +375,6 @@ function migrateGeomChainV12(project: Project): Project {
         S0: geom.S0 ?? defaults.S0,
         theta: geom.theta ?? defaults.theta,
         angleUnit: geom.angleUnit ?? defaults.angleUnit,
-        zones: geom.zones === '2' ? '2' : '1',
         R: geom.R ?? defaults.R,
         a: geom.a ?? defaults.a,
       },
@@ -447,6 +449,66 @@ function migrateShapeToGranV15(project: Project): Project {
   };
 
   return { ...project, data: convert(project.data), initialData: convert(project.initialData), calcSnapshot: [null, null, null] };
+}
+
+/**
+ * v16 — профиль камеры считается по методике этапа 1, а не строится двумя
+ * независимыми контурами с последующей подгонкой под габариты.
+ *
+ * Из формы ушли девять величин, которые методика **выводит**, а не
+ * принимает: якорные лучи `a40`/`r40`/`a10`/`r10`, длины конуса
+ * `L10`…`L1i`, терминальный угол `b3` (он равен β₂ − θ) и число зон
+ * `zones` (его задаёт сам набор зон). Всё, что осталось полем, — угол
+ * или длина, которую пользователь действительно вводил, и она переносится
+ * как есть.
+ *
+ * `calcSnapshot` сбрасывается: снимок снят с прежней формы `GeomData`,
+ * и сравнение с ним показывало бы расхождение там, где пользователь
+ * ничего не менял.
+ */
+function migrateGeomProfileV16(project: Project): Project {
+  type LegacyGeom = {
+    a40?: string;
+    r40?: string;
+    a10?: string;
+    r10?: string;
+    b3?: string;
+    L10?: string;
+    L11?: string;
+    L12?: string;
+    L1i?: string;
+    zones?: string;
+  };
+
+  const defaults = defaultWizardData().geom;
+
+  const convert = (data: WizardData): WizardData => {
+    const geom = data.geom as GeomData & LegacyGeom;
+    if (geom.a40 === undefined && geom.L10 === undefined && geom.zones === undefined) return data;
+
+    const {
+      a40: _a40,
+      r40: _r40,
+      a10: _a10,
+      r10: _r10,
+      b3: _b3,
+      L10: _L10,
+      L11: _L11,
+      L12: _L12,
+      L1i: _L1i,
+      zones: _zones,
+      ...kept
+    } = geom;
+
+    return { ...data, geom: { ...defaults, ...kept } };
+  };
+
+  return {
+    ...project,
+    data: convert(project.data),
+    initialData: convert(project.initialData),
+    calcSnapshot: [null, null, null],
+  };
 }
 
 /**

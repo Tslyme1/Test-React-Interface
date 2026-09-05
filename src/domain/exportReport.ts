@@ -28,9 +28,9 @@ function granTableCsv(title: string, rows: GranRow[]): string {
 
 function profileTableCsv(rows: ProfileRow[]): string {
   return (
-    csvRow(['Профиль камеры по точкам']) +
-    csvRow(['Точки', 'r₁, мм', 'α₁, град', 'r₄, мм', 'α₄, град', 'L, мм', 'L сум, мм', 'S, мм']) +
-    rows.map((r) => csvRow([r.point, r.r1, r.a1, r.r4, r.a4, r.l, r.lSum, r.s])).join('')
+    csvRow(['Профиль камеры по расчётным сечениям']) +
+    csvRow(['I', 'L1, мм', 'β₁', 'R1, мм', 'α₁', 'β₄', 'R4, мм', 'α₄', 'L сум, мм', 'S1, мм', 'S1 отк, мм']) +
+    rows.map((r) => csvRow([r.i, r.l, r.b1, r.r1, r.a1, r.b4, r.r4, r.a4, r.lSum, r.s1, r.sot])).join('')
   );
 }
 
@@ -64,15 +64,20 @@ export function exportStepToExcel(project: Project, stepKey: StepKey): void {
  * но не годятся форматом Siemens NX Expressions.
  */
 const NX_NAMES: Record<string, string> = {
-  'D — диаметр основания': 'D',
-  'D / 2': 'D_half',
-  'H — высота камеры': 'H',
-  'h — до нижней точки конуса': 'h',
-  'S₀ — выходная щель': 'S0',
+  'D — диаметр основания конуса': 'D',
+  'H — до основания конуса от подвеса': 'H',
+  'S₀ — разгрузочная щель': 'S0',
   'θ — угол нутации': 'theta',
-  'α₂ — угол на нижнюю точку конуса': 'alpha2',
-  'Длина профиля брони чаши': 'bowl_length',
   'Число зон дробления': 'zones',
+  'Число расчётных сечений': 'sections',
+  'DI2 — диаметр нижнего сечения': 'DI2',
+  'H2 — высота нижнего сечения': 'H2',
+  'R2 — радиус-вектор разгрузочной кромки': 'R2',
+  'α₂ — его угол к оси': 'alpha2',
+  'S1 в верхнем сечении': 'S1_top',
+  'SOT в верхнем сечении — приёмное отверстие': 'SOT_top',
+  'SOT в нижнем сечении': 'SOT_bottom',
+  'L сум — полная длина профиля': 'L_sum',
   'Q — объём камеры': 'volume',
 };
 

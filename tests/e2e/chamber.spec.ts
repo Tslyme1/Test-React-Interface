@@ -35,14 +35,13 @@ test.describe('Схема камеры дробления на шаге «Гео
     const s0Field = page.getByLabel('Ширина разгрузочной щели S0, мм');
     await s0Field.fill('75');
 
-    // Целевой S0 достигается точным жёстким сдвигом брони конуса вдоль
-    // линии зазора (см. `applyCalibration` в `src/domain/chamberGeometry.ts`),
-    // поэтому итоговое расстояние в подписи совпадает с введённым числом.
-    // Зазор между крайними точками профиля — тот самый S₀ поля формы.
-    await expect(svg).toContainText('S₀ — зазор 3–2: 75 мм');
+    /* S₀ — исходная величина методики: раскрытие камеры S1 рекурсивно
+       раскручивается вверх именно от неё (§3.2, шаг 5), поэтому в нижнем
+       сечении подпись совпадает с полем формы точно, а не приближённо. */
+    await expect(svg).toContainText('S₀ — раскрытие 3–2: 75 мм');
 
     await s0Field.fill('40');
-    await expect(svg).toContainText('S₀ — зазор 3–2: 40 мм');
+    await expect(svg).toContainText('S₀ — раскрытие 3–2: 40 мм');
   });
 
   test('изменение угла нутации θ, углов β и длины l2 меняет разметку схемы', async ({ page }) => {
@@ -53,6 +52,9 @@ test.describe('Схема камеры дробления на шаге «Гео
     const afterTheta = await svg.innerHTML();
     expect(afterTheta).not.toBe(before);
 
+    /* β₁₀ и β₄₀ — углы зоны входа: на контур этапа 1 они не влияют
+       (сечение 0 дублирует первое, шаг 8 методики), зато рисуют стенки
+       приёмной части и уходят в этап 2. Проверяем именно их штрихи. */
     await page.getByLabel('Угол конуса β10').fill('30');
     const afterBeta10 = await svg.innerHTML();
     expect(afterBeta10).not.toBe(afterTheta);
@@ -61,9 +63,13 @@ test.describe('Схема камеры дробления на шаге «Гео
     const afterBeta40 = await svg.innerHTML();
     expect(afterBeta40).not.toBe(afterBeta10);
 
-    await page.getByLabel('Длина l2 — 4i→3, калибровка, мм').fill('260');
+    await page.getByLabel('Угол чаши β42').fill('45');
+    const afterBeta42 = await svg.innerHTML();
+    expect(afterBeta42).not.toBe(afterBeta40);
+
+    await page.getByLabel('Длина зоны l₂, мм').fill('260');
     const afterL2 = await svg.innerHTML();
-    expect(afterL2).not.toBe(afterBeta40);
+    expect(afterL2).not.toBe(afterBeta42);
   });
 
   test('изменение диаметра D и высоты H камеры меняет габариты схемы', async ({ page }) => {
@@ -74,7 +80,7 @@ test.describe('Схема камеры дробления на шаге «Гео
     const afterD = await svg.innerHTML();
     expect(afterD).not.toBe(before);
 
-    await page.getByLabel('Высота камеры H, мм').fill('1800');
+    await page.getByLabel('Высота H от подвеса, мм').fill('1800');
     const afterH = await svg.innerHTML();
     expect(afterH).not.toBe(afterD);
   });
@@ -105,7 +111,7 @@ test.describe('Схема камеры дробления на шаге «Гео
 
     await page.getByLabel('Ширина разгрузочной щели S0, мм').fill('');
     await page.getByLabel('Диаметр основания D, мм').fill('');
-    await page.getByLabel('Длина l2 — 4i→3, калибровка, мм').fill('');
+    await page.getByLabel('Длина зоны l₂, мм').fill('');
 
     await expect(svg).toBeVisible();
     expect(await svg.locator('path').count()).toBeGreaterThan(0);
@@ -132,11 +138,11 @@ test.describe('Схема камеры: выносные размеры', () => 
   test('выносной размер D/2 идёт за полем формы, а не за чертежом', async ({ page }) => {
     const scheme = page.getByTestId('chamber-scheme');
 
-    // Значение по умолчанию D = 1750 — на выноске половина диаметра.
-    await expect(scheme).toContainText('D/2 = 875 мм');
+    // Значение по умолчанию D = 2200 (контрольный пример методики).
+    await expect(scheme).toContainText('D/2 = 1 100 мм');
 
     // Меняем диаметр — подпись обязана пойти за полем.
-    await page.getByLabel('Диаметр основания D, мм').fill('2200');
-    await expect(scheme).toContainText('D/2 = 1 100 мм');
+    await page.getByLabel('Диаметр основания D, мм').fill('1750');
+    await expect(scheme).toContainText('D/2 = 875 мм');
   });
 });
