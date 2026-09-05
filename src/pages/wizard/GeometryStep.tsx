@@ -800,14 +800,19 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
             <div className={styles.zoomControls}>
               <Surface level="raised" radius="sm" padding="2xs" border={false}>
+                {/* Без `size`: по умолчанию `md`, тот же размер, что и у
+                    «Диаграмма»/«Слои» в заголовке панели — на `sm` кнопки
+                    зума выглядели заметно мельче соседних действий над
+                    той же схемой, хотя нажимать их приходится не реже.
+
+                    `icon`, а не текстовый символ: у кнопки-иконки ширина
+                    равна высоте контрола, у кнопки с текстом — считается
+                    по содержимому и паддингу. Разница в пару пикселей
+                    делала бы кнопку «сбросить вид» уже соседних. */}
                 <Stack direction="column" gap="2xs">
-                  {/* `icon`, а не текстовый символ: у кнопки-иконки ширина
-                      равна высоте контрола, у кнопки с текстом — считается
-                      по содержимому и паддингу. Разница в пару пикселей
-                      делала кнопку «сбросить вид» ниже уже колонки. */}
-                  <Button variant="secondary" size="sm" icon="plus" aria-label="Приблизить" onClick={() => zoomBy(1.25)} />
-                  <Button variant="secondary" size="sm" icon="minus" aria-label="Отдалить" onClick={() => zoomBy(0.8)} />
-                  <Button variant="secondary" size="sm" icon="maximize" aria-label="Сбросить вид" onClick={resetView} />
+                  <Button variant="secondary" icon="plus" aria-label="Приблизить" onClick={() => zoomBy(1.25)} />
+                  <Button variant="secondary" icon="minus" aria-label="Отдалить" onClick={() => zoomBy(0.8)} />
+                  <Button variant="secondary" icon="maximize" aria-label="Сбросить вид" onClick={resetView} />
                 </Stack>
               </Surface>
             </div>
