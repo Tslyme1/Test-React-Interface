@@ -1,20 +1,25 @@
 /**
- * Геометрия профиля камеры дробления конусной дробилки.
+ * Чертёж профиля камеры — точки для `ChamberScheme`, полученные из расчёта
+ * этапа 1 (`chamberProfile.ts`), а не построенные отдельно от него.
  *
- * Математика (`dir`, `buildChain`, `computeChamberGeometry`, `makeTransform`)
- * перенесена 1:1 из `legacy-prototype/uploads/cone-crusher-chamber.html` —
- * принцип «повернуть на β, шагнуть на L» от точки подвеса. Отличие от
- * прототипа только в форме: там строка HTML собиралась через innerHTML,
- * здесь — чистые функции, которые потребляет декларативный React-компонент
- * (`ChamberScheme`).
+ * Раньше здесь жила собственная геометрия: два контура строились независимо
+ * друг от друга («повернуть на β, шагнуть на L» от произвольного якорного
+ * луча), а затем `applyCalibration` подгоняла результат под введённые D и H
+ * **неравномерным** масштабом по осям и сдвигала конус целиком ради S₀.
+ * Неравномерный масштаб меняет каждый угол, поэтому чертёж переставал
+ * отвечать введённым β, а зазор наверху был случайным числом.
  *
- * `applyCalibration` в прототипе не было: это добавка для связи схемы с
- * полями шага «Геометрия» (D, H, S0), которые в прототипе были производными
- * значениями, а в визарде — независимым вводом пользователя. Подробности —
- * в комментарии у функции.
+ * Теперь единственный источник истины — методика: точки контуров это в
+ * точности полярные координаты расчётных сечений (R1, α1) и (R4, α4)
+ * относительно точки подвеса. Никакого масштабирования под габариты не
+ * нужно: D, H и S₀ входят в саму рекурсию и потому выполняются точно.
  */
 
+import { computeChamberProfile } from '@/domain/chamberProfile';
+import type { ChamberProfile, ChamberProfileInput } from '@/domain/chamberProfile';
+
 const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
 
 export type Vec2 = { x: number; y: number };
 
@@ -58,108 +63,102 @@ export function arcPath(center: Vec2, radius: number, fromDeg: number, toDeg: nu
   return parts.join(' ');
 }
 
-export type ChainNode = { beta: number; length: number };
-
 export type ChainPointInfo = {
+  /** Угол луча «подвес → узел», град. */
   phiRay: number;
+  /** Угол сегмента, выходящего из узла вниз, град. */
   phiSeg: number;
+  /** Действующий угол образующей (для конуса — с поправкой на нутацию), град. */
   eff: number;
+  /** Введённый угол образующей β, град. */
   beta: number;
+  /** Длина сегмента, выходящего из узла, мм. */
   length: number;
+  /** Последний узел контура — сегмента ниже него нет. */
   terminal?: boolean;
 };
 
 export type ChainResult = {
-  /** Точки профиля, включая якорную (первую) и терминальную (последнюю). */
   points: Vec2[];
   info: ChainPointInfo[];
 };
 
+export type ChamberGeometry = {
+  /** Броня чаши — внешний контур, узлы 40 · 41 · 42 · 4i · 3. */
+  bowl: ChainResult;
+  /** Броня конуса — внутренний контур, узлы 10 · 11 · 12 · 1i · 2. */
+  cone: ChainResult;
+  /** Расчёт этапа 1 целиком — из него берутся подписи S1, SOT и таблица отчёта. */
+  profile: ChamberProfile;
+};
+
 /**
- * Строит цепочку точек профиля: первая точка задаётся якорем (alpha, r),
- * каждая следующая — поворотом на угол β относительно луча «точка подвеса →
- * предыдущая точка» и шагом на длину L. Действующий угол узла — β − swingAngle
- * (для брони конуса swingAngle = θ, для брони чаши — 0).
+ * Шаг вдоль образующей: угол β отсчитывается от радиального направления,
+ * образующая уходит вниз и наружу от оси (в этой системе — в минус по x).
  */
-export function buildChain(
-  anchorAngle: number,
-  anchorRadius: number,
-  nodes: ChainNode[],
-  terminalBeta: number,
-  swingAngle: number,
-  invert: boolean,
-): ChainResult {
-  const sign = invert ? -1 : 1;
-  const d0 = dir(anchorAngle);
-  let p: Vec2 = { x: d0.x * anchorRadius, y: d0.y * anchorRadius };
-  const points: Vec2[] = [p];
-  const info: ChainPointInfo[] = [];
+function alongGeneratrix(from: Vec2, beta: number, length: number): Vec2 {
+  return { x: from.x - Math.cos(beta) * length, y: from.y + Math.sin(beta) * length };
+}
 
-  for (const node of nodes) {
+function chainFrom(points: Vec2[], betaDeg: number[], swingDeg: number): ChainResult {
+  const info: ChainPointInfo[] = points.map((p, i) => {
+    const next = points[i + 1];
+    const beta = betaDeg[i];
+    const eff = beta - swingDeg;
     const phiRay = phiOf(p);
-    const eff = node.beta - swingAngle;
-    const phiSeg = phiRay - sign * (180 - eff);
-    const d = dir(phiSeg);
-    const q: Vec2 = { x: p.x + d.x * node.length, y: p.y + d.y * node.length };
-    info.push({ phiRay, phiSeg, eff, beta: node.beta, length: node.length });
-    points.push(q);
-    p = q;
-  }
-
-  // терминальный узел — без сегмента, только направление для наглядности
-  const phiRay = phiOf(p);
-  const effTerm = terminalBeta - swingAngle;
-  info.push({
-    phiRay,
-    phiSeg: phiRay - sign * (180 - effTerm),
-    eff: effTerm,
-    beta: terminalBeta,
-    length: 0,
-    terminal: true,
+    /* Угол сегмента берётся по факту — от узла к следующему узлу, а не
+       пересчётом из β: дуга угла на чертеже обязана лечь на ту самую линию,
+       которая нарисована, иначе подпись β указывает мимо своего сегмента. */
+    const phiSeg = next ? phiOf({ x: next.x - p.x, y: next.y - p.y }) : phiOf(dir(90 - eff));
+    return {
+      phiRay,
+      phiSeg,
+      eff,
+      beta,
+      length: next ? Math.hypot(next.x - p.x, next.y - p.y) : 0,
+      terminal: next === undefined,
+    };
   });
-
   return { points, info };
 }
 
-/** Узлы одной цепочки профиля: якорь + 4 сегмента + терминальный угол. */
-export type ChainSpec = {
-  /** α — угол первой (якорной) точки от оси дробилки, град. */
-  anchorAngle: number;
-  /** r — длина луча до первой точки, мм. */
-  anchorRadius: number;
-  /** β в каждом из 4 узлов, град. */
-  beta: [number, number, number, number];
-  /** L каждого из 4 сегментов, мм. */
-  length: [number, number, number, number];
-  /** β терминального узла (без сегмента), град. */
-  terminalBeta: number;
-};
+/**
+ * Узлы чертежа — это расчётные сечения 1…KU плюс основание конуса,
+ * лежащее на длину зоны калибровки ниже последнего сечения.
+ *
+ * Сечение 0 в узлы не идёт: оно дублирует первое (шаг 8 методики) и
+ * существует только ради строки отчёта с углами зоны входа β₁₀ и β₄₀.
+ */
+export function buildChamberGeometry(input: ChamberProfileInput): ChamberGeometry {
+  const profile = computeChamberProfile(input);
+  const { sections, KU } = profile;
 
-export type ChamberGeometryInput = {
-  /** Броня чаши — неподвижный профиль 40·41·42·4i·3. */
-  bowl: ChainSpec;
-  /** Броня конуса — гирационный профиль 10·11·12·1i·2. */
-  cone: ChainSpec;
-  /** θ — угол нутации конуса, град. Действующий угол узла конуса — β − θ. */
-  theta: number;
-  /** Направление построения (знак поворота на β) — неоднозначно без исходной методики. */
-  invert?: boolean;
-};
+  const conePoints: Vec2[] = [];
+  const bowlPoints: Vec2[] = [];
+  const coneBeta: number[] = [];
+  const bowlBeta: number[] = [];
 
-export type ChamberGeometry = {
-  bowl: ChainResult;
-  cone: ChainResult;
-};
+  for (let i = 1; i <= KU; i += 1) {
+    const s = sections[i];
+    conePoints.push(polar({ x: 0, y: 0 }, s.R1, s.alpha1 * R2D));
+    bowlPoints.push(polar({ x: 0, y: 0 }, s.R4, s.alpha4 * R2D));
+    coneBeta.push(s.beta1 * R2D);
+    bowlBeta.push(s.beta4 * R2D);
+  }
 
-export function computeChamberGeometry(input: ChamberGeometryInput): ChamberGeometry {
-  const invert = input.invert ?? false;
-  const bowlNodes: ChainNode[] = input.bowl.beta.map((beta, i) => ({ beta, length: input.bowl.length[i] }));
-  const coneNodes: ChainNode[] = input.cone.beta.map((beta, i) => ({ beta, length: input.cone.length[i] }));
+  /* Основание дробящего конуса — ровно (D/2, H) из формы: сечение KU
+     отстоит от него на зону калибровки вверх по образующей, поэтому оба
+     габарита ложатся на этот узел без всякой подгонки. */
+  conePoints.push({ x: -input.D / 2, y: input.H });
+  bowlPoints.push(alongGeneratrix(bowlPoints[bowlPoints.length - 1], sections[KU].beta4, input.l2));
+  coneBeta.push(sections[KU].beta1 * R2D);
+  bowlBeta.push(sections[KU].beta4 * R2D);
 
-  const bowl = buildChain(input.bowl.anchorAngle, input.bowl.anchorRadius, bowlNodes, input.bowl.terminalBeta, 0, invert);
-  const cone = buildChain(input.cone.anchorAngle, input.cone.anchorRadius, coneNodes, input.cone.terminalBeta, input.theta, invert);
-
-  return { bowl, cone };
+  return {
+    bowl: chainFrom(bowlPoints, bowlBeta, 0),
+    cone: chainFrom(conePoints, coneBeta, input.theta * R2D),
+    profile,
+  };
 }
 
 export type ViewBoxArea = { x: number; y: number; w: number; h: number };
@@ -171,7 +170,11 @@ export type ChamberTransform = {
   point: (p: Vec2) => Vec2;
 };
 
-/** Масштаб — отдельным шагом: bbox точек (с учётом подвеса в (0,0)) → фиксированная область viewBox. */
+/**
+ * Масштаб — отдельным шагом: bbox точек (с учётом подвеса в (0,0)) →
+ * фиксированная область viewBox. Масштаб **равномерный** по обеим осям,
+ * поэтому все углы чертежа остаются теми, что посчитаны.
+ */
 export function makeTransform(points: Vec2[], area: ViewBoxArea): ChamberTransform {
   let minX = 0;
   let maxX = 0;
@@ -193,67 +196,5 @@ export function makeTransform(points: Vec2[], area: ViewBoxArea): ChamberTransfo
     ox,
     oy,
     point: (p) => ({ x: ox + p.x * k, y: oy + p.y * k }),
-  };
-}
-
-export type ChamberCalibration = {
-  /** D, мм — целевой габарит по горизонтали (диаметр основания, удвоенное расстояние от оси до нижней точки конуса). */
-  targetDiameter?: number;
-  /** H, мм — целевой габарит по вертикали (высота камеры до нижней точки конуса). */
-  targetHeight?: number;
-  /** S0, мм — целевая ширина зазора в зоне калибровки (между терминальными точками профилей). */
-  targetGap0?: number;
-};
-
-/**
- * В прототипе-источнике D/2, h и S0 — производные величины (считаются из
- * уже построенной цепочки, полей для них в панели нет). В визарде эти три
- * поля, наоборот, — независимый ввод пользователя («Диаметр основания D»,
- * «Высота камеры H», «Ширина разгрузочной щели S0»), а не параметры узла
- * цепочки buildChain.
- *
- * Чтобы поля были не просто цифрами, а видимо влияли на схему, здесь
- * применяется калибровка поверх уже построенного профиля — отдельным
- * шагом, не трогающим `buildChain`:
- *  1) равномерный по осям (анизотропный) масштаб всей пары профилей так,
- *     чтобы нижняя точка конуса (2) оказалась на целевых D/2 и H;
- *  2) после масштаба — жёсткий сдвиг брони конуса вдоль линии зазора
- *     между терминальными точками (3 брони чаши и 2 брони конуса) так,
- *     чтобы их расстояние стало равно целевому S0. Физически это похоже
- *     на регулировку разгрузочной щели эксцентриком: неподвижная броня
- *     чаши остаётся на месте, конус сдвигается целиком, без искажения
- *     собственной формы.
- *
- * Если целевое значение не задано (пустое/невалидное поле формы), тот шаг
- * калибровки пропускается и профиль остаётся как построен `buildChain`.
- */
-export function applyCalibration(geometry: ChamberGeometry, calibration: ChamberCalibration): ChamberGeometry {
-  const bottom = geometry.cone.points[geometry.cone.points.length - 1];
-  const rawD2 = Math.abs(bottom.x) || 1e-6;
-  const rawH = bottom.y || 1e-6;
-
-  const sx = calibration.targetDiameter && calibration.targetDiameter > 0 ? calibration.targetDiameter / 2 / rawD2 : 1;
-  const sy = calibration.targetHeight && calibration.targetHeight > 0 ? calibration.targetHeight / rawH : 1;
-
-  const scale = (p: Vec2): Vec2 => ({ x: p.x * sx, y: p.y * sy });
-  const bowlPoints = geometry.bowl.points.map(scale);
-  const conePoints = geometry.cone.points.map(scale);
-
-  let calibratedCone = conePoints;
-  if (calibration.targetGap0 !== undefined && calibration.targetGap0 >= 0) {
-    const bowlEnd = bowlPoints[bowlPoints.length - 1];
-    const coneEnd = conePoints[conePoints.length - 1];
-    const gapVec = { x: coneEnd.x - bowlEnd.x, y: coneEnd.y - bowlEnd.y };
-    const gapLen = Math.hypot(gapVec.x, gapVec.y);
-    if (gapLen > 1e-6) {
-      const unit = { x: gapVec.x / gapLen, y: gapVec.y / gapLen };
-      const delta = calibration.targetGap0 - gapLen;
-      calibratedCone = conePoints.map((p) => ({ x: p.x + unit.x * delta, y: p.y + unit.y * delta }));
-    }
-  }
-
-  return {
-    bowl: { points: bowlPoints, info: geometry.bowl.info },
-    cone: { points: calibratedCone, info: geometry.cone.info },
   };
 }

@@ -1,16 +1,8 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import {
-  applyCalibration,
-  arcPath,
-  computeChamberGeometry,
-  dir,
-  makeTransform,
-  norm,
-  phiOf,
-  polar,
-} from '@/domain/chamberGeometry';
-import type { ChamberCalibration, ChamberGeometryInput, ChainResult, Vec2 } from '@/domain/chamberGeometry';
+import { arcPath, buildChamberGeometry, dir, makeTransform, norm, phiOf, polar } from '@/domain/chamberGeometry';
+import type { ChainResult, Vec2 } from '@/domain/chamberGeometry';
+import type { ChamberProfileInput } from '@/domain/chamberProfile';
 import styles from './ChamberScheme.module.css';
 
 /**
@@ -73,10 +65,8 @@ export type ChamberHighlightKey =
   | 'dim-d';
 
 export type ChamberSchemeProps = {
-  /** Полный набор параметров профиля — как в `st` прототипа-источника. */
-  input: ChamberGeometryInput;
-  /** Целевые D, H, S0 — независимый ввод формы, накладывается поверх построенной цепочки. */
-  calibration?: ChamberCalibration;
+  /** Исходные данные этапа 1 — из них считается и профиль, и чертёж. */
+  input: ChamberProfileInput;
   /** Какие группы элементов рисовать. Непереданные группы — по умолчанию. */
   layers?: ChamberSchemeLayers;
   /**
@@ -164,7 +154,6 @@ function bracket(x: number, y1: number, y2: number, out: number): string {
  */
 export function ChamberScheme({
   input,
-  calibration,
   layers,
   construction = false,
   highlight,
@@ -172,39 +161,44 @@ export function ChamberScheme({
   className,
 }: ChamberSchemeProps) {
   const L = { ...DEFAULT_LAYERS, ...layers };
-  const geometry = useMemo(() => computeChamberGeometry(input), [input]);
-  const calibrated = useMemo(() => applyCalibration(geometry, calibration ?? {}), [geometry, calibration]);
+  const geometry = useMemo(() => buildChamberGeometry(input), [input]);
 
   const transform = useMemo(
-    () => makeTransform([{ x: 0, y: 0 }, ...calibrated.bowl.points, ...calibrated.cone.points], AREA),
-    [calibrated]
+    () => makeTransform([{ x: 0, y: 0 }, ...geometry.bowl.points, ...geometry.cone.points], AREA),
+    [geometry]
   );
 
-  const bowlRaw = calibrated.bowl.points;
-  const coneRaw = calibrated.cone.points;
+  const bowlRaw = geometry.bowl.points;
+  const coneRaw = geometry.cone.points;
   const B = bowlRaw.map(transform.point);
   const C = coneRaw.map(transform.point);
   const apex = transform.point({ x: 0, y: 0 });
   const bottom = AREA.y + AREA.h + 30;
   const top = AREA.y - 24;
 
-  /** Истинные (некалиброванные) точки — из них считаются подписи r и β. */
-  const bowlTrue = geometry.bowl.points;
-  const coneTrue = geometry.cone.points;
+  /* Точки чертежа теперь и есть истинные координаты в миллиметрах: под
+     габариты ничего не подгоняется, поэтому подписи r, β и размеров можно
+     читать прямо с них. Раньше здесь была вторая, «некалиброванная» копия
+     геометрии — она понадобилась именно потому, что нарисованное расходилось
+     с посчитанным. */
+  const bowlTrue = bowlRaw;
+  const coneTrue = coneRaw;
 
-  /**
-   * Габариты в подписях берутся из полей формы, а не меряются по чертежу.
-   *
-   * Мерить нельзя: калибровка сначала растягивает профиль под заданные
-   * D и H, а затем сдвигает конус целиком ради S₀ — и после сдвига конус
-   * уже не там, где по нему мерили диаметр. Подпись начинала противоречить
-   * полю формы: в поле 1750, на чертеже 1862.
-   *
-   * Замер остаётся запасным вариантом, когда цель не задана.
-   */
-  const gapRaw = calibration?.targetGap0 ?? Math.hypot(bowlRaw[4].x - coneRaw[4].x, bowlRaw[4].y - coneRaw[4].y);
-  const diameterRaw = calibration?.targetDiameter ?? Math.abs(coneRaw[4].x) * 2;
-  const heightRaw = calibration?.targetHeight ?? coneRaw[4].y;
+  /* Габариты берутся из исходных данных — и совпадают с чертежом точно:
+     узел 2 построен как (D/2, H), а щель S₀ входит в рекурсию раскрытия. */
+  const gapRaw = input.S0;
+  const diameterRaw = input.D;
+  const heightRaw = input.H;
+
+  /* Раскрытие камеры по сечениям — методика различает S1 (вдоль хода
+     эксцентрика) и SOT (просвет по нормали, фактический размер для куска).
+     Прямое расстояние между узлами не равно ни тому, ни другому, поэтому
+     подписи зазоров берутся из расчёта, а не меряются по картинке. */
+  const sectionGaps = geometry.profile.sections.slice(1);
+
+  /* Вход методики — в радианах, чертёж считает углы в градусах (конвенция
+     `dir`/`polar`). Переводим один раз здесь, а не в каждой подписи. */
+  const thetaDeg = (input.theta * 180) / Math.PI;
 
   /** Середины брони чаши прячутся в режиме построения — как в прототипе. */
   const showMid = !construction;
@@ -237,22 +231,22 @@ export function ChamberScheme({
   if (L.zones) {
     const zones: { key: ChamberHighlightKey; poly: Vec2[]; fill: string; title: string }[] = [
       {
-        key: 'n40',
+        key: 'n41',
         poly: [B[0], B[1], C[1], C[0]],
         fill: 'var(--color-accent-subtle)',
-        title: 'Зона входа — участок 40–41 / 10–11',
+        title: 'Зона дробления 1 — участок 40–41 / 10–11, длина l₁₁',
       },
       {
-        key: 'n41',
+        key: 'n42',
         poly: [B[1], B[2], B[3], C[3], C[2], C[1]],
         fill: 'var(--color-surface-sunken)',
-        title: 'Зоны дробления — участок 41–42–4i / 11–12–1i',
+        title: 'Зоны дробления 2 и 3 — участок 41–42–4i / 11–12–1i, длины l₁₂ и l₁ᵢ',
       },
       {
-        key: 'n4i',
+        key: 't2',
         poly: [B[3], B[4], C[4], C[3]],
         fill: 'var(--color-warning-subtle)',
-        title: 'Зона калибровки — участок 4i–3 / 1i–2',
+        title: 'Зона калибровки — участок 4i–3 / 1i–2, длина l₂. Щель здесь постоянна и равна S₀',
       },
     ];
     for (const z of zones) {
@@ -293,9 +287,9 @@ export function ChamberScheme({
      * Вершина обеих линий — `apex`, дуга — небольшим радиусом рядом
      * с точкой, тем же приёмом, что и у дуг якорных углов α40/α10 ниже.
      */
-    const coneAxisEnd = polar(apex, bottom - apex.y + 40, input.theta);
+    const coneAxisEnd = polar(apex, bottom - apex.y + 40, thetaDeg);
     const R = 46;
-    const labelPoint = polar(apex, R + 16, input.theta / 2);
+    const labelPoint = polar(apex, R + 16, thetaDeg / 2);
     parts.push(
       <g key="theta" className={cls('theta')} {...zone('theta')}>
         <line
@@ -318,9 +312,9 @@ export function ChamberScheme({
         >
           <title>Ось конуса (наклонена на угол нутации θ)</title>
         </line>
-        {input.theta !== 0 ? (
-          <path d={arcPath(apex, R, 0, input.theta)} fill="none" stroke="var(--color-text-muted)" strokeWidth={1}>
-            <title>θ — угол нутации конуса: {fmt(input.theta, 1)}°</title>
+        {thetaDeg !== 0 ? (
+          <path d={arcPath(apex, R, 0, thetaDeg)} fill="none" stroke="var(--color-text-muted)" strokeWidth={1}>
+            <title>θ — угол нутации конуса: {fmt(thetaDeg, 2)}°</title>
           </path>
         ) : null}
         <text x={labelPoint.x - 4} y={labelPoint.y + 4} textAnchor="end" className={styles.fsXl} fontStyle="italic" fill="var(--color-text-muted)">
@@ -400,7 +394,11 @@ export function ChamberScheme({
       const b = C[i];
       /* У S₀ есть своя цель в форме — она и показывается; у остальных
          зазоров цели нет, их меряем по уже откалиброванному профилю. */
-      const raw = i === 4 ? gapRaw : Math.hypot(bowlRaw[i].x - coneRaw[i].x, bowlRaw[i].y - coneRaw[i].y);
+      /* Раскрытие берётся из расчёта: S1 отмеряется вдоль хода эксцентрика,
+         а прямое расстояние между узлами — это хорда, она не равна ни S1,
+         ни просвету SOT. В зоне калибровки щель постоянна и равна S₀. */
+      const section = sectionGaps[i];
+      const raw = i === 4 ? gapRaw : (section?.S1 ?? gapRaw);
       const key = GAP_KEYS[i];
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       parts.push(
@@ -408,7 +406,8 @@ export function ChamberScheme({
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={HIT_WIDTH} pointerEvents="stroke" />
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--color-accent)" strokeWidth={1.8}>
             <title>
-              {SLAB[i]} — зазор {NAMES_B[i]}–{NAMES_C[i]}: {fmt(raw)} мм
+              {SLAB[i]} — раскрытие {NAMES_B[i]}–{NAMES_C[i]}: {fmt(raw)} мм
+              {section && i !== 4 ? ` · просвет по нормали ${fmt(section.SOT)} мм` : ''}
             </title>
           </line>
           <text x={mid.x} y={mid.y - 6} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-accent-text)">
@@ -474,6 +473,37 @@ export function ChamberScheme({
   };
   drawChain(B, bowlRaw, KEYS_B, NAMES_B, LLAB, false);
   drawChain(C, coneRaw, KEYS_C, NAMES_C, null, true);
+
+  /* ── зона входа ──
+     Приёмная часть камеры лежит выше первого расчётного сечения: её стенки
+     задают углы β₄₀ и β₁₀, и на профиль этап 1 они не влияют (сечение 0
+     дублирует первое — шаг 8 методики), зато определяют, куда сядет кусок
+     на этапе 2. Рисуются штрихом, чтобы было видно: это продолжение броней
+     вверх, а не ещё один расчётный участок. */
+  {
+    const stub = (node: Vec2, betaRad: number, key: ChamberHighlightKey, label: string) => {
+      const len = Math.hypot(C[1].x - C[0].x, C[1].y - C[0].y) * 0.45;
+      const end = { x: node.x + Math.cos(betaRad) * len, y: node.y - Math.sin(betaRad) * len };
+      parts.push(
+        <g key={`entry-${key}`} className={cls(key)} {...zone(key)}>
+          <line x1={node.x} y1={node.y} x2={end.x} y2={end.y} stroke="transparent" strokeWidth={HIT_WIDTH} pointerEvents="stroke" />
+          <line
+            x1={node.x}
+            y1={node.y}
+            x2={end.x}
+            y2={end.y}
+            stroke="var(--color-text-muted)"
+            strokeWidth={1.2}
+            strokeDasharray="6 4"
+          >
+            <title>{label}</title>
+          </line>
+        </g>
+      );
+    };
+    stub(B[0], input.beta40, 'n40', `Зона входа, броня чаши: β₄₀ = ${fmt((input.beta40 * 180) / Math.PI, 2)}°`);
+    stub(C[0], input.beta10 - input.theta, 'n10', `Зона входа, броня конуса: β₁₀ = ${fmt((input.beta10 * 180) / Math.PI, 2)}° (действующий β₁₀−θ)`);
+  }
 
   /* ── дуги узловых углов β ── */
   if (L.arcs) {
@@ -574,9 +604,12 @@ export function ChamberScheme({
 
   /* якорные углы α у подвеса */
   if (L.arcs || L.rays) {
+    /* α узла 40 и узла 10 — выход рекурсии (§3.2, шаги 3 и 6), а не поле
+       формы: берём их из расчёта первого сечения, которому эти узлы и
+       соответствуют. */
     ([
-      ['a40', input.bowl.anchorAngle, '40'],
-      ['a10', input.cone.anchorAngle, '10'],
+      ['a40', phiOf(bowlRaw[0]), '40'],
+      ['a10', phiOf(coneRaw[0]), '10'],
     ] as [ChamberHighlightKey, number, string][]).forEach(([key, value, sub], i) => {
       const R = 62 + i * 26;
       const d = arcPath(apex, R, 0, value);
@@ -697,7 +730,7 @@ export function ChamberScheme({
       { y: level(0.3), x: apex.x, text: 'Ось дробилки', key: 'axis' },
       {
         y: level(0.56),
-        x: apex.x + (level(0.56) - apex.y) * Math.tan((input.theta * Math.PI) / 180) * -1,
+        x: apex.x + (level(0.56) - apex.y) * Math.tan(input.theta) * -1,
         text: 'Ось конуса',
         key: 'theta',
       },
@@ -754,9 +787,9 @@ export function ChamberScheme({
     );
 
     const bands: { text: string; y1: number; y2: number; key: ChamberHighlightKey }[] = [
-      { text: 'Зона входа', y1: B[0].y, y2: B[1].y, key: 'n40' },
-      { text: 'Зоны дробления', y1: B[1].y, y2: B[3].y, key: 'n41' },
-      { text: 'Зона калибровки', y1: B[3].y, y2: B[4].y, key: 'n4i' },
+      { text: 'Зона дробления 1', y1: B[0].y, y2: B[1].y, key: 'n41' },
+      { text: 'Зоны дробления 2–3', y1: B[1].y, y2: B[3].y, key: 'n42' },
+      { text: 'Зона калибровки', y1: B[3].y, y2: B[4].y, key: 't2' },
     ];
     bands.forEach((band) => {
       parts.push(

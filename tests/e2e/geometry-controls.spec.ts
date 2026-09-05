@@ -143,13 +143,13 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await field.fill('1900');
 
     // Режим «Дельта: Показывать изменения» включён по умолчанию.
-    await expect(page.getByText(/было: 1750/)).toBeVisible();
+    await expect(page.getByText(/было: 2200/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
     await page.keyboard.press('Escape');
 
-    await expect(page.getByText(/было: 1750/)).toHaveCount(0);
+    await expect(page.getByText(/было: 2200/)).toHaveCount(0);
 
     console_.assertClean();
   });
@@ -159,7 +159,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     // расчёт» дельта не показывала ничего, даже если поле уже отредактировано —
     // сейчас опора не расчёт, а значения на момент создания проекта.
     await page.getByLabel('Диаметр основания D, мм').fill('1900');
-    await expect(page.getByText(/было: 1750/)).toBeVisible();
+    await expect(page.getByText(/было: 2200/)).toBeVisible();
   });
 });
 
@@ -169,25 +169,22 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await createProject(page);
   });
 
-  test('число зон дробления — выпадающий список коэффициентов методики', async ({ page }) => {
-    // Сегменты цепочки больше не зависят от этого поля: l12 — узел профиля
-    // (41→42) и стоит в форме всегда, а число зон осталось коэффициентом
-    // методики грансостава, к построению профиля отношения не имеющим.
-    await expect(page.getByLabel('Длина l12 — 41→42, мм')).toBeVisible();
-
-    const zones = page.getByRole('button', { name: 'Число зон дробления' });
-    await expect(zones).toContainText('1');
-    await zones.click();
-    await page.getByRole('option', { name: '2', exact: true }).click();
-    await expect(zones).toContainText('2');
-
-    await expect(page.getByLabel('Длина l12 — 41→42, мм')).toBeVisible();
+  test('число зон задаётся набором зон, отдельного поля для него нет', async ({ page }) => {
+    /* Раньше рядом с коэффициентами стоял селект «Число зон дробления»
+       на 1 или 2, хотя длин в форме было три, а профиль рисовался всегда
+       по трём зонам: поле противоречило и форме, и чертежу. Теперь число
+       зон задаёт сам набор — три длины плюс зона калибровки — и в отчёте
+       оно берётся из расчёта. */
+    await expect(page.getByLabel('Зона 1 — l₁₁, мм')).toBeVisible();
+    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toBeVisible();
+    await expect(page.getByLabel('Зона 3 — l₁ᵢ, мм')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Число зон дробления' })).toHaveCount(0);
   });
 
   test('поповер «Слои» — строка сама переключает видимость участка схемы', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
     // Заливка зон входит в пресет «Обычный» — она видна с самого начала.
-    await expect(svg.locator('title', { hasText: 'Зона входа' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'Зона дробления 1' })).not.toHaveCount(0);
 
     await page.getByRole('button', { name: 'Слои' }).click();
     const zonesOption = page.getByRole('option', { name: 'Заливка зон' });
@@ -195,7 +192,7 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await expect(zonesOption).toHaveAttribute('aria-selected', 'false');
     await page.keyboard.press('Escape');
 
-    await expect(svg.locator('title', { hasText: 'Зона входа — участок' })).toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'Зона дробления 1 — участок' })).toHaveCount(0);
   });
 
   test('режим «Линии построения» показывает лучи, дуги углов и зазоры', async ({ page }) => {
@@ -210,6 +207,6 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     // Пресет разом включает лучи, дуги и все пять зазоров.
     await expect(svg.locator('title', { hasText: /^β40/ })).not.toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'r40 =' })).not.toHaveCount(0);
-    await expect(svg.locator('title', { hasText: 'S₁₁ — зазор' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'S₁₁ — раскрытие' })).not.toHaveCount(0);
   });
 });

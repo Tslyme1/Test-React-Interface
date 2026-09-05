@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { Box, Button, Chip, Field, Input, Modal, Popover, Select, Stack, Surface, Text } from '@uralmash/design-system';
-import type { GeomData, ZoneCount } from '@/types';
+import { Box, Button, Chip, Field, Input, Modal, Popover, Stack, Surface, Text } from '@uralmash/design-system';
+import type { GeomData } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
@@ -10,7 +10,7 @@ import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { GEOM_GLOSSARY } from '@/data/paramGlossary';
-import { buildChamberSchemeProps } from '@/domain/chamberInput';
+import { buildChamberProfileInput } from '@/domain/chamberInput';
 import { convertAngleUnit } from '@/domain/angleUnit';
 import styles from './GeometryStep.module.css';
 
@@ -41,7 +41,7 @@ export type GeometryStepProps = {
 };
 
 export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCrusher }: GeometryStepProps) {
-  const scheme = useMemo(() => buildChamberSchemeProps(data), [data]);
+  const schemeInput = useMemo(() => buildChamberProfileInput(data), [data]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   /**
    * Ширина панели схемы. `null` — панель занимает свою половину строки
@@ -309,284 +309,222 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             </Stack>
           </Stack>
 
-          {/* Цепочка профиля — теми же группами и узлами, что и на чертеже:
-              «повернуть на β, шагнуть на L» от точки подвеса. Каждая строка
-              соответствует своему участку схемы (ключ в `zoned`), поэтому
-              наведение связывает их в обе стороны. */}
+          {/* Исходные данные профиля — ровно те, что принимает методика
+              (§2.2): углы образующих обеих броней по зонам, длины зон,
+              габариты основания конуса и щель. Радиус-векторы r и их углы α
+              здесь не спрашиваются: методика их вычисляет (§3.2), и держать
+              их полями значило бы задать профиль дважды и противоречиво —
+              именно от этого чертёж переставал отвечать введённым числам.
+              Каждая строка соответствует своему участку схемы (ключ
+              в `zoned`), поэтому наведение связывает их в обе стороны. */}
           <Stack gap="md" direction="column">
-            <Text variant="headingSm">Броня чаши — неподвижный профиль 40 · 41 · 42 · 4i · 3</Text>
+            <Text variant="headingSm">Зона входа — приёмная часть камеры</Text>
 
+            <div className={styles.pair}>
             {zoned(
-              'a40',
-              <div className={styles.pair}>
-                <Field label="Угол луча α40" hint={hintWithDelta('a40')} labelHint={<FieldHint>{GEOM_GLOSSARY.a40}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.a40}
-                      onChange={(e) => onChange({ a40: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина луча r40, мм" hint={hintWithDelta('r40')} labelHint={<FieldHint>{GEOM_GLOSSARY.r40}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.r40} onChange={(e) => onChange({ r40: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              'n10',
+              <Field label="Угол конуса β10" hint={hintWithDelta('b10')} labelHint={<FieldHint>{GEOM_GLOSSARY.b10}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b10}
+                    onChange={(e) => onChange({ b10: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
             )}
 
             {zoned(
               'n40',
-              <div className={styles.pair}>
-                <Field label="Угол чаши β40" hint={hintWithDelta('b40')} labelHint={<FieldHint>{GEOM_GLOSSARY.b40}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b40}
-                      onChange={(e) => onChange({ b40: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина l11 — 40→41, мм" hint={hintWithDelta('l11')} labelHint={<FieldHint>{GEOM_GLOSSARY.l11}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              <Field label="Угол чаши β40" hint={hintWithDelta('b40')} labelHint={<FieldHint>{GEOM_GLOSSARY.b40}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b40}
+                    onChange={(e) => onChange({ b40: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
             )}
-
-            {zoned(
-              'n41',
-              <div className={styles.pair}>
-                <Field label="Угол β41" hint={hintWithDelta('b41')} labelHint={<FieldHint>{GEOM_GLOSSARY.b41}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b41}
-                      onChange={(e) => onChange({ b41: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина l12 — 41→42, мм" hint={hintWithDelta('l12')} labelHint={<FieldHint>{GEOM_GLOSSARY.l12}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} />
-                  )}
-                </Field>
-              </div>
-            )}
-
-            {zoned(
-              'n42',
-              <div className={styles.pair}>
-                <Field label="Угол β42" hint={hintWithDelta('b42')} labelHint={<FieldHint>{GEOM_GLOSSARY.b42}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b42}
-                      onChange={(e) => onChange({ b42: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина l1i — 42→4i, мм" hint={hintWithDelta('l1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.l1i}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.l1i} onChange={(e) => onChange({ l1i: e.target.value })} />
-                  )}
-                </Field>
-              </div>
-            )}
-
-            {zoned(
-              'n4i',
-              <div className={styles.pair}>
-                <Field label="Угол β4i" hint={hintWithDelta('b4i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b4i}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b4i}
-                      onChange={(e) => onChange({ b4i: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина l2 — 4i→3, калибровка, мм" hint={hintWithDelta('l2')} labelHint={<FieldHint>{GEOM_GLOSSARY.l2}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} />
-                  )}
-                </Field>
-              </div>
-            )}
-
-            {zoned(
-              't3',
-              <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Терминальный угол β3" hint={hintWithDelta('b3')} labelHint={<FieldHint>{GEOM_GLOSSARY.b3}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b3}
-                      onChange={(e) => onChange({ b3: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-              </div>
-            )}
+            </div>
           </Stack>
 
           <div className={styles.groupDivider} />
 
           <Stack gap="md" direction="column">
-            <Text variant="headingSm">Броня конуса — гирационный профиль 10 · 11 · 12 · 1i · 2</Text>
+            <Text variant="headingSm">Зоны дробления — 40 · 41 · 42 · 4i / 10 · 11 · 12 · 1i</Text>
 
+            {/* Длина у зоны одна на обе брони: это один и тот же участок
+                камеры, у чаши он идёт от 40 к 41, у конуса — от 10 к 11.
+                Методика и задаёт их одним массивом l₁(i). */}
+            <div className={styles.triple}>
             {zoned(
-              'a10',
-              <div className={styles.pair}>
-                <Field label="Угол луча α10" hint={hintWithDelta('a10')} labelHint={<FieldHint>{GEOM_GLOSSARY.a10}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.a10}
-                      onChange={(e) => onChange({ a10: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина луча r10, мм" hint={hintWithDelta('r10')} labelHint={<FieldHint>{GEOM_GLOSSARY.r10}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.r10} onChange={(e) => onChange({ r10: e.target.value })} />
-                  )}
-                </Field>
-              </div>
-            )}
-
-            {zoned(
-              'n10',
-              <div className={styles.pair}>
-                <Field label="Угол конуса β10" hint={hintWithDelta('b10')} labelHint={<FieldHint>{GEOM_GLOSSARY.b10}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b10}
-                      onChange={(e) => onChange({ b10: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина L 10→11, мм" hint={hintWithDelta('L10')} labelHint={<FieldHint>{GEOM_GLOSSARY.L10}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.L10} onChange={(e) => onChange({ L10: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              'n41',
+              <Field label="Зона 1 — l₁₁, мм" hint={hintWithDelta('l11')} labelHint={<FieldHint>{GEOM_GLOSSARY.l11}</FieldHint>}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} />
+                )}
+              </Field>
             )}
 
             {zoned(
               'n11',
-              <div className={styles.pair}>
-                <Field label="Угол β11" hint={hintWithDelta('b11')} labelHint={<FieldHint>{GEOM_GLOSSARY.b11}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b11}
-                      onChange={(e) => onChange({ b11: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина L 11→12, мм" hint={hintWithDelta('L11')} labelHint={<FieldHint>{GEOM_GLOSSARY.L11}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.L11} onChange={(e) => onChange({ L11: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              <Field label="Угол конуса β11" hint={hintWithDelta('b11')} labelHint={<FieldHint>{GEOM_GLOSSARY.b11}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b11}
+                    onChange={(e) => onChange({ b11: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+
+            {zoned(
+              'n41',
+              <Field label="Угол чаши β41" hint={hintWithDelta('b41')} labelHint={<FieldHint>{GEOM_GLOSSARY.b41}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b41}
+                    onChange={(e) => onChange({ b41: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+
+            {zoned(
+              'n42',
+              <Field label="Зона 2 — l₁₂, мм" hint={hintWithDelta('l12')} labelHint={<FieldHint>{GEOM_GLOSSARY.l12}</FieldHint>}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} />
+                )}
+              </Field>
             )}
 
             {zoned(
               'n12',
-              <div className={styles.pair}>
-                <Field label="Угол β12" hint={hintWithDelta('b12')} labelHint={<FieldHint>{GEOM_GLOSSARY.b12}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b12}
-                      onChange={(e) => onChange({ b12: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина L 12→1i, мм" hint={hintWithDelta('L12')} labelHint={<FieldHint>{GEOM_GLOSSARY.L12}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.L12} onChange={(e) => onChange({ L12: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              <Field label="Угол конуса β12" hint={hintWithDelta('b12')} labelHint={<FieldHint>{GEOM_GLOSSARY.b12}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b12}
+                    onChange={(e) => onChange({ b12: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+
+            {zoned(
+              'n42',
+              <Field label="Угол чаши β42" hint={hintWithDelta('b42')} labelHint={<FieldHint>{GEOM_GLOSSARY.b42}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b42}
+                    onChange={(e) => onChange({ b42: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+
+            {zoned(
+              'n4i',
+              <Field label="Зона 3 — l₁ᵢ, мм" hint={hintWithDelta('l1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.l1i}</FieldHint>}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" value={data.l1i} onChange={(e) => onChange({ l1i: e.target.value })} />
+                )}
+              </Field>
             )}
 
             {zoned(
               'n1i',
-              <div className={styles.pair}>
-                <Field label="Угол β1i" hint={hintWithDelta('b1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b1i}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b1i}
-                      onChange={(e) => onChange({ b1i: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-                <Field label="Длина L 1i→2, мм" hint={hintWithDelta('L1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.L1i}</FieldHint>}>
-                  {(props) => (
-                    <Input {...props} fullWidth type="number" value={data.L1i} onChange={(e) => onChange({ L1i: e.target.value })} />
-                  )}
-                </Field>
-              </div>
+              <Field label="Угол конуса β1i" hint={hintWithDelta('b1i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b1i}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b1i}
+                    onChange={(e) => onChange({ b1i: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+
+            {zoned(
+              'n4i',
+              <Field label="Угол чаши β4i" hint={hintWithDelta('b4i')} labelHint={<FieldHint>{GEOM_GLOSSARY.b4i}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b4i}
+                    onChange={(e) => onChange({ b4i: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
+            )}
+            </div>
+          </Stack>
+
+          <div className={styles.groupDivider} />
+
+          <Stack gap="md" direction="column">
+            <Text variant="headingSm">Зона калибровки — 4i · 3 / 1i · 2</Text>
+
+            <div className={styles.pair}>
+            {zoned(
+              'n4i',
+              <Field label="Длина зоны l₂, мм" hint={hintWithDelta('l2')} labelHint={<FieldHint>{GEOM_GLOSSARY.l2}</FieldHint>}>
+                {(props) => (
+                  <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} />
+                )}
+              </Field>
             )}
 
             {zoned(
               't2',
-              <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Угол на выходе конуса β2" hint={hintWithDelta('b2')} labelHint={<FieldHint>{GEOM_GLOSSARY.b2}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.b2}
-                      onChange={(e) => onChange({ b2: e.target.value })}
-                      suffix={angleUnitSuffix}
-                    />
-                  )}
-                </Field>
-              </div>
+              <Field label="Угол конуса на выходе β2" hint={hintWithDelta('b2')} labelHint={<FieldHint>{GEOM_GLOSSARY.b2}</FieldHint>}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="number"
+                    value={data.b2}
+                    onChange={(e) => onChange({ b2: e.target.value })}
+                    suffix={angleUnitSuffix}
+                  />
+                )}
+              </Field>
             )}
+            </div>
+
+            <Text variant="bodySm" color="textMuted">
+              Угол чаши в этой зоне методика выводит сама: β₃ = β₂ − θ — образующие идут параллельно
+              с поправкой на эксцентриситет, поэтому щель по всей зоне остаётся равной S₀.
+            </Text>
           </Stack>
 
           <div className={styles.groupDivider} />
@@ -615,11 +553,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
           <div className={styles.groupDivider} />
 
-          {/* Габариты — независимый ввод поверх построенной цепочки: на чертеже
-              это производные величины, здесь их задаёт пользователь, и профиль
-              подгоняется под них (`applyCalibration`). */}
+          {/* Габариты — полноценные исходные данные методики, а не подгонка
+              поверх готового профиля: именно от основания конуса и щели
+              рекурсия раскручивает весь профиль снизу вверх (§3.2, шаг 2). */}
           <Stack gap="md" direction="column">
-            <Text variant="headingSm">Габариты камеры</Text>
+            <Text variant="headingSm">Основание конуса и щель</Text>
 
             <div className={styles.pair}>
               {zoned(
@@ -633,7 +571,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
               {zoned(
                 'dim-h',
-                <Field label="Высота камеры H, мм" required hint={hintWithDelta('H')} labelHint={<FieldHint>{GEOM_GLOSSARY.H}</FieldHint>}>
+                <Field label="Высота H от подвеса, мм" required hint={hintWithDelta('H')} labelHint={<FieldHint>{GEOM_GLOSSARY.H}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.H} onChange={(e) => onChange({ H: e.target.value })} />
                   )}
@@ -655,8 +593,9 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
           <div className={styles.groupDivider} />
 
-          {/* Коэффициенты методики и число зон своего участка на чертеже
-              не имеют — подсвечивать при наведении нечего, обёртки нет. */}
+          {/* Коэффициенты методики своего участка на чертеже не имеют —
+              подсвечивать при наведении нечего, обёртки нет. Число зон
+              дробления не спрашивается: его задаёт сам набор зон выше. */}
           <Stack gap="md" direction="column">
             <Text variant="headingSm">Коэффициенты профиля</Text>
 
@@ -674,21 +613,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               </Field>
             </div>
 
-            <Field label="Число зон дробления" labelHint={<FieldHint>{GEOM_GLOSSARY.zones}</FieldHint>}>
-              {(props) => (
-                <Select
-                  {...props}
-                  fullWidth
-                  clearable={false}
-                  options={[
-                    { value: '1', label: '1' },
-                    { value: '2', label: '2' },
-                  ]}
-                  value={data.zones}
-                  onChange={(v) => onChange({ zones: v as ZoneCount })}
-                />
-              )}
-            </Field>
           </Stack>
 
         </Stack>
@@ -781,8 +705,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               }}
             >
               <ChamberScheme
-                input={scheme.input}
-                calibration={scheme.calibration}
+                input={schemeInput}
                 layers={layers}
                 /* Режим построения только прячет описательные выноски
                    и середины брони — поэтому вместе с «Обычным» он их

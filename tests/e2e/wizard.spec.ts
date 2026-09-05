@@ -35,11 +35,13 @@ test.describe('Инженерный визард', () => {
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer).toBeVisible();
 
-    // D / 2 выводится из введённого D = 1750 — связь формы и результата жива.
-    await expect(drawer.getByRole('row').filter({ hasText: 'D / 2' })).toContainText('875');
+    // Габарит основания идёт прямо из формы — связь формы и результата жива.
+    await expect(drawer.getByRole('row').filter({ hasText: 'D — диаметр основания конуса' })).toContainText('2200');
 
-    // Профиль камеры по точкам — вторая таблица отчёта, значения из цепочки.
-    await expect(drawer.getByRole('row').filter({ hasText: '40 · 10' })).toBeVisible();
+    /* Таблица профиля по расчётным сечениям — второй блок отчёта. На данных
+       по умолчанию это контрольный пример методики, и её числа обязаны
+       совпасть с документацией: R1 нижнего сечения 1222,1 мм при S1 = S₀. */
+    await expect(drawer.getByRole('row').filter({ hasText: '1222.1' }).last()).toContainText('43.00');
 
     await drawer.getByRole('button', { name: 'Закрыть', exact: true }).click();
     await expect(drawer).toBeHidden();
@@ -282,17 +284,17 @@ test.describe('Инженерный визард', () => {
     // ничего, даже если поле уже отредактировано.
     const beta10 = page.getByLabel('Угол конуса β10');
     await beta10.fill('99');
-    await expect(page.getByText('было: 163', { exact: true })).toBeVisible();
+    await expect(page.getByText('было: 43.94', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('было: 163', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('было: 43.94', { exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: /^Показывать изменения/ }).click();
     await page.keyboard.press('Escape');
-    await expect(page.getByText('было: 163', { exact: true })).toBeVisible();
+    await expect(page.getByText('было: 43.94', { exact: true })).toBeVisible();
   });
 
   test('«Грансостав»: заголовок без подзаголовка, плашка пробы без лейбла, своё «Отображение» с дельтой', async ({ page }) => {

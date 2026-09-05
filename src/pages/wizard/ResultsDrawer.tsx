@@ -1,10 +1,18 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Cell, Checkbox, Drawer, Popover, Stack, Tab, Table, Tag, Text } from '@uralmash/design-system';
+import { Badge, Button, Cell, Checkbox, Drawer, Popover, Stack, Tab, Table, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
-import { estimateGeom, estimateGeomProfile, estimateGran, estimateProd, estimateProdGran } from '@/domain/estimates';
-import type { GranRow, KvRow, ProfileRow } from '@/domain/estimates';
+import {
+  estimateGeom,
+  estimateGeomAlfa,
+  estimateGeomChecks,
+  estimateGeomProfile,
+  estimateGran,
+  estimateProd,
+  estimateProdGran,
+} from '@/domain/estimates';
+import type { CheckRow, GranRow, KvRow, ProfileRow } from '@/domain/estimates';
 import { exportGeomToNx, exportStepToExcel } from '@/domain/exportReport';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
@@ -77,16 +85,53 @@ const PROD_SECTIONS = [
 ] as const;
 type ProdSection = (typeof PROD_SECTIONS)[number]['key'];
 
-/** Профиль камеры по точкам — пара «узел чаши · узел конуса» в каждой строке. */
+/**
+ * Профиль камеры по расчётным сечениям — та же таблица, что печатает
+ * отчёт этапа 1 методики (§6.2). Раньше здесь было пять столбцов из
+ * восьми и радиусы стояли перепутанными местами: r₁ подписывался как
+ * броня чаши, хотя в методике это внутренний контур — броня конуса.
+ */
 const profileColumns: TableColumn<ProfileRow>[] = [
-  { key: 'point', title: 'Точки' },
-  { key: 'r1', title: 'r₁, мм', align: 'end' },
-  { key: 'a1', title: 'α₁, град', align: 'end' },
-  { key: 'r4', title: 'r₄, мм', align: 'end' },
-  { key: 'a4', title: 'α₄, град', align: 'end' },
-  { key: 'l', title: 'L, мм', align: 'end' },
+  { key: 'i', title: 'I' },
+  { key: 'l', title: 'L1, мм', align: 'end' },
+  { key: 'b1', title: 'β₁', align: 'end' },
+  { key: 'r1', title: 'R1, мм', align: 'end' },
+  { key: 'a1', title: 'α₁', align: 'end' },
+  { key: 'b4', title: 'β₄', align: 'end' },
+  { key: 'r4', title: 'R4, мм', align: 'end' },
+  { key: 'a4', title: 'α₄', align: 'end' },
   { key: 'lSum', title: 'L сум, мм', align: 'end' },
-  { key: 's', title: 'S, мм', align: 'end' },
+  { key: 's1', title: 'S1, мм', align: 'end' },
+  { key: 'sot', title: 'S1 отк, мм', align: 'end' },
+];
+
+/**
+ * Встроенные проверки профиля (§3.4 методики). Методика прямо называет их
+ * признаком ошибки в исходных данных, поэтому они стоят рядом с таблицей,
+ * а не прячутся: посчитать три этапа по не замкнувшемуся профилю можно,
+ * но верить результату нельзя.
+ */
+const checkColumns: TableColumn<CheckRow>[] = [
+  { key: 'label', title: 'Проверка' },
+  { key: 'value', title: 'Значение', align: 'end' },
+  {
+    key: 'ok',
+    title: '',
+    align: 'end',
+    /* `Badge`, а не `Tag`: это статус системы, а не пользовательская метка —
+       так и записано в самой системе у `Tag`. Иконка дублирует смысл цвета,
+       чтобы результат читался и без различения цветов. */
+    render: (row) =>
+      row.ok ? (
+        <Badge tone="success" icon="check">
+          сходится
+        </Badge>
+      ) : (
+        <Badge tone="danger" icon="alertTriangle">
+          ошибка
+        </Badge>
+      ),
+  },
 ];
 
 /** Пара подписи и значения в строке метаданных — тот же приём, что в `ProfilePage`. */
@@ -341,8 +386,20 @@ export function ResultsDrawer({
             <Table
               columns={profileColumns}
               rows={estimateGeomProfile(project.data.geom)}
-              rowKey={(r) => r.point}
-              caption="Профиль камеры по точкам"
+              rowKey={(r) => r.i}
+              caption="Профиль камеры по расчётным сечениям"
+            />
+            <Table
+              columns={kvColumns}
+              rows={estimateGeomAlfa(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Критические углы поворота эксцентрика"
+            />
+            <Table
+              columns={checkColumns}
+              rows={estimateGeomChecks(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Контроль корректности профиля"
             />
           </>
         ) : null}
@@ -423,7 +480,7 @@ export function ResultsDrawer({
               <Table
                 columns={profileColumns}
                 rows={estimateGeomProfile(project.data.geom)}
-                rowKey={(r) => r.point}
+                rowKey={(r) => r.i}
                 caption="Профиль камеры по точкам"
               />
             </Stack>

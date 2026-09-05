@@ -1,7 +1,7 @@
 import type { GeomData, GranData, Project, ProdData, StepKey } from '@/types';
 import { STEP_TITLES } from './steps';
-import { buildChamberSchemeProps } from './chamberInput';
-import { applyCalibration, computeChamberGeometry, phiOf } from './chamberGeometry';
+import { buildChamberProfileInput, CRUSHING_ZONES } from './chamberInput';
+import { computeChamberProfile } from './chamberProfile';
 
 /**
  * Значения для экрана результатов.
@@ -11,9 +11,11 @@ import { applyCalibration, computeChamberGeometry, phiOf } from './chamberGeomet
  * профиля по точкам, по «Грансоставу» — массивы D пред / D сред / 0.8·D пред
  * с долями классов, по «Продукту» — характерные крупности, усилия и мощность.
  *
- * Геометрия здесь считается по-настоящему: радиусы, углы лучей, длины
- * сегментов и зазоры — это выход `computeChamberGeometry`, той же цепочки,
- * что рисует схему. Всё остальное — иллюстративные оценки: в прототипе
+ * Геометрия здесь считается по-настоящему и по методике: таблица профиля —
+ * это выход `computeChamberProfile` (этап 1, §3.2 подробной документации),
+ * тот же, что задаёт и чертёж. На контрольном примере она воспроизводит
+ * таблицу из документации до последнего знака. Всё остальное — иллюстративные
+ * оценки: в прототипе
  * реальных формул дробления не было («dummy formulas so each screen feels
  * calculated»), и честнее показать это прямо, чем выдать приблизительное
  * за инженерную методику.
@@ -27,23 +29,33 @@ const toNum = (v: string): number => {
 /** Строка «величина — значение — единица». */
 export type KvRow = { label: string; value: string; unit: string };
 
-/** Строка таблицы профиля: узел брони чаши и парный ему узел брони конуса. */
+/**
+ * Строка таблицы профиля — расчётное сечение камеры. Столбцы те же, что
+ * печатает отчёт этапа 1 (§6.2 подробной документации).
+ */
 export type ProfileRow = {
-  point: string;
-  /** r₁ — радиус луча «подвес → точка чаши», мм. */
-  r1: string;
-  /** α₁ — угол этого луча от оси, град. */
-  a1: string;
-  /** r₄ — радиус луча «подвес → точка конуса», мм. */
-  r4: string;
-  /** α₄ — угол этого луча от оси, град. */
-  a4: string;
-  /** Длина сегмента чаши до этой точки, мм. */
+  /** Номер сечения: 0 — верх камеры, последнее — разгрузочная кромка. */
+  i: string;
+  /** L1 — длина участка вдоль образующей, мм. */
   l: string;
-  /** Нарастающая длина профиля чаши, мм. */
+  /** β₁ — угол образующей брони конуса. */
+  b1: string;
+  /** R1 — радиус-вектор внутреннего контура (броня конуса), мм. */
+  r1: string;
+  /** α₁ — угол этого радиус-вектора к оси дробилки. */
+  a1: string;
+  /** β₄ — угол образующей брони чаши. */
+  b4: string;
+  /** R4 — радиус-вектор внешнего контура (броня чаши), мм. */
+  r4: string;
+  /** α₄ — угол этого радиус-вектора к оси дробилки. */
+  a4: string;
+  /** L сум — накопленная длина профиля от верха камеры, мм. */
   lSum: string;
-  /** Зазор между бронями в этой паре точек, мм. */
-  s: string;
+  /** S1 — раскрытие камеры вдоль хода эксцентрика, мм. */
+  s1: string;
+  /** S1 отк — просвет по нормали: фактический размер для куска, мм. */
+  sot: string;
 };
 
 /** Строка грансостава: класс крупности и его доля. */
@@ -61,64 +73,130 @@ export type GranRow = {
   pass: string;
 };
 
-const NODE_NAMES = ['40 · 10', '41 · 11', '42 · 12', '4i · 1i', '3 · 2'];
+/**
+ * Углы отчёта — в тех же единицах, что и форма: методика ведёт расчёт
+ * в радианах и печатает их же, но если пользователь работает в градусах,
+ * показывать ему радианы значило бы заставить пересчитывать в уме.
+ */
+function angleOut(rad: number, data: GeomData): string {
+  return (data.angleUnit === 'рад' ? rad : (rad * 180) / Math.PI).toFixed(4);
+}
 
-/** Профиль камеры по точкам — реальный выход цепочки, а не оценка. */
+function angleUnitLabel(data: GeomData): string {
+  return data.angleUnit === 'рад' ? 'рад' : 'град';
+}
+
+/** Профиль камеры по расчётным сечениям — таблица отчёта этапа 1. */
 export function estimateGeomProfile(data: GeomData): ProfileRow[] {
-  const { input, calibration } = buildChamberSchemeProps(data);
-  const { bowl, cone } = applyCalibration(computeChamberGeometry(input), calibration);
+  const { sections } = computeChamberProfile(buildChamberProfileInput(data));
 
-  let sum = 0;
-  return bowl.points.map((b, i) => {
-    const c = cone.points[i];
-    const prev = i > 0 ? bowl.points[i - 1] : null;
-    const segment = prev ? Math.hypot(b.x - prev.x, b.y - prev.y) : 0;
-    sum += segment;
+  return sections.map((s) => ({
+    i: String(s.index),
+    l: s.l1.toFixed(1),
+    b1: angleOut(s.beta1, data),
+    r1: s.R1.toFixed(1),
+    a1: angleOut(s.alpha1, data),
+    b4: angleOut(s.beta4, data),
+    r4: s.R4.toFixed(1),
+    a4: angleOut(s.alpha4, data),
+    lSum: s.lSum.toFixed(1),
+    /* Верхнее сечение дублирует первое и собственного раскрытия не имеет —
+       в отчёте методики эти две клетки пустые, а не нулевые. */
+    s1: s.index === 0 ? '—' : s.S1.toFixed(2),
+    sot: s.index === 0 ? '—' : s.SOT.toFixed(2),
+  }));
+}
 
-    return {
-      point: NODE_NAMES[i] ?? String(i),
-      r1: Math.hypot(b.x, b.y).toFixed(1),
-      a1: phiOf(b).toFixed(2),
-      r4: Math.hypot(c.x, c.y).toFixed(1),
-      a4: phiOf(c).toFixed(2),
-      l: segment.toFixed(1),
-      lSum: sum.toFixed(1),
-      s: Math.hypot(b.x - c.x, b.y - c.y).toFixed(1),
-    };
-  });
+/**
+ * Пять критических углов поворота эксцентрика — границы зон с разными
+ * условиями трения; на этапах 2–3 по ним находится рабочий угол.
+ */
+export function estimateGeomAlfa(data: GeomData): KvRow[] {
+  const { alfa } = computeChamberProfile(buildChamberProfileInput(data));
+  const unit = angleUnitLabel(data);
+  return alfa.map((value, i) => ({
+    label: `ALFA ${i + 1}`,
+    value: angleOut(value, data),
+    unit,
+  }));
+}
+
+/**
+ * Встроенные проверки корректности профиля (§3.4 подробной документации).
+ * Показываются рядом с таблицей: методика прямо называет их признаком
+ * ошибки в исходных данных, и молча считать дальше по неверному профилю
+ * хуже, чем сказать об этом на самом первом шаге.
+ */
+export type CheckRow = { label: string; value: string; ok: boolean };
+
+export function estimateGeomChecks(data: GeomData): CheckRow[] {
+  const input = buildChamberProfileInput(data);
+  const { sections, KU } = computeChamberProfile(input);
+  const last = sections[KU];
+
+  const closes = Math.abs(last.S1 - input.S0) < 0.05;
+
+  /* SOT обязан убывать сверху вниз: камера сужается к разгрузке. Рост
+     означает ошибку в углах чаши — профиль «расходится». */
+  let monotone = true;
+  for (let i = 2; i <= KU; i += 1) {
+    if (sections[i].SOT > sections[i - 1].SOT + 1e-6) monotone = false;
+  }
+
+  const angles = sections.every(
+    (s) => s.alpha1 > 0 && s.alpha1 < Math.PI / 2 && s.alpha4 > 0 && s.alpha4 < Math.PI / 2
+  );
+
+  return [
+    {
+      label: 'S1 в нижнем сечении = S₀',
+      value: `${last.S1.toFixed(2)} / ${input.S0.toFixed(2)} мм`,
+      ok: closes,
+    },
+    {
+      label: 'Просвет SOT убывает сверху вниз',
+      value: monotone ? 'да' : 'нет — проверьте углы чаши β₄',
+      ok: monotone,
+    },
+    {
+      label: 'Все α в пределах (0; 90°)',
+      value: angles ? 'да' : 'нет — профиль не замыкается',
+      ok: angles,
+    },
+  ];
 }
 
 export function estimateGeom(data: GeomData): KvRow[] {
-  const D = toNum(data.D);
-  const H = toNum(data.H);
-  const l2 = toNum(data.l2);
-  const S0 = toNum(data.S0);
-  const theta = toNum(data.theta);
-
-  const profile = estimateGeomProfile(data);
-  const last = profile[profile.length - 1];
-  /** Угол на нижнюю точку конуса — α₂ распечатки. */
-  const alpha2 = last ? Number(last.a4) : 0;
-  /** Полная длина профиля брони чаши. */
-  const chainLength = last ? Number(last.lSum) : 0;
+  const input = buildChamberProfileInput(data);
+  const { sections, KU, R2, AL2, DI2, H2 } = computeChamberProfile(input);
+  const top = sections[1];
+  const last = sections[KU];
+  const unit = angleUnitLabel(data);
 
   /**
    * Объём камеры — усечённый конус между бронями, м³. Оценка по габаритам,
    * а не интеграл по профилю: в распечатке это отдельная величина Q,
    * посчитанная своей методикой.
    */
-  const volume = (Math.PI / 4) * Math.pow(D / 1000, 2) * (H / 1000) * 0.33;
+  const volume = (Math.PI / 4) * Math.pow(input.D / 1000, 2) * (input.H / 1000) * 0.33;
 
   return [
-    { label: 'D — диаметр основания', value: D.toFixed(1), unit: 'мм' },
-    { label: 'D / 2', value: (D / 2).toFixed(1), unit: 'мм' },
-    { label: 'H — высота камеры', value: H.toFixed(1), unit: 'мм' },
-    { label: 'h — до нижней точки конуса', value: Math.max(H - l2, 0).toFixed(1), unit: 'мм' },
-    { label: 'S₀ — выходная щель', value: S0.toFixed(1), unit: 'мм' },
-    { label: 'θ — угол нутации', value: theta.toFixed(2), unit: data.angleUnit === 'рад' ? 'рад' : 'град' },
-    { label: 'α₂ — угол на нижнюю точку конуса', value: alpha2.toFixed(2), unit: 'град' },
-    { label: 'Длина профиля брони чаши', value: chainLength.toFixed(1), unit: 'мм' },
-    { label: 'Число зон дробления', value: data.zones, unit: '' },
+    { label: 'D — диаметр основания конуса', value: input.D.toFixed(1), unit: 'мм' },
+    { label: 'H — до основания конуса от подвеса', value: input.H.toFixed(1), unit: 'мм' },
+    { label: 'S₀ — разгрузочная щель', value: input.S0.toFixed(1), unit: 'мм' },
+    { label: 'θ — угол нутации', value: angleOut(input.theta, data), unit },
+    { label: 'Число зон дробления', value: String(CRUSHING_ZONES), unit: '' },
+    { label: 'Число расчётных сечений', value: String(KU + 1), unit: '' },
+
+    { label: 'DI2 — диаметр нижнего сечения', value: DI2.toFixed(1), unit: 'мм' },
+    { label: 'H2 — высота нижнего сечения', value: H2.toFixed(1), unit: 'мм' },
+    { label: 'R2 — радиус-вектор разгрузочной кромки', value: R2.toFixed(1), unit: 'мм' },
+    { label: 'α₂ — его угол к оси', value: angleOut(AL2, data), unit },
+
+    { label: 'S1 в верхнем сечении', value: top.S1.toFixed(2), unit: 'мм' },
+    { label: 'SOT в верхнем сечении — приёмное отверстие', value: top.SOT.toFixed(2), unit: 'мм' },
+    { label: 'SOT в нижнем сечении', value: last.SOT.toFixed(2), unit: 'мм' },
+    { label: 'L сум — полная длина профиля', value: last.lSum.toFixed(1), unit: 'мм' },
     { label: 'Q — объём камеры', value: volume.toFixed(4), unit: 'м³' },
   ];
 }
