@@ -86,23 +86,28 @@ export function InlineSidebar({
   return (
     <div className={styles.outer}>
       <div className={styles.root}>
-        <div className={styles.rail}>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={open ? 'chevronRight' : 'chevronLeft'}
-            aria-label={open ? `Свернуть: ${title}` : `Развернуть: ${title}`}
-            aria-expanded={open}
-            onClick={() => onOpenChange(!open)}
-          />
-          {!open ? (
+        {/* Рейка — только для свёрнутого состояния: развернуть панель иначе
+            нечем, а сама панель схлопнута в ноль. Когда панель раскрыта,
+            шеврон живёт в её шапке рядом с заголовком, и колонка под него
+            не занимает места слева — область содержимого доходит
+            до разделителя. */}
+        {!open ? (
+          <div className={styles.rail}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="chevronLeft"
+              aria-label={`Развернуть: ${title}`}
+              aria-expanded={false}
+              onClick={() => onOpenChange(true)}
+            />
             <div className={styles.railLabel}>
               <Text variant="caption" color="textMuted">
                 {title}
               </Text>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div ref={panelRef} className={styles.panel} data-open={open} aria-hidden={!open} style={widthStyle}>
           {/* Не `Stack` для вертикали: содержимому нужно занять весь остаток
@@ -124,7 +129,17 @@ export function InlineSidebar({
                 вызывающий экран через `minWidth`. */}
             <div className={styles.titleRow}>
               <Stack direction="row" justify="between" align="center" gap="sm" wrap>
-                <Text variant="headingMd">{title}</Text>
+                <Stack direction="row" align="center" gap="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="chevronRight"
+                    aria-label={`Свернуть: ${title}`}
+                    aria-expanded
+                    onClick={() => onOpenChange(false)}
+                  />
+                  <Text variant="headingMd">{title}</Text>
+                </Stack>
                 {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
               </Stack>
             </div>
