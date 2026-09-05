@@ -68,9 +68,9 @@ export type ChainPointInfo = {
   phiRay: number;
   /** Угол сегмента, выходящего из узла вниз, град. */
   phiSeg: number;
-  /** Действующий угол образующей (для конуса — с поправкой на нутацию), град. */
+  /** Угол образующей к горизонтали в том положении, в котором она нарисована, град. */
   eff: number;
-  /** Введённый угол образующей β, град. */
+  /** Он же — оставлен как есть, наклон уже учтён при построении. */
   beta: number;
   /** Длина сегмента, выходящего из узла, мм. */
   length: number;
@@ -93,30 +93,38 @@ export type ChamberGeometry = {
 };
 
 /**
- * Шаг вдоль образующей: угол β отсчитывается от радиального направления,
- * образующая уходит вниз и наружу от оси (в этой системе — в минус по x).
+ * Шаг вдоль образующей: угол β отсчитывается от радиального направления
+ * (от горизонтали), образующая уходит вниз и наружу от оси — в этой
+ * системе координат в минус по x.
  */
 function alongGeneratrix(from: Vec2, beta: number, length: number): Vec2 {
   return { x: from.x - Math.cos(beta) * length, y: from.y + Math.sin(beta) * length };
 }
 
-function chainFrom(points: Vec2[], betaDeg: number[], swingDeg: number): ChainResult {
+/**
+ * Узел j несёт угол образующей, приходящей в него СВЕРХУ, — так подписан
+ * и чертёж методики: β₄₀ стоит у узла 40, над которым только зона входа,
+ * а β₃ — у самого нижнего узла 3, над которым зона калибровки. Поэтому
+ * `betaDeg[j]` — это угол участка (j−1)→j, а у верхнего узла — угол
+ * стенки приёмной части.
+ */
+function chainFrom(points: Vec2[], betaDeg: number[]): ChainResult {
   const info: ChainPointInfo[] = points.map((p, i) => {
-    const next = points[i + 1];
+    const prev = points[i - 1];
     const beta = betaDeg[i];
-    const eff = beta - swingDeg;
     const phiRay = phiOf(p);
-    /* Угол сегмента берётся по факту — от узла к следующему узлу, а не
-       пересчётом из β: дуга угла на чертеже обязана лечь на ту самую линию,
-       которая нарисована, иначе подпись β указывает мимо своего сегмента. */
-    const phiSeg = next ? phiOf({ x: next.x - p.x, y: next.y - p.y }) : phiOf(dir(90 - eff));
+    /* Направление берётся по факту — от предыдущего узла к этому, а не
+       пересчётом из β: дуга обязана лечь на ту самую линию, которая
+       нарисована, иначе подпись указывает мимо своего участка. У верхнего
+       узла участка выше нет, там направление строится из самого β. */
+    const phiSeg = prev ? phiOf({ x: p.x - prev.x, y: p.y - prev.y }) : 90 - beta;
     return {
       phiRay,
       phiSeg,
-      eff,
+      eff: beta,
       beta,
-      length: next ? Math.hypot(next.x - p.x, next.y - p.y) : 0,
-      terminal: next === undefined,
+      length: prev ? Math.hypot(p.x - prev.x, p.y - prev.y) : 0,
+      terminal: i === 0,
     };
   });
   return { points, info };
@@ -132,6 +140,7 @@ function chainFrom(points: Vec2[], betaDeg: number[], swingDeg: number): ChainRe
 export function buildChamberGeometry(input: ChamberProfileInput): ChamberGeometry {
   const profile = computeChamberProfile(input);
   const { sections, KU } = profile;
+  const theta = input.theta;
 
   const conePoints: Vec2[] = [];
   const bowlPoints: Vec2[] = [];
@@ -140,23 +149,47 @@ export function buildChamberGeometry(input: ChamberProfileInput): ChamberGeometr
 
   for (let i = 1; i <= KU; i += 1) {
     const s = sections[i];
-    conePoints.push(polar({ x: 0, y: 0 }, s.R1, s.alpha1 * R2D));
+    /*
+     * Ключевая тонкость: α₁ отсчитывается от оси КОНУСА, а α₄ — от оси
+     * дробилки. Оси расходятся на угол нутации θ, поэтому в общей системе
+     * чертежа узел конуса стоит под α₁ + θ.
+     *
+     * Это не косметика. Формула шага 6 выводит R4 из треугольника
+     * «подвес — узел конуса — узел чаши», в котором сторона между узлами
+     * равна раскрытию S1. Сходится она только в рабочем положении: при
+     * α₁ + θ хорда между парными узлами совпадает с S1 до последнего
+     * знака на всех сечениях контрольного примера, а при α₁ расходится
+     * (43 против 75 мм в разгрузочной кромке). Отсюда же и подписи
+     * методики «β₁ᵢ − θ»: повёрнутый конус даёт именно такой наклон
+     * образующей к горизонтали.
+     */
+    conePoints.push(polar({ x: 0, y: 0 }, s.R1, (s.alpha1 + theta) * R2D));
     bowlPoints.push(polar({ x: 0, y: 0 }, s.R4, s.alpha4 * R2D));
-    coneBeta.push(s.beta1 * R2D);
-    bowlBeta.push(s.beta4 * R2D);
+    /* Угол берётся у сечения на единицу выше: узел несёт наклон образующей,
+       приходящей в него сверху (см. `chainFrom`). У верхнего узла это
+       сечение 0 — зона входа с её β₁₀ и β₄₀. */
+    const above = sections[i - 1];
+    coneBeta.push((above.beta1 - theta) * R2D);
+    bowlBeta.push(above.beta4 * R2D);
   }
 
-  /* Основание дробящего конуса — ровно (D/2, H) из формы: сечение KU
-     отстоит от него на зону калибровки вверх по образующей, поэтому оба
-     габарита ложатся на этот узел без всякой подгонки. */
-  conePoints.push({ x: -input.D / 2, y: input.H });
+  /* Основание дробящего конуса: в нейтральном положении это ровно
+     (D/2, H) из формы, здесь — оно же, повёрнутое вместе с конусом.
+     Поворот жёсткий, вокруг точки подвеса, поэтому длина зоны калибровки
+     и диаметр основания остаются теми, что введены. */
+  const baseR = Math.hypot(input.D / 2, input.H);
+  const baseAlpha = Math.atan2(input.D / 2, input.H) + theta;
+  conePoints.push(polar({ x: 0, y: 0 }, baseR, baseAlpha * R2D));
   bowlPoints.push(alongGeneratrix(bowlPoints[bowlPoints.length - 1], sections[KU].beta4, input.l2));
-  coneBeta.push(sections[KU].beta1 * R2D);
+  /* Основание несёт угол зоны калибровки — участка, приходящего в него. */
+  coneBeta.push((sections[KU].beta1 - theta) * R2D);
   bowlBeta.push(sections[KU].beta4 * R2D);
 
   return {
-    bowl: chainFrom(bowlPoints, bowlBeta, 0),
-    cone: chainFrom(conePoints, coneBeta, input.theta * R2D),
+    /* `swing` больше не вычитается внутри: наклон уже учтён в самих углах,
+       поэтому подписи показывают ровно то, что нарисовано. */
+    bowl: chainFrom(bowlPoints, bowlBeta),
+    cone: chainFrom(conePoints, coneBeta),
     profile,
   };
 }

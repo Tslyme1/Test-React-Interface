@@ -67,6 +67,27 @@ test.describe('Этап 1: расчёт профиля по методике', (
     await expect(drawer.getByRole('row').filter({ hasText: 'Все α в пределах' })).toContainText('сходится');
   });
 
+  test('число зон дробления меняет профиль и число сечений', async ({ page }) => {
+    /* Третья строка файла геометрии — «Число зон дробления». Она задаёт
+       длину массивов l₁(i), β₁(i), β₄(i), а значит и число расчётных
+       сечений: зоны + 2. */
+    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    await expect(drawer.getByRole('row').filter({ hasText: 'Число зон дробления' })).toContainText('3');
+    await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('5');
+
+    await page.getByRole('button', { name: 'Закрыть' }).click();
+    const zones = page.getByRole('button', { name: 'Число зон дробления' });
+    await zones.click();
+    await page.getByRole('option', { name: '1', exact: true }).click();
+    await page.getByRole('button', { name: 'Пересчитать' }).click();
+    await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
+
+    await expect(drawer.getByRole('row').filter({ hasText: 'Число зон дробления' })).toContainText('1');
+    await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('3');
+    // Замыкание рекурсии обязано держаться при любом числе зон.
+    await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('сходится');
+  });
+
   test('щель S₀ доходит до нижнего сечения без подгонки', async ({ page }) => {
     /* Раньше S₀ применялся жёстким сдвигом брони конуса поверх готового
        профиля, и в остальных сечениях зазор был случайным. Теперь S₀ —
@@ -80,5 +101,54 @@ test.describe('Этап 1: расчёт профиля по методике', (
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
     await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('64.00 / 64.00');
     await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('сходится');
+  });
+});
+
+/**
+ * Конус на чертеже стоит в рабочем положении — повёрнут на угол нутации θ.
+ * Это не оформление: α₁ отсчитывается от оси конуса, α₄ — от оси дробилки,
+ * и только при развороте на θ отрезок между парными узлами становится равен
+ * раскрытию камеры S1, которое методика выводит из того же треугольника
+ * (§3.2, шаг 6). В нейтральном положении он расходится с S1 почти вдвое
+ * у разгрузочной кромки — 75 мм против 43.
+ */
+test.describe('Этап 1: чертёж совпадает с расчётом', () => {
+  test('отрезок между парными узлами равен раскрытию S1 из расчёта', async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+
+    await page.getByRole('button', { name: 'Диаграмма' }).click();
+    await page.getByRole('option', { name: 'Линии построения' }).click();
+    await page.keyboard.press('Escape');
+
+    const svg = page.getByTestId('chamber-scheme');
+    // Значения S1 контрольного примера: 307,99 · 135,79 · 71,83 · 43,00.
+    await expect(svg.locator('title', { hasText: 'S₁ — раскрытие 40–10: 308 мм' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'S₂ — раскрытие 41–11: 136 мм' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'S₃ — раскрытие 42–12: 72 мм' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'S₀ — раскрытие 3–2: 43 мм' })).not.toHaveCount(0);
+  });
+
+  test('дуги β показывают введённый угол к горизонтали', async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+
+    await page.getByRole('button', { name: 'Диаграмма' }).click();
+    await page.getByRole('option', { name: 'Линии построения' }).click();
+    await page.keyboard.press('Escape');
+
+    const svg = page.getByTestId('chamber-scheme');
+    /* β — «угол при основании», то есть наклон образующей к горизонтали,
+       и дуга у узла подписывает участок, приходящий в него сверху: β₄₀ —
+       стенку зоны входа, β₃ — зону калибровки. Углы конуса показаны как
+       β − θ: он нарисован в рабочем положении. */
+    await expect(svg.locator('title', { hasText: 'β40 = 63,96° к горизонтали' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'β41 = 63,96° к горизонтали' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'β42 = 59,97° к горизонтали' })).not.toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'β4i = 50,97° к горизонтали' })).not.toHaveCount(0);
+    // β₃ = β₂ − θ = 39,98 − 1,5 — методика выводит его сама.
+    await expect(svg.locator('title', { hasText: 'β3 = 38,48° к горизонтали' })).not.toHaveCount(0);
+    // Конус: β₁₀ − θ = 43,94 − 1,5.
+    await expect(svg.locator('title', { hasText: 'β10 = 42,44° к горизонтали' })).not.toHaveCount(0);
   });
 });

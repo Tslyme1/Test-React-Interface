@@ -46,6 +46,7 @@ export function defaultWizardData(): WizardData {
       H: '823',
       S0: '43',
 
+      zones: '3',
       R: '1.4',
       a: '0.436',
     },

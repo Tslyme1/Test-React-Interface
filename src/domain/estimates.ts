@@ -1,6 +1,6 @@
 import type { GeomData, GranData, Project, ProdData, StepKey } from '@/types';
 import { STEP_TITLES } from './steps';
-import { buildChamberProfileInput, CRUSHING_ZONES } from './chamberInput';
+import { buildChamberProfileInput, crushingZones } from './chamberInput';
 import { computeChamberProfile } from './chamberProfile';
 
 /**
@@ -185,7 +185,7 @@ export function estimateGeom(data: GeomData): KvRow[] {
     { label: 'H — до основания конуса от подвеса', value: input.H.toFixed(1), unit: 'мм' },
     { label: 'S₀ — разгрузочная щель', value: input.S0.toFixed(1), unit: 'мм' },
     { label: 'θ — угол нутации', value: angleOut(input.theta, data), unit },
-    { label: 'Число зон дробления', value: String(CRUSHING_ZONES), unit: '' },
+    { label: 'Число зон дробления', value: String(crushingZones(data)), unit: '' },
     { label: 'Число расчётных сечений', value: String(KU + 1), unit: '' },
 
     { label: 'DI2 — диаметр нижнего сечения', value: DI2.toFixed(1), unit: 'мм' },
