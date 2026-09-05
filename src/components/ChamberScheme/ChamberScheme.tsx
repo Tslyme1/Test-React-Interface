@@ -90,12 +90,52 @@ const VB = { w: 1180, h: 840 };
 /** Рабочая область построения внутри viewBox — те же значения, что в прототипе. */
 const AREA = { x: 262, y: 78, w: 640, h: 690 };
 
-const NAMES_B = ['40', '41', '42', '4i', '3'];
-const NAMES_C = ['10', '11', '12', '1i', '2'];
-const KEYS_B: ChamberHighlightKey[] = ['n40', 'n41', 'n42', 'n4i', 't3'];
-const KEYS_C: ChamberHighlightKey[] = ['n10', 'n11', 'n12', 'n1i', 't2'];
-const LLAB = ['l₁₁', 'l₁₂', 'l₁ᵢ', 'l₂'];
-const SLAB = ['S₁₁', 'S₁₂', 'Sᵢ₂', 'S₁ᵢ', 'S₀'];
+/**
+ * Подписи узлов зависят от числа зон дробления: оно исходное данное
+ * методики и задаёт длину массивов l₁(i), β₁(i), β₄(i) — а значит,
+ * и сколько узлов на чертеже. При N зонах узлов N + 2: по одному на
+ * расчётное сечение 1…KU плюс основание конуса.
+ *
+ * Именование — как на чертеже методики: первый узел 40 / 10, дальше
+ * 41, 42, …, последнее расчётное сечение 4i / 1i (i-е, отсюда индекс),
+ * и основание 3 / 2.
+ */
+const SUB = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+
+function nodeNames(count: number, side: 'b' | 'c'): string[] {
+  const head = side === 'b' ? '4' : '1';
+  const base = side === 'b' ? '3' : '2';
+  return Array.from({ length: count }, (_, j) => {
+    if (j === count - 1) return base;
+    if (j === count - 2) return `${head}i`;
+    return `${head}${j}`;
+  });
+}
+
+function nodeKeys(count: number, side: 'b' | 'c'): ChamberHighlightKey[] {
+  const named = side === 'b' ? ['n40', 'n41', 'n42', 'n4i'] : ['n10', 'n11', 'n12', 'n1i'];
+  const last: ChamberHighlightKey = side === 'b' ? 't3' : 't2';
+  const iKey = side === 'b' ? 'n4i' : 'n1i';
+  return Array.from({ length: count }, (_, j) => {
+    if (j === count - 1) return last;
+    if (j === count - 2) return iKey as ChamberHighlightKey;
+    return (named[j] ?? iKey) as ChamberHighlightKey;
+  });
+}
+
+/** Подписи сегментов: зоны дробления l₁₁…l₁ᵢ и зона калибровки l₂. */
+function segmentLabels(segments: number): string[] {
+  return Array.from({ length: segments }, (_, j) => {
+    if (j === segments - 1) return 'l₂';
+    if (j === segments - 2) return 'l₁ᵢ';
+    return `l₁${SUB[j + 1]}`;
+  });
+}
+
+/** Подписи раскрытия камеры в узлах: S₁…Sᵢ по сечениям, S₀ на разгрузке. */
+function gapLabels(count: number): string[] {
+  return Array.from({ length: count }, (_, j) => (j === count - 1 ? 'S₀' : `S${SUB[j + 1]}`));
+}
 const GAP_KEYS: ChamberHighlightKey[] = ['gap0', 'gap1', 'gap2', 'gap3', 'gap4'];
 
 /** Ширина прозрачной цели для курсора поверх тонкой линии. */
@@ -106,7 +146,10 @@ function round(v: number): number {
 }
 
 function fmt(v: number, digits = 0): string {
-  const k = digits ? 10 : 1;
+  /* Степень десятки, а не «есть знаки / нет знаков»: прежняя версия
+     округляла до одного знака при любом ненулевом `digits`, и подпись
+     угла 63,96° показывала 64°. */
+  const k = 10 ** digits;
   return (Math.round(v * k) / k).toLocaleString('ru-RU');
 }
 
@@ -172,6 +215,17 @@ export function ChamberScheme({
   const coneRaw = geometry.cone.points;
   const B = bowlRaw.map(transform.point);
   const C = coneRaw.map(transform.point);
+
+  /* Число узлов диктует число зон дробления — исходное данное методики,
+     а не константа чертежа: при одной зоне узлов три, при трёх — пять. */
+  const NODES = B.length;
+  const LAST = NODES - 1;
+  const NAMES_B = nodeNames(NODES, 'b');
+  const NAMES_C = nodeNames(NODES, 'c');
+  const KEYS_B = nodeKeys(NODES, 'b');
+  const KEYS_C = nodeKeys(NODES, 'c');
+  const LLAB = segmentLabels(NODES - 1);
+  const SLAB = gapLabels(NODES);
   const apex = transform.point({ x: 0, y: 0 });
   const bottom = AREA.y + AREA.h + 30;
   const top = AREA.y - 24;
@@ -229,26 +283,26 @@ export function ChamberScheme({
 
   /* ── зоны ── */
   if (L.zones) {
-    const zones: { key: ChamberHighlightKey; poly: Vec2[]; fill: string; title: string }[] = [
-      {
-        key: 'n41',
-        poly: [B[0], B[1], C[1], C[0]],
-        fill: 'var(--color-accent-subtle)',
-        title: 'Зона дробления 1 — участок 40–41 / 10–11, длина l₁₁',
-      },
-      {
-        key: 'n42',
-        poly: [B[1], B[2], B[3], C[3], C[2], C[1]],
-        fill: 'var(--color-surface-sunken)',
-        title: 'Зоны дробления 2 и 3 — участок 41–42–4i / 11–12–1i, длины l₁₂ и l₁ᵢ',
-      },
-      {
-        key: 't2',
-        poly: [B[3], B[4], C[4], C[3]],
-        fill: 'var(--color-warning-subtle)',
-        title: 'Зона калибровки — участок 4i–3 / 1i–2, длина l₂. Щель здесь постоянна и равна S₀',
-      },
-    ];
+    /* По одной заливке на зону: их столько же, сколько задано зон
+       дробления, плюс зона калибровки последней. Раньше здесь было
+       жёстко три полигона по пяти узлам — при другом числе зон они
+       ложились мимо. */
+    const zones: { key: ChamberHighlightKey; poly: Vec2[]; fill: string; title: string }[] = [];
+    for (let j = 0; j < LAST; j += 1) {
+      const calibration = j === LAST - 1;
+      zones.push({
+        key: KEYS_B[j],
+        poly: [B[j], B[j + 1], C[j + 1], C[j]],
+        fill: calibration
+          ? 'var(--color-warning-subtle)'
+          : j === 0
+            ? 'var(--color-accent-subtle)'
+            : 'var(--color-surface-sunken)',
+        title: calibration
+          ? `Зона калибровки — участок ${NAMES_B[j]}–${NAMES_B[j + 1]} / ${NAMES_C[j]}–${NAMES_C[j + 1]}, длина ${LLAB[j]}. Щель здесь постоянна и равна S₀`
+          : `Зона дробления ${j + 1} — участок ${NAMES_B[j]}–${NAMES_B[j + 1]} / ${NAMES_C[j]}–${NAMES_C[j + 1]}, длина ${LLAB[j]}`,
+      });
+    }
     for (const z of zones) {
       parts.push(
         <g key={`zone-${z.key}`} className={cls(z.key)} {...zone(z.key)}>
@@ -388,18 +442,18 @@ export function ChamberScheme({
    * задаёт сам. Без линии на чертеже наводить на это поле было бы не на что.
    */
   if (L.gaps || L.dims) {
-    const from = L.gaps ? 0 : 4;
-    for (let i = from; i < 5; i += 1) {
+    const from = L.gaps ? 0 : LAST;
+    for (let i = from; i <= LAST; i += 1) {
       const a = B[i];
       const b = C[i];
-      /* У S₀ есть своя цель в форме — она и показывается; у остальных
-         зазоров цели нет, их меряем по уже откалиброванному профилю. */
-      /* Раскрытие берётся из расчёта: S1 отмеряется вдоль хода эксцентрика,
-         а прямое расстояние между узлами — это хорда, она не равна ни S1,
-         ни просвету SOT. В зоне калибровки щель постоянна и равна S₀. */
+      /* Раскрытие берётся из расчёта. Отрезок между парными узлами — это
+         и есть S1: конус нарисован в рабочем положении (повёрнут на θ),
+         а в нём хорда «узел чаши — узел конуса» равна раскрытию точно,
+         что и проверено на контрольном примере методики. В зоне
+         калибровки раскрытие постоянно и равно S₀. */
       const section = sectionGaps[i];
-      const raw = i === 4 ? gapRaw : (section?.S1 ?? gapRaw);
-      const key = GAP_KEYS[i];
+      const raw = i === LAST ? gapRaw : (section?.S1 ?? gapRaw);
+      const key = GAP_KEYS[Math.min(i, GAP_KEYS.length - 1)];
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       parts.push(
         <g key={`gap-${i}`} className={cls(key)} {...zone(key)}>
@@ -511,7 +565,17 @@ export function ChamberScheme({
       chain.info.forEach((node, i) => {
         const c = P[i];
         const R = 34;
-        const a0 = node.phiRay + 180;
+        /*
+         * Угол β — наклон образующей к плоскости основания, то есть
+         * к горизонтали («угол при основании конуса» в исходных данных
+         * методики). Поэтому дуга идёт от горизонтали наружу (в этой
+         * системе это φ = 90°) до самой образующей — как на чертеже
+         * методики, где дуги β опираются на горизонтальные штриховые
+         * линии уровней. Раньше она строилась от луча «подвес → узел»
+         * и показывала совсем другой угол — между радиус-вектором
+         * и образующей, к β отношения не имеющий.
+         */
+        const a0 = 90;
         const a1 = node.phiSeg;
         const d = arcPath(c, R, a0, a1);
         const midAngle = a0 + norm(a1 - a0) / 2;
@@ -522,10 +586,13 @@ export function ChamberScheme({
             <path d={d} fill="none" stroke="transparent" strokeWidth={HIT_WIDTH} pointerEvents="stroke" />
             <path d={d} fill="none" stroke="var(--color-text-muted)" strokeWidth={1}>
               <title>
-                β{names[i]} = {fmt(node.beta, 1)}°{isCone ? ` · действующий β−θ = ${fmt(node.eff, 1)}°` : ''}
+                β{names[i]} = {fmt(node.beta, 2)}° к горизонтали
+                {isCone ? ' · конус показан в рабочем положении, поэтому это β − θ' : ''}
               </title>
             </path>
             {node.terminal ? (
+              /* У верхнего узла участка выше нет — стенку приёмной части
+                 показываем пунктиром, чтобы дуга β₄₀ / β₁₀ на что-то опиралась. */
               <line
                 x1={c.x}
                 y1={c.y}
@@ -643,7 +710,7 @@ export function ChamberScheme({
 
   /* ── размеры D/2 и h ── */
   if (L.dims) {
-    const p2 = C[4];
+    const p2 = C[LAST];
 
     /* Уровневые штриховые линии по точкам конуса. */
     C.forEach((p, i) => {
@@ -677,7 +744,11 @@ export function ChamberScheme({
           markerStart="url(#chamber-arrow)"
           markerEnd="url(#chamber-arrow)"
         >
-          <title>h = {fmt(heightRaw)} мм</title>
+          <title>
+            h = {fmt(heightRaw)} мм — от точки подвеса до основания конуса. Задаётся для нейтрального
+            положения конуса, а нарисован он в рабочем, повёрнутым на θ, поэтому выносная линия
+            короче на доли процента.
+          </title>
         </line>
         <line x1={apex.x} y1={apex.y} x2={hx - 8} y2={apex.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
         <line x1={p2.x} y1={p2.y} x2={hx - 8} y2={p2.y} stroke="var(--color-text-muted)" strokeWidth={0.7} />
@@ -709,7 +780,10 @@ export function ChamberScheme({
           markerStart="url(#chamber-arrow)"
           markerEnd="url(#chamber-arrow)"
         >
-          <title>D/2 = {fmt(diameterRaw / 2)} мм</title>
+          <title>
+            D/2 = {fmt(diameterRaw / 2)} мм — половина диаметра основания дробящего конуса.
+            Как и h, задаётся для нейтрального положения.
+          </title>
         </line>
         <line x1={p2.x} y1={p2.y} x2={p2.x} y2={dy + 8} stroke="var(--color-text-muted)" strokeWidth={0.7} />
         <text x={(p2.x + apex.x) / 2} y={dy - 7} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-text-muted)">
@@ -738,7 +812,7 @@ export function ChamberScheme({
     ];
 
     rights.forEach((r) => {
-      const x = r.x ?? xAtY(C, r.y) ?? C[3].x;
+      const x = r.x ?? xAtY(C, r.y) ?? C[Math.max(0, LAST - 1)].x;
       parts.push(
         <g key={`callout-${r.key}-${r.text}`} className={cls(r.key)} {...zone(r.key)}>
           <rect x={RX - 8} y={r.y - 21} width={130} height={20} fill="transparent" />
@@ -786,11 +860,17 @@ export function ChamberScheme({
       </g>
     );
 
-    const bands: { text: string; y1: number; y2: number; key: ChamberHighlightKey }[] = [
-      { text: 'Зона дробления 1', y1: B[0].y, y2: B[1].y, key: 'n41' },
-      { text: 'Зоны дробления 2–3', y1: B[1].y, y2: B[3].y, key: 'n42' },
-      { text: 'Зона калибровки', y1: B[3].y, y2: B[4].y, key: 't2' },
-    ];
+    /* Полосы слева повторяют тот же список зон, что и заливки: сколько
+       зон дробления задано, столько и подписей, плюс калибровка. */
+    const bands: { text: string; y1: number; y2: number; key: ChamberHighlightKey }[] = [];
+    for (let j = 0; j < LAST; j += 1) {
+      bands.push({
+        text: j === LAST - 1 ? 'Зона калибровки' : `Зона дробления ${j + 1}`,
+        y1: B[j].y,
+        y2: B[j + 1].y,
+        key: KEYS_B[j],
+      });
+    }
     bands.forEach((band) => {
       parts.push(
         <g key={`band-${band.key}`} className={cls(band.key)} {...zone(band.key)}>

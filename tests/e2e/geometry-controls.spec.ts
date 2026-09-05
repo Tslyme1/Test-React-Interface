@@ -169,16 +169,32 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await createProject(page);
   });
 
-  test('число зон задаётся набором зон, отдельного поля для него нет', async ({ page }) => {
-    /* Раньше рядом с коэффициентами стоял селект «Число зон дробления»
-       на 1 или 2, хотя длин в форме было три, а профиль рисовался всегда
-       по трём зонам: поле противоречило и форме, и чертежу. Теперь число
-       зон задаёт сам набор — три длины плюс зона калибровки — и в отчёте
-       оно берётся из расчёта. */
-    await expect(page.getByLabel('Зона 1 — l₁₁, мм')).toBeVisible();
-    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toBeVisible();
+  test('число зон дробления задаёт, сколько зон участвует в расчёте', async ({ page }) => {
+    /* Число зон — исходное данное методики (третья строка файла геометрии):
+       оно задаёт длину массивов l₁(i), β₁(i), β₄(i). Лишние тройки полей
+       не показываются, и участок профиля, который пользователь не задавал,
+       в чертёж не попадает. */
+    const svg = page.getByTestId('chamber-scheme');
+    const zones = page.getByRole('button', { name: 'Число зон дробления' });
+    await expect(zones).toContainText('3');
     await expect(page.getByLabel('Зона 3 — l₁ᵢ, мм')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Число зон дробления' })).toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'Сегмент 12→1i' })).not.toHaveCount(0);
+
+    await zones.click();
+    await page.getByRole('option', { name: '2', exact: true }).click();
+
+    await expect(page.getByLabel('Зона 3 — l₁ᵢ, мм')).toHaveCount(0);
+    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toBeVisible();
+    // Узлов стало на один меньше: 40 · 41 · 4i · 3 вместо 40 · 41 · 42 · 4i · 3.
+    await expect(svg.locator('title', { hasText: 'Сегмент 12→1i' })).toHaveCount(0);
+    await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).not.toHaveCount(0);
+
+    await zones.click();
+    await page.getByRole('option', { name: '1', exact: true }).click();
+
+    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toHaveCount(0);
+    await expect(page.getByLabel('Зона 1 — l₁₁, мм')).toBeVisible();
+    await expect(svg.locator('title', { hasText: 'Сегмент 10→1i' })).not.toHaveCount(0);
   });
 
   test('поповер «Слои» — строка сама переключает видимость участка схемы', async ({ page }) => {
@@ -207,6 +223,8 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     // Пресет разом включает лучи, дуги и все пять зазоров.
     await expect(svg.locator('title', { hasText: /^β40/ })).not.toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'r40 =' })).not.toHaveCount(0);
-    await expect(svg.locator('title', { hasText: 'S₁₁ — раскрытие' })).not.toHaveCount(0);
+    /* Раскрытие подписано величиной из расчёта: конус нарисован в рабочем
+       положении, поэтому отрезок между парными узлами и есть S1. */
+    await expect(svg.locator('title', { hasText: 'S₁ — раскрытие 40–10' })).not.toHaveCount(0);
   });
 });
