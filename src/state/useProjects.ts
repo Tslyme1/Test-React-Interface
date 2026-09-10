@@ -65,7 +65,7 @@ const STORAGE_KEY = 'uztm-projects';
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -98,34 +98,37 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 17) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateTwoZonesV18), trash, seeded });
+    }
     if (payload.version === 16) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 15) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomProfileV16).map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 14) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 13) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 12) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 11) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
     }
     if (payload.version === 10) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
     }
     if (payload.version === 9) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -137,7 +140,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -149,7 +152,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -162,7 +165,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -175,7 +178,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -189,7 +192,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -203,7 +206,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded,
       });
@@ -217,7 +220,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded: false,
       });
@@ -232,7 +235,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
         trash,
         seeded: false,
       });
@@ -507,8 +510,11 @@ function migrateGeomProfileV16(project: Project): Project {
     } = geom;
 
     /* Число зон переносится, а не берётся из умолчаний: это выбор
-       пользователя, и от него зависит, сколько зон уйдёт в расчёт. */
-    const zones: ZoneCount = kept.zones === '2' ? '2' : kept.zones === '3' ? '3' : '1';
+       пользователя, и от него зависит, сколько зон уйдёт в расчёт.
+       Тройка здесь ещё возможна — ввод ограничили одной-двумя зонами
+       позже, и приводит её к потолку следующая миграция (v18). */
+    const stored = (kept as { zones?: string }).zones;
+    const zones = (stored === '2' || stored === '3' ? stored : '1') as ZoneCount;
     return { ...data, geom: { ...defaults, ...kept, zones } };
   };
 
@@ -539,6 +545,41 @@ function migrateZonesBackV17(project: Project): Project {
   };
 
   return { ...project, data: convert(project.data), initialData: convert(project.initialData) };
+}
+
+/**
+ * v18 — зон дробления одна или две, третьей больше нет.
+ *
+ * Ограничение идёт от исходных данных заказчика, где вторая тройка углов
+ * подписана «β11 β12 (задается если 2 зоны дробления)»: больше двух зон
+ * форма не спрашивает. Вместе с третьей зоной из `GeomData` уходят её
+ * поля `l1i`, `b1i`, `b4i` — они не показывались бы нигде и остались бы
+ * мёртвым грузом в хранилище.
+ *
+ * Записи, где стояла тройка, переводятся на две зоны: профиль там
+ * укорачивается на последнюю зону дробления, поэтому `calcSnapshot`
+ * сбрасывается — снимок снят с профиля, которого больше не будет,
+ * и сравнение с ним показывало бы расхождение там, где пользователь
+ * ничего не менял. Сам `calc` не трогается: посчитанный результат
+ * остаётся посчитанным, пока его не пересчитают.
+ *
+ * Расчёт при этом числом зон по-прежнему не ограничен
+ * (`computeChamberProfile`): предел стоит на вводе, а не в методике.
+ */
+function migrateTwoZonesV18(project: Project): Project {
+  const convert = (data: WizardData): WizardData => {
+    const geom = data.geom as GeomData & { l1i?: string; b1i?: string; b4i?: string; zones?: string };
+    const { l1i: _l1i, b1i: _b1i, b4i: _b4i, ...kept } = geom;
+    const zones: ZoneCount = kept.zones === '1' ? '1' : '2';
+    return { ...data, geom: { ...(kept as GeomData), zones } };
+  };
+
+  return {
+    ...project,
+    data: convert(project.data),
+    initialData: convert(project.initialData),
+    calcSnapshot: [null, null, null],
+  };
 }
 
 /**

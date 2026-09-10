@@ -6,7 +6,7 @@ import type { AngleUnit, GeomData } from '@/types';
  * перечислены, а не выведены по названию поля: `a` — коэффициент профиля,
  * а не угол, и различить по одной букве нельзя.
  */
-const ANGLE_FIELDS = ['b40', 'b41', 'b42', 'b4i', 'b10', 'b11', 'b12', 'b1i', 'b2', 'theta'] as const;
+const ANGLE_FIELDS = ['b40', 'b41', 'b42', 'b10', 'b11', 'b12', 'b2', 'theta'] as const;
 
 function toNum(raw: string): number | null {
   const n = Number(String(raw ?? '').replace(',', '.'));
