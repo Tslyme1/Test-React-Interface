@@ -14,10 +14,14 @@ const FALLBACK = defaultWizardData().geom;
  * Число зон дробления — исходное данное методики: оно задаёт, сколько
  * троек «длина зоны + угол конуса + угол чаши» читается из формы.
  * Разбор строкой, потому что в форме это `Select` со строковым значением.
+ *
+ * Потолок — две зоны: столько троек есть в `GeomData`. Ограничение
+ * формы, а не методики — сам `computeChamberProfile` считает любое число
+ * зон, и контрольный пример §7 с тремя проверяется на нём напрямую.
  */
 export function crushingZones(data: GeomData): number {
   const parsed = Number(data.zones);
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.min(3, Math.round(parsed)) : 1;
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.min(2, Math.round(parsed)) : 1;
 }
 
 function toNum(raw: string, fallback: string): number {
@@ -46,17 +50,17 @@ export function buildChamberProfileInput(data: GeomData): ChamberProfileInput {
   const mm = (raw: string, fallback: string): number => toNum(raw, fallback);
 
   const zones = crushingZones(data);
-  /* Массивы обрезаются по числу зон: поля третьей зоны при двух зонах
+  /* Массивы обрезаются по числу зон: поля второй зоны при одной зоне
      в форме не показываются и в расчёт идти не должны, иначе профиль
      получил бы участок, которого пользователь не задавал. */
   return {
     zones,
     beta10: rad(data.b10, FALLBACK.b10),
-    beta1: [rad(data.b11, FALLBACK.b11), rad(data.b12, FALLBACK.b12), rad(data.b1i, FALLBACK.b1i)].slice(0, zones),
+    beta1: [rad(data.b11, FALLBACK.b11), rad(data.b12, FALLBACK.b12)].slice(0, zones),
     beta2: rad(data.b2, FALLBACK.b2),
     beta40: rad(data.b40, FALLBACK.b40),
-    beta4: [rad(data.b41, FALLBACK.b41), rad(data.b42, FALLBACK.b42), rad(data.b4i, FALLBACK.b4i)].slice(0, zones),
-    l1: [mm(data.l11, FALLBACK.l11), mm(data.l12, FALLBACK.l12), mm(data.l1i, FALLBACK.l1i)].slice(0, zones),
+    beta4: [rad(data.b41, FALLBACK.b41), rad(data.b42, FALLBACK.b42)].slice(0, zones),
+    l1: [mm(data.l11, FALLBACK.l11), mm(data.l12, FALLBACK.l12)].slice(0, zones),
     l2: mm(data.l2, FALLBACK.l2),
     D: mm(data.D, FALLBACK.D),
     H: mm(data.H, FALLBACK.H),

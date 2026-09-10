@@ -176,24 +176,20 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
        в чертёж не попадает. */
     const svg = page.getByTestId('chamber-scheme');
     const zones = page.getByRole('button', { name: 'Число зон дробления' });
-    await expect(zones).toContainText('3');
-    await expect(page.getByLabel('Зона 3 — l₁ᵢ, мм')).toBeVisible();
-    await expect(svg.locator('title', { hasText: 'Сегмент 12→1i' })).not.toHaveCount(0);
-
-    await zones.click();
-    await page.getByRole('option', { name: '2', exact: true }).click();
-
-    await expect(page.getByLabel('Зона 3 — l₁ᵢ, мм')).toHaveCount(0);
+    await expect(zones).toContainText('2');
     await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toBeVisible();
-    // Узлов стало на один меньше: 40 · 41 · 4i · 3 вместо 40 · 41 · 42 · 4i · 3.
-    await expect(svg.locator('title', { hasText: 'Сегмент 12→1i' })).toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).not.toHaveCount(0);
 
     await zones.click();
+    // Больше двух зон форма не спрашивает: третьей тройки полей в ней нет.
+    await expect(page.getByRole('option')).toHaveCount(2);
+    await expect(page.getByRole('option', { name: '3', exact: true })).toHaveCount(0);
     await page.getByRole('option', { name: '1', exact: true }).click();
 
+    // Узлов стало на один меньше: 40 · 4i · 3 вместо 40 · 41 · 4i · 3.
     await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toHaveCount(0);
     await expect(page.getByLabel('Зона 1 — l₁₁, мм')).toBeVisible();
+    await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'Сегмент 10→1i' })).not.toHaveCount(0);
   });
 

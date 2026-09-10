@@ -48,6 +48,16 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   const zoneCount = crushingZones(data);
 
   /**
+   * Узлы последней зоны дробления на чертеже подписаны i-ми (`4i` / `1i`):
+   * в методике i — номер последней зоны, поэтому при одной зоне это та же
+   * зона 1, при двух — зона 2. Ключи подсветки идут по тому же правилу,
+   * иначе связь «поле ↔ участок схемы» рвётся ровно на последней зоне —
+   * а её поля пользователь трогает чаще всего.
+   */
+  const LAST_ZONE = { bowl: 'n4i', cone: 'n1i' } as const;
+  const zone1Keys = zoneCount === 1 ? LAST_ZONE : ({ bowl: 'n41', cone: 'n11' } as const);
+
+  /**
    * Границы исходных данных (`geomLimits`). Ошибка выводится под полем
    * и вытесняет подсказку, поэтому высота формы не скачет. Значение при
    * этом не подменяется: правка, которую пользователь не делал, хуже
@@ -394,7 +404,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                   options={[
                     { value: '1', label: '1' },
                     { value: '2', label: '2' },
-                    { value: '3', label: '3' },
                   ]}
                   value={data.zones}
                   onChange={(v) => onChange({ zones: v as ZoneCount })}
@@ -409,7 +418,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoneCount >= 1 ? (
               <>
                 {zoned(
-                  'n41',
+                  zone1Keys.bowl,
                   <Field label="Зона 1 — l₁₁, мм" hint={hintWithDelta('l11')} error={errors.l11} labelHint={<FieldHint>{GEOM_GLOSSARY.l11}</FieldHint>}>
                     {(props) => (
                       <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} {...bounds('l11')} />
@@ -418,7 +427,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 )}
 
                 {zoned(
-                  'n11',
+                  zone1Keys.cone,
                   <Field label="Угол конуса β11" hint={hintWithDelta('b11')} error={errors.b11} labelHint={<FieldHint>{GEOM_GLOSSARY.b11}</FieldHint>}>
                     {(props) => (
                       <Input
@@ -435,7 +444,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 )}
 
                 {zoned(
-                  'n41',
+                  zone1Keys.bowl,
                   <Field label="Угол чаши β41" hint={hintWithDelta('b41')} error={errors.b41} labelHint={<FieldHint>{GEOM_GLOSSARY.b41}</FieldHint>}>
                     {(props) => (
                       <Input
@@ -456,7 +465,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {zoneCount >= 2 ? (
               <>
                 {zoned(
-                  'n42',
+                  LAST_ZONE.bowl,
                   <Field label="Зона 2 — l₁₂, мм" hint={hintWithDelta('l12')} error={errors.l12} labelHint={<FieldHint>{GEOM_GLOSSARY.l12}</FieldHint>}>
                     {(props) => (
                       <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} {...bounds('l12')} />
@@ -465,7 +474,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 )}
 
                 {zoned(
-                  'n12',
+                  LAST_ZONE.cone,
                   <Field label="Угол конуса β12" hint={hintWithDelta('b12')} error={errors.b12} labelHint={<FieldHint>{GEOM_GLOSSARY.b12}</FieldHint>}>
                     {(props) => (
                       <Input
@@ -482,7 +491,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 )}
 
                 {zoned(
-                  'n42',
+                  LAST_ZONE.bowl,
                   <Field label="Угол чаши β42" hint={hintWithDelta('b42')} error={errors.b42} labelHint={<FieldHint>{GEOM_GLOSSARY.b42}</FieldHint>}>
                     {(props) => (
                       <Input
@@ -500,52 +509,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               </>
             ) : null}
 
-            {zoneCount >= 3 ? (
-              <>
-                {zoned(
-                  'n4i',
-                  <Field label="Зона 3 — l₁ᵢ, мм" hint={hintWithDelta('l1i')} error={errors.l1i} labelHint={<FieldHint>{GEOM_GLOSSARY.l1i}</FieldHint>}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.l1i} onChange={(e) => onChange({ l1i: e.target.value })} {...bounds('l1i')} />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  'n1i',
-                  <Field label="Угол конуса β1i" hint={hintWithDelta('b1i')} error={errors.b1i} labelHint={<FieldHint>{GEOM_GLOSSARY.b1i}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b1i}
-                        onChange={(e) => onChange({ b1i: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b1i')}
-                      />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  'n4i',
-                  <Field label="Угол чаши β4i" hint={hintWithDelta('b4i')} error={errors.b4i} labelHint={<FieldHint>{GEOM_GLOSSARY.b4i}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b4i}
-                        onChange={(e) => onChange({ b4i: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b4i')}
-                      />
-                    )}
-                  </Field>
-                )}
-              </>
-            ) : null}
             </div>
           </Stack>
 
