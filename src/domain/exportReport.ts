@@ -58,12 +58,12 @@ export function exportStepToExcel(project: Project, stepKey: StepKey): void {
 }
 
 /**
- * Имя выражения NX — только латиница, цифры и `_`, не начинается с цифры.
- * Источник (`estimateGeom`) даёт русские подписи с индексами и знаками
- * («D₀, мм», «α — угол...») — они читаемы человеком в таблице результата,
- * но не годятся форматом Siemens NX Expressions.
+ * Имя параметра для CAD — только латиница, цифры и `_`, не начинается
+ * с цифры. Источник (`estimateGeom`) даёт русские подписи с индексами
+ * и знаками («D₀, мм», «α — угол...») — они читаемы человеком в таблице
+ * результата, но не годятся именем переменной в параметрической модели.
  */
-const NX_NAMES: Record<string, string> = {
+const CAD_PARAM_NAMES: Record<string, string> = {
   'D — диаметр основания конуса': 'D',
   'H — до основания конуса от подвеса': 'H',
   'S₀ — разгрузочная щель': 'S0',
@@ -81,18 +81,18 @@ const NX_NAMES: Record<string, string> = {
   'Q — объём камеры': 'volume',
 };
 
-function nxExpressionName(label: string, index: number): string {
-  return NX_NAMES[label] ?? `param_${index + 1}`;
+function cadParamName(label: string, index: number): string {
+  return CAD_PARAM_NAMES[label] ?? `param_${index + 1}`;
 }
 
 /**
- * Экспорт геометрии первого этапа в формат выражений Siemens NX (`.exp`) —
- * простой текст `имя = значение`, который NX умеет импортировать напрямую
- * в параметрическую модель камеры дробления. Только первый этап: у него
- * есть геометрический профиль камеры, который и передают в CAD, — грансостав
- * и продукт дробления параметрами модели не являются.
+ * Экспорт геометрии первого этапа в текстовый файл параметров для
+ * КОМПАС-3D — простой текст `имя = значение`, который удобно перенести
+ * в переменные параметрической модели камеры дробления. Только первый
+ * этап: у него есть геометрический профиль камеры, который и передают
+ * в CAD, — грансостав и продукт дробления параметрами модели не являются.
  */
-export function exportGeomToNx(project: Project): void {
+export function exportGeomToKompas(project: Project): void {
   const rows = buildStepReport(project, 'geom');
   if (rows.kind !== 'kv') return;
 
@@ -100,10 +100,10 @@ export function exportGeomToNx(project: Project): void {
     `// ${project.crusherName} · ${project.customer} · ${project.code}`,
     '// Экспортировано из интерфейса подбора конусных дробилок КМД/КСД',
     '',
-    ...rows.rows.map((r, i) => `${nxExpressionName(r.label, i)} = ${r.value} // ${r.label}${r.unit ? `, ${r.unit}` : ''}`),
+    ...rows.rows.map((r, i) => `${cadParamName(r.label, i)} = ${r.value} // ${r.label}${r.unit ? `, ${r.unit}` : ''}`),
   ];
 
-  downloadTextFile(`${project.code} — геометрия.exp`, lines.join('\r\n') + '\r\n', 'text/plain;charset=utf-8');
+  downloadTextFile(`${project.code} — геометрия.txt`, lines.join('\r\n') + '\r\n', 'text/plain;charset=utf-8');
 }
 
 function downloadTextFile(filename: string, content: string, mime: string): void {
