@@ -262,6 +262,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           }}
           nameLabel="Проба руды"
           inlineSpecs={['f', 'ρ, т/м³']}
+          allowCreate
         />
       </Modal>
 
