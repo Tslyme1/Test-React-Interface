@@ -819,6 +819,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           }}
           nameLabel="Дробилка"
           inlineSpecs={['D, мм', 'Q, т/ч']}
+          allowCreate
         />
       </Modal>
     </div>

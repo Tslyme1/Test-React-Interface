@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Checkbox, EmptyState, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import { Button, Checkbox, EmptyState, Field, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
 import type { Range, TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
 import styles from './CatalogPicker.module.css';
@@ -63,6 +63,13 @@ export type CatalogPickerProps = {
   filterDraftCount?: number;
   /** Уже отфильтрованный снаружи набор имён. Пусто — показываются все. */
   visibleNames?: string[];
+  /**
+   * Разрешает завести позицию, которой нет в справочнике: свою дробилку,
+   * свою пробу руды. Выключено по умолчанию — включается там, где выбор
+   * из каталога не обязан быть исчерпывающим: пикеры дробилки и пробы
+   * руды на шагах «Дробилка» и «Руда», в инженерном и упрощённом режиме.
+   */
+  allowCreate?: boolean;
 };
 
 /**
@@ -112,9 +119,12 @@ export function CatalogPicker({
   inlineFilter,
   inlineSpecs,
   visibleNames,
+  allowCreate = false,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [draftName, setDraftName] = useState('');
 
   /**
    * Диапазоны характеристик: применённые и черновик окна фильтров.
@@ -210,6 +220,19 @@ export function CatalogPicker({
   const activeBounds = useMemo(() => toBounds(rangeSpecs, ranges), [rangeSpecs, ranges]);
   const draftBounds = useMemo(() => toBounds(rangeSpecs, rangeDraft), [rangeSpecs, rangeDraft]);
 
+  /**
+   * Позиции, заведённые через «+ Новая»: их выбрали (`value`/`selected`),
+   * но в `items` такого имени нет. Синтезируем для них строку без
+   * характеристик — `values: {}` — чтобы своя дробилка вела себя в таблице
+   * как любая каталожная: её видно отмеченной, её можно снять тем же
+   * флажком, и `toggle()` для неё работает без отдельной ветки.
+   */
+  const virtualItems = useMemo<CatalogItem[]>(() => {
+    const known = new Set(items.map((item) => item.name));
+    const names = multiple ? (selected ?? []) : value ? [value] : [];
+    return names.filter((name) => !known.has(name)).map((name) => ({ name, values: {} }));
+  }, [items, multiple, selected, value]);
+
   const rows = useMemo(() => {
     const allowed = visibleNames ? new Set(visibleNames) : null;
     const query = search.trim().toLowerCase();
@@ -225,16 +248,23 @@ export function CatalogPicker({
       );
     });
 
-    if (!sort) return filtered;
+    /* Свои позиции — вне поиска и фильтров по характеристикам: у них этих
+       характеристик нет, и обычный числовой фильтр («от 900») спрятал бы
+       собственный выбор пользователя так, что не понять, почему он исчез
+       из уже применённого выбора. Они остаются на виду независимо от того,
+       чем сейчас сужен справочник. */
+    const combined = [...filtered, ...virtualItems];
 
-    const sorted = [...filtered].sort((a, b) => {
+    if (!sort) return combined;
+
+    const sorted = [...combined].sort((a, b) => {
       const av = sort.key === 'name' ? a.name : (a.values[sort.key] ?? '');
       const bv = sort.key === 'name' ? b.name : (b.values[sort.key] ?? '');
       return compareSpecValues(av, bv);
     });
 
     return sort.direction === 'desc' ? sorted.reverse() : sorted;
-  }, [items, visibleNames, search, sort, activeBounds]);
+  }, [items, virtualItems, visibleNames, search, sort, activeBounds]);
 
   /*
    * Одиночный выбор: нажатие по выбранной строке снимает выбор — иначе
@@ -249,6 +279,35 @@ export function CatalogPicker({
       return;
     }
     onPick(name === value ? null : name);
+  };
+
+  const startCreating = () => {
+    setDraftName('');
+    setCreating(true);
+  };
+
+  const cancelCreating = () => {
+    setCreating(false);
+    setDraftName('');
+  };
+
+  /**
+   * Подтверждение «+ Новая» ведёт себя как клик по строке: если имя уже
+   * есть в наборе (совпало с каталожным или с ранее заведённым своим),
+   * повторно добавлять нечего — просто закрываем форму. Так набор не
+   * захламляется двумя одинаковыми отметками одного и того же имени.
+   */
+  const confirmCreating = () => {
+    const name = draftName.trim();
+    if (!name) return;
+    if (multiple) {
+      const current = selected ?? [];
+      if (!current.includes(name)) onPickMultiple?.([...current, name]);
+    } else {
+      onPick(name);
+    }
+    setCreating(false);
+    setDraftName('');
   };
 
   const hasFilters = Boolean(filter) || rangeSpecs.length > 0;
@@ -382,7 +441,57 @@ export function CatalogPicker({
             {activeCount > 0 ? `Фильтры: ${activeCount}` : 'Фильтры'}
           </Button>
         ) : null}
+
+        {allowCreate && !creating ? (
+          <Button variant="secondary" iconStart="plus" onClick={startCreating}>
+            Новая
+          </Button>
+        ) : null}
       </div>
+
+      {/*
+       * Форма своей позиции — строкой под панелью поиска, а не поповером
+       * или вложенным окном: `CatalogPicker` уже живёт внутри чужого окна
+       * (см. шапку файла), а окно фильтров чуть ниже и так вынуждено
+       * подпирать перехват Esc костылём — плодить третий слой того же
+       * дефекта незачем. Требуется только имя: показать/сравнить машину
+       * по характеристикам можно только для того, что есть в справочнике,
+       * а своя позиция — это ровно то, чего в нём нет.
+       */}
+      {allowCreate && creating ? (
+        <div className={styles.createRow}>
+          <div className={styles.createField}>
+            <Field label={`Название: ${nameLabel.toLowerCase()}`} fullWidth>
+              {(props) => (
+                <Input
+                  {...props}
+                  fullWidth
+                  autoFocus
+                  placeholder={nameLabel}
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      confirmCreating();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      cancelCreating();
+                    }
+                  }}
+                />
+              )}
+            </Field>
+          </div>
+          <Button variant="secondary" onClick={cancelCreating}>
+            Отмена
+          </Button>
+          <Button variant="primary" disabled={!draftName.trim()} onClick={confirmCreating}>
+            Добавить
+          </Button>
+        </div>
+      ) : null}
 
       {/* `.scroll` — фиксированная высота (52vh) и собственный `overflow-y`:
           ровно предок с ограниченной высотой, которого требует `stickyHeader`,

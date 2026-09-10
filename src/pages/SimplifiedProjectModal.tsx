@@ -283,6 +283,7 @@ export function SimplifiedProjectModal({
               onPickMultiple={pickDraftCrushers}
               nameLabel="Дробилка"
               inlineSpecs={['D, мм', 'Q, т/ч']}
+              allowCreate
             />
           </Stack>
         ) : resultOpen ? (
@@ -343,6 +344,7 @@ export function SimplifiedProjectModal({
               onPickMultiple={changeCrusherNames}
               nameLabel="Дробилка"
               inlineSpecs={['D, мм', 'Q, т/ч']}
+              allowCreate
             />
           </Stack>
         ) : step === 1 ? (
@@ -360,6 +362,7 @@ export function SimplifiedProjectModal({
               onPickMultiple={changeOreNames}
               nameLabel="Проба руды"
               inlineSpecs={['f', 'ρ, т/м³']}
+              allowCreate
             />
           </Stack>
         ) : (
