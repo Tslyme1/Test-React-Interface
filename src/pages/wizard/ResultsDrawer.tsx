@@ -13,7 +13,7 @@ import {
   estimateProdGran,
 } from '@/domain/estimates';
 import type { CheckRow, GranRow, KvRow, ProfileRow } from '@/domain/estimates';
-import { exportGeomToNx, exportStepToExcel } from '@/domain/exportReport';
+import { exportGeomToKompas, exportStepToExcel } from '@/domain/exportReport';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
 import { CRUSHERS } from '@/data/crushers';
@@ -321,16 +321,16 @@ export function ResultsDrawer({
         <Stack direction="row" justify="between" align="center" grow>
           {/* Экспорт и печать — слева: это действия над отчётом, а «Закрыть»
               справа — действие над самой шторкой, и их не стоит путать в ряд
-              на одну сторону. NX — только для «Геометрии»: у неё есть профиль
-              камеры, который и передают в CAD, у остальных шагов параметров
-              модели нет. */}
+              на одну сторону. КОМПАС-3D — только для «Геометрии»: у неё есть
+              профиль камеры, который и передают в CAD, у остальных шагов
+              параметров модели нет. */}
           <Stack direction="row" gap="sm">
             <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
               Экспорт в Excel
             </Button>
             {stepKey === 'geom' ? (
-              <Button variant="secondary" iconStart="download" onClick={() => exportGeomToNx(project)}>
-                Экспорт в NX
+              <Button variant="secondary" iconStart="download" onClick={() => exportGeomToKompas(project)}>
+                Экспорт в Компас 3D
               </Button>
             ) : null}
             <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>

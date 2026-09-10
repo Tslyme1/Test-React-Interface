@@ -30,7 +30,7 @@ const MODE_STEP_DIFF: { step: string; engineering: string; simplified: string }[
   { step: 'Дробилка', engineering: 'Геометрия камеры вручную, поле за полем', simplified: 'Выбор из каталога, можно несколько' },
   { step: 'Руда', engineering: 'Грансостав вручную или ситовым анализом', simplified: 'Выбор проб из каталога, можно несколько' },
   { step: 'Продукт', engineering: 'Крупность, работа разрушения, КПД', simplified: 'Тип питания и максимальная крупность' },
-  { step: 'Результат', engineering: 'Отчёт по шагам, экспорт в Excel и NX', simplified: 'Отчёт по каждой паре «дробилка × проба»' },
+  { step: 'Результат', engineering: 'Отчёт по шагам, экспорт в Excel и Компас 3D', simplified: 'Отчёт по каждой паре «дробилка × проба»' },
 ];
 
 const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
