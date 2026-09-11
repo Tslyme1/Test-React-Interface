@@ -1,6 +1,6 @@
 import type { GeomData, GranData, Project } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
-import { CRUSHERS } from '@/data/crushers';
+import { catalogOf } from '@/state/userCatalog';
 import { estimateGeom, estimateGran, estimateProd, estimateProdGran } from './estimates';
 
 function firstNumber(value: string | undefined): number | null {
@@ -17,7 +17,7 @@ function firstNumber(value: string | undefined): number | null {
  */
 export function deriveGeomFromCrusher(crusherName: string): GeomData {
   const base = defaultWizardData().geom;
-  const specs = CRUSHERS.find((c) => c.name === crusherName)?.values;
+  const specs = catalogOf('crushers').find((c) => c.name === crusherName)?.values;
   const D = firstNumber(specs?.['D, мм']);
   const S0 = firstNumber(specs?.['S, мм']);
   return {

@@ -1,0 +1,279 @@
+import { useMemo, useState } from 'react';
+import { Button, Checkbox, EmptyState, Input, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import type { TableColumn } from '@uralmash/design-system';
+import type { CatalogItem } from '@/data/crushers';
+import type { CatalogEntry } from '@/domain/catalogEdits';
+import {
+  EMPTY_RANGE,
+  compareSpecValues,
+  formatBound,
+  matchesQuery,
+  rangeSpecsOf,
+  toBounds,
+  withinBounds,
+} from '@/domain/catalogFilter';
+import type { RangeMap } from '@/domain/catalogFilter';
+import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
+import { useUserCatalog } from '@/state/userCatalog';
+import type { CatalogKind } from '@/state/userCatalog';
+import styles from './CatalogMatchPicker.module.css';
+
+export type CatalogMatchPickerProps = {
+  kind: CatalogKind;
+  /** Подпись первой колонки и имя сущности: «Дробилка», «Проба руды». */
+  nameLabel: string;
+  /** Родительный падеж для счётчика: «дробилок», «проб». */
+  countLabel: string;
+  selected: string[];
+  onChange: (names: string[]) => void;
+};
+
+/**
+ * Подбор по параметрам — окно шага упрощённого режима, разделённое пополам.
+ *
+ * Слева задают параметры, справа появляются подходящие позиции — и только
+ * названия. Это и есть разница с каталогом инженерного режима
+ * (`CatalogPicker`): там выбор идёт **от** машины, и таблица показывает
+ * все её характеристики, чтобы было что сравнивать. Здесь выбор идёт
+ * от требований к машине, и девять столбцов справа отвечали бы на вопрос,
+ * который слева уже задан.
+ *
+ * Пока ни один параметр не задан и ничего не выбрано, справа пусто:
+ * список из тридцати машин «по умолчанию» — не результат подбора,
+ * и показывать его как результат значило бы сказать неправду.
+ *
+ * Правки справочника (своя машина, исправленная характеристика) живут
+ * в `state/userCatalog` и видны во всех проектах — см. пояснение там.
+ */
+export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onChange }: CatalogMatchPickerProps) {
+  const catalog = useUserCatalog(kind);
+
+  const [query, setQuery] = useState('');
+  const [ranges, setRanges] = useState<RangeMap>({});
+  /** `null` — форма закрыта; `{ item: null }` — заводим свою позицию. */
+  const [editing, setEditing] = useState<{ item: CatalogItem | null } | null>(null);
+
+  const rangeSpecs = useMemo(() => rangeSpecsOf(catalog.specs, catalog.items), [catalog.specs, catalog.items]);
+  const bounds = useMemo(() => toBounds(rangeSpecs, ranges), [rangeSpecs, ranges]);
+
+  const trimmedQuery = query.trim().toLowerCase();
+  const hasParams = trimmedQuery !== '' || bounds.length > 0;
+
+  /**
+   * Строки справа: подходящие под параметры плюс уже выбранные.
+   *
+   * Выбранные показываются всегда, даже если перестали подходить под
+   * только что суженный диапазон. Иначе собственный выбор пользователя
+   * исчезает с глаз, оставаясь в проекте, — и снять его нечем: строки,
+   * которой он отмечен, на экране больше нет.
+   */
+  const rows = useMemo(() => {
+    const picked = new Set(selected);
+
+    const matched = catalog.items.filter(
+      (item) => picked.has(item.name) || (hasParams && withinBounds(item, bounds) && matchesQuery(item, trimmedQuery))
+    );
+
+    /* Своя позиция, заведённая в другом проекте и здесь ещё не выбранная,
+       попадает сюда обычным путём — она уже часть справочника. */
+    return [...matched].sort((a, b) => compareSpecValues(a.name, b.name));
+  }, [catalog.items, selected, hasParams, bounds, trimmedQuery]);
+
+  const matchCount = useMemo(
+    () => (hasParams ? catalog.items.filter((item) => withinBounds(item, bounds) && matchesQuery(item, trimmedQuery)).length : 0),
+    [catalog.items, hasParams, bounds, trimmedQuery]
+  );
+
+  const toggle = (name: string) =>
+    onChange(selected.includes(name) ? selected.filter((n) => n !== name) : [...selected, name]);
+
+  const resetParams = () => {
+    setQuery('');
+    setRanges({});
+  };
+
+  const saveEntry = (entry: CatalogEntry) => {
+    catalog.save(entry);
+    /* Заведённая позиция сразу оказывается выбранной: её для того
+       и заводили. Правка каталожной выбор не трогает — пользователь
+       поправил данные, а не передумал насчёт машины. */
+    if (editing?.item === null && !selected.includes(entry.name)) onChange([...selected, entry.name]);
+  };
+
+  const columns: TableColumn<CatalogItem>[] = [
+    {
+      key: 'picked',
+      title: '',
+      width: '44px',
+      render: (item) => (
+        <Checkbox
+          checked={selected.includes(item.name)}
+          onChange={() => toggle(item.name)}
+          /* Клик по флажку не должен доигрываться до строки: `onRowClick`
+             в системе висит на самом `<tr>`, и всплывший клик переключал бы
+             выбор второй раз — то есть возвращал бы его обратно. */
+          onClick={(event) => event.stopPropagation()}
+          aria-label={`Выбрать ${item.name}`}
+        />
+      ),
+    },
+    {
+      key: 'name',
+      title: nameLabel,
+      /* Кнопка строки живёт на названии, а не на флажке слева: доступным
+         именем строки должно быть имя машины, а не «Выбрать КМД-2200Т». */
+      render: (item) => <Text variant="label">{item.name}</Text>,
+    },
+    {
+      key: 'edit',
+      title: '',
+      align: 'end',
+      width: '52px',
+      render: (item) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="pencil"
+          aria-label={`Изменить данные: ${item.name}`}
+          /* Правка — не выбор: клик по карандашу не должен доигрываться
+             до строки и заодно отмечать машину (см. флажок выше). */
+          onClick={(event) => {
+            event.stopPropagation();
+            setEditing({ item });
+          }}
+        />
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <div className={styles.split}>
+        {/* ── левая половина: параметры ── */}
+        <div className={styles.pane}>
+          <div className={styles.paneHead}>
+            <Text variant="label">Параметры подбора</Text>
+            <Button variant="ghost" size="sm" disabled={!hasParams} onClick={resetParams}>
+              Сбросить
+            </Button>
+          </div>
+
+          <div className={styles.params}>
+            <Stack gap="sm" direction="column">
+              {/* Назначение написано внутри самих полей и служит их
+                  доступным именем — подпись над каждым из десяти соседних
+                  условий дублировала бы то же слово и удваивала высоту
+                  панели. То же исключение, что у строки фильтров. */}
+              <Input
+                fullWidth
+                type="search"
+                aria-label={`Поиск: ${nameLabel.toLowerCase()} или значение характеристики`}
+                placeholder="Название или значение"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+
+              {rangeSpecs.map(({ spec, min, max }) => (
+                <RangeSelect
+                  key={spec.short}
+                  fullWidth
+                  placeholder={spec.short}
+                  fromHint={formatBound(min)}
+                  toHint={formatBound(max)}
+                  value={ranges[spec.short] ?? EMPTY_RANGE}
+                  onChange={(next) => setRanges((current) => ({ ...current, [spec.short]: next }))}
+                />
+              ))}
+            </Stack>
+          </div>
+        </div>
+
+        {/* ── правая половина: что подходит ── */}
+        <div className={styles.pane}>
+          <div className={styles.paneHead}>
+            {/* Счётчик выбранного — всегда, а не вместо счётчика подходящих:
+                это два разных ответа («сколько я взял» и «сколько ещё есть»),
+                и подменять один другим при вводе параметра значит прятать
+                от пользователя его собственный набор. */}
+            <Stack gap="sm" direction="row" align="baseline">
+              <Text variant="label">
+                Выбрано {countLabel}: {selected.length}
+              </Text>
+              {hasParams ? (
+                <Text variant="bodySm" color="textMuted">
+                  подходит: {matchCount}
+                </Text>
+              ) : null}
+            </Stack>
+            <Button variant="secondary" size="sm" iconStart="plus" onClick={() => setEditing({ item: null })}>
+              Новая
+            </Button>
+          </div>
+
+          <div className={styles.paneScroll}>
+            <Table
+              columns={columns}
+              rows={rows}
+              rowKey={(item) => item.name}
+              caption={nameLabel}
+              captionHidden
+              rowActionKey="name"
+              stickyHeader
+              onRowClick={(item) => toggle(item.name)}
+              empty={
+                hasParams ? (
+                  <EmptyState
+                    icon="search"
+                    title="Ничего не подходит"
+                    description="Ослабьте условия слева или заведите свою позицию."
+                  />
+                ) : (
+                  <EmptyState
+                    icon="slidersHorizontal"
+                    title="Задайте параметры слева"
+                    description={`Подходящие ${countLabel} появятся здесь.`}
+                  />
+                )
+              }
+            />
+          </div>
+
+          {/* Что именно поправили — под таблицей, как и просили: правка
+              уходит в справочник молча, и без этого списка о ней потом
+              напоминает только изменившееся число в ячейке. */}
+          {catalog.changes.length > 0 ? (
+            <div className={styles.changes}>
+              <Stack gap="xs" direction="column">
+                <Text variant="label">Изменения в справочнике</Text>
+                {catalog.changes.map((change) => (
+                  <Stack key={change.name} gap="xs" direction="column">
+                    <Text variant="bodySm">
+                      {change.name} — {change.kind === 'added' ? 'новая позиция' : 'данные изменены'}
+                    </Text>
+                    {change.fields.map((field) => (
+                      <div key={field.spec} className={styles.changeLine}>
+                        <Text variant="bodySm" color="textMuted">
+                          {field.spec}: было {field.before} → стало {field.after}
+                        </Text>
+                      </div>
+                    ))}
+                  </Stack>
+                ))}
+              </Stack>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <CatalogItemForm
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        item={editing?.item ?? null}
+        specs={catalog.specs}
+        nameLabel={nameLabel}
+        takenNames={catalog.items.map((item) => item.name)}
+        onSave={saveEntry}
+      />
+    </>
+  );
+}

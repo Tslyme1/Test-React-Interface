@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Button, Field, Input, Modal, Select } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
-import { CRUSHERS, CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
+import { CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
+import { useUserCatalog } from '@/state/userCatalog';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
 import styles from './NewProjectModal.module.css';
 
@@ -43,6 +44,9 @@ const FAMILY_OPTIONS = [
  * непрерывным окном без переходов, а не формой с одной машиной здесь.
  */
 export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: NewProjectModalProps) {
+  /* Справочник с правками пользователя — один на приложение: заведённая
+     своя машина обязана быть доступна и при создании проекта. */
+  const crusherCatalog = useUserCatalog('crushers');
   const [crusherName, setCrusherName] = useState<string | null>(null);
   const [name, setName] = useState('');
   /**
@@ -104,7 +108,7 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
   };
 
   const visibleCrushers = family
-    ? CRUSHERS.filter((c) => crusherFamily(c.name) === family).map((c) => c.name)
+    ? crusherCatalog.items.filter((c) => crusherFamily(c.name) === family).map((c) => c.name)
     : undefined;
 
   return (
@@ -157,7 +161,7 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
     >
       <CatalogPicker
         specs={CRUSHER_SPECS}
-        items={CRUSHERS}
+        items={crusherCatalog.items}
         value={crusherName}
         onPick={pickCrusher}
         nameLabel="Дробилка"

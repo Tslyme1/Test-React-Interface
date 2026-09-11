@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, Field, Input, Modal, Select, Stack, Stepper, Table, Text } from '@uralmash/design-system';
 import type { SelectOption, Step, TableColumn } from '@uralmash/design-system';
-import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
+import { CatalogMatchPicker } from '@/components/CatalogMatchPicker/CatalogMatchPicker';
 import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
-import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
-import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
 import { buildComboReport, buildSimplifiedCombos } from '@/domain/simplifiedEstimates';
 import type { GranRow, KvRow } from '@/domain/estimates';
@@ -270,20 +268,14 @@ export function SimplifiedProjectModal({
         {!project ? (
           <Stack gap="md" direction="column">
             <Text variant="bodySm" color="textMuted">
-              Выбрано дробилок: {draftCrushers.length}. Можно выбрать несколько — расчёт на шаге «Продукт» пройдёт по
-              каждой отдельно.
+              Можно выбрать несколько машин: расчёт на шаге «Продукт» пройдёт по каждой отдельно.
             </Text>
-            <CatalogPicker
-              specs={CRUSHER_SPECS}
-              items={CRUSHERS}
-              value={null}
-              onPick={() => {}}
-              multiple
-              selected={draftCrushers}
-              onPickMultiple={pickDraftCrushers}
+            <CatalogMatchPicker
+              kind="crushers"
               nameLabel="Дробилка"
-              inlineSpecs={['D, мм', 'Q, т/ч']}
-              allowCreate
+              countLabel="дробилок"
+              selected={draftCrushers}
+              onChange={pickDraftCrushers}
             />
           </Stack>
         ) : resultOpen ? (
@@ -330,41 +322,21 @@ export function SimplifiedProjectModal({
             )}
           </Stack>
         ) : step === 0 ? (
-          <Stack gap="md" direction="column">
-            <Text variant="bodySm" color="textMuted">
-              Выбрано дробилок: {project.crusherNames.length}
-            </Text>
-            <CatalogPicker
-              specs={CRUSHER_SPECS}
-              items={CRUSHERS}
-              value={null}
-              onPick={() => {}}
-              multiple
-              selected={project.crusherNames}
-              onPickMultiple={changeCrusherNames}
-              nameLabel="Дробилка"
-              inlineSpecs={['D, мм', 'Q, т/ч']}
-              allowCreate
-            />
-          </Stack>
+          <CatalogMatchPicker
+            kind="crushers"
+            nameLabel="Дробилка"
+            countLabel="дробилок"
+            selected={project.crusherNames}
+            onChange={changeCrusherNames}
+          />
         ) : step === 1 ? (
-          <Stack gap="md" direction="column">
-            <Text variant="bodySm" color="textMuted">
-              Выбрано проб: {project.oreNames.length}
-            </Text>
-            <CatalogPicker
-              specs={ORE_SPECS}
-              items={ORE_SAMPLES}
-              value={null}
-              onPick={() => {}}
-              multiple
-              selected={project.oreNames}
-              onPickMultiple={changeOreNames}
-              nameLabel="Проба руды"
-              inlineSpecs={['f', 'ρ, т/м³']}
-              allowCreate
-            />
-          </Stack>
+          <CatalogMatchPicker
+            kind="ores"
+            nameLabel="Проба руды"
+            countLabel="проб"
+            selected={project.oreNames}
+            onChange={changeOreNames}
+          />
         ) : (
           <ProdStep data={project.data.prod} onChange={patchProd} simplified />
         )}
