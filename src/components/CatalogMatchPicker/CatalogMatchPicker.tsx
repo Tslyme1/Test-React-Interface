@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Checkbox, EmptyState, Input, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import { Button, Checkbox, EmptyState, Field, Input, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { CatalogItem } from '@/data/crushers';
 import type { CatalogEntry } from '@/domain/catalogEdits';
@@ -14,6 +14,7 @@ import {
 } from '@/domain/catalogFilter';
 import type { RangeMap } from '@/domain/catalogFilter';
 import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
+import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { useUserCatalog } from '@/state/userCatalog';
 import type { CatalogKind } from '@/state/userCatalog';
 import styles from './CatalogMatchPicker.module.css';
@@ -159,30 +160,55 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
           </div>
 
           <div className={styles.params}>
-            <Stack gap="sm" direction="column">
-              {/* Назначение написано внутри самих полей и служит их
-                  доступным именем — подпись над каждым из десяти соседних
-                  условий дублировала бы то же слово и удваивала высоту
-                  панели. То же исключение, что у строки фильтров. */}
-              <Input
+            <Stack gap="md" direction="column">
+              {/* Подписи здесь есть — в отличие от строки фильтров над
+                  каталогом, где их намеренно нет. Там условия стоят в ряд,
+                  и подпись над каждым удваивала бы высоту полосы; здесь
+                  параметры идут столбцом, подпись занимает ту же строку,
+                  что и так есть, а короткая запись величины («n, мин⁻¹»,
+                  «P, МН») сама по себе ничего не говорит тому, кто видит
+                  её впервые. Полное имя — в подсказке у подписи, тем же
+                  приёмом, что и у полей геометрии на шаге 1. */}
+              <Field
+                label="Название"
+                hint="Ищет и по значению характеристики: инженер помнит «2200», а не имя целиком."
                 fullWidth
-                type="search"
-                aria-label={`Поиск: ${nameLabel.toLowerCase()} или значение характеристики`}
-                placeholder="Название или значение"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              >
+                {(props) => (
+                  <Input
+                    {...props}
+                    fullWidth
+                    type="search"
+                    placeholder="Название или значение"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                )}
+              </Field>
 
+              {/* Границы шкалы справочника подписывать отдельно не нужно:
+                  они стоят подсказками в самих полях панели («от 900»,
+                  «до 3500»), и строка под каждым из десяти условий
+                  повторяла бы их второй раз. */}
               {rangeSpecs.map(({ spec, min, max }) => (
-                <RangeSelect
+                <Field
                   key={spec.short}
+                  label={spec.short}
+                  labelHint={<FieldHint>{spec.label}</FieldHint>}
                   fullWidth
-                  placeholder={spec.short}
-                  fromHint={formatBound(min)}
-                  toHint={formatBound(max)}
-                  value={ranges[spec.short] ?? EMPTY_RANGE}
-                  onChange={(next) => setRanges((current) => ({ ...current, [spec.short]: next }))}
-                />
+                >
+                  {(props) => (
+                    <RangeSelect
+                      {...props}
+                      fullWidth
+                      placeholder={spec.short}
+                      fromHint={formatBound(min)}
+                      toHint={formatBound(max)}
+                      value={ranges[spec.short] ?? EMPTY_RANGE}
+                      onChange={(next) => setRanges((current) => ({ ...current, [spec.short]: next }))}
+                    />
+                  )}
+                </Field>
               ))}
             </Stack>
           </div>

@@ -213,6 +213,11 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
             onChange={(next) => setFamilyDraft((next as Family) ?? null)}
           />
         }
+        /* Своя машина заводится и здесь — это первое место, где инженер
+           выбирает дробилку, и отсутствие кнопки здесь означало бы «сначала
+           заведи проект на чужой машине, потом смени её на свою». */
+        allowCreate
+        onCreateItem={crusherCatalog.save}
       />
     </Modal>
   );

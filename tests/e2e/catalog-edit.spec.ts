@@ -84,7 +84,7 @@ test.describe('Подбор по параметрам: две половины �
     // Ни одной строки: тридцать машин «по умолчанию» — не результат подбора.
     await expect(dialog.getByRole('checkbox')).toHaveCount(0);
 
-    await dialog.getByLabel(/^Поиск:/).fill('КМД-2000Т');
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
 
     await expect(dialog.getByText('Задайте параметры слева')).toHaveCount(0);
     await expect(dialog.getByRole('row', { name: /КМД-2000Т/ })).toBeVisible();
@@ -124,10 +124,26 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByText('КСД-9000 опытная — новая позиция')).toBeVisible();
   });
 
+  test('у каждого параметра слева есть подпись и подсказка с полным именем величины', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    // Короткая запись величины сама по себе ничего не говорит тому, кто
+    // видит её впервые, — полное имя лежит в подсказке у подписи.
+    const label = dialog.locator('label').filter({ hasText: 'n, мин⁻¹' });
+    await expect(label).toHaveCount(1);
+    await expect(label.getByRole('button', { name: 'Что означает этот параметр' })).toHaveCount(1);
+
+    /* Подпись связана с контролом, а не просто лежит рядом: иначе она
+       повисает в пустоте, и поле остаётся безымянным для скринридера.
+       Имя ищется по вхождению — значок-подсказка стоит внутри `<label>`
+       и добавляет к нему своё («Что означает этот параметр»). */
+    await expect(dialog.getByLabel('P, МН')).toBeVisible();
+  });
+
   test('правка данных машины показывает под таблицей, что было и что стало', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
-    await dialog.getByLabel(/^Поиск:/).fill('КМД-2000Т');
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
     await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
 
     const form = page.getByRole('dialog', { name: /правка данных/ });
@@ -144,6 +160,21 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByText(`N, кВт: было ${before} → стало 777`)).toBeVisible();
     // Правка данных — не выбор машины: набор она не трогает.
     await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
+  });
+
+  test('в инженерном режиме свою дробилку заводят прямо в окне нового проекта', async ({ page }) => {
+    await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Новый проект' });
+
+    await dialog.getByRole('button', { name: 'Новая' }).click();
+    const form = page.getByRole('dialog', { name: /Новая позиция/ });
+    await form.getByLabel('Название: дробилка').fill('КСД-9000 опытная');
+    await form.getByLabel('D, мм', { exact: true }).fill('9000');
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+
+    // Заведённая машина сразу выбрана — по ней же подставляется имя проекта.
+    await expect(dialog.getByRole('row', { name: /КСД-9000 опытная/ })).toBeVisible();
+    await expect(dialog.getByLabel('Название проекта')).toHaveValue('КСД-9000 опытная');
   });
 
   test('заведённая дробилка находится и в инженерном режиме', async ({ page }) => {

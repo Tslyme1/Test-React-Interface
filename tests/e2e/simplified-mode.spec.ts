@@ -31,7 +31,7 @@ async function switchToSimplified(page: Page) {
  * пустого состояния.
  */
 async function pickByName(dialog: Locator, name: string) {
-  await dialog.getByLabel(/^Поиск:/).fill(name);
+  await dialog.getByLabel('Название', { exact: true }).fill(name);
   await dialog.getByRole('row', { name: new RegExp(name) }).click();
 }
 
