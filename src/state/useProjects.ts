@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { GeomData, GranData, ProdData, Project, ProjectMode, SieveRowData, WizardData, ZoneCount } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
-import { CRUSHERS } from '@/data/crushers';
+import { catalogOf } from '@/state/userCatalog';
 import { formatDate } from '@/domain/date';
 
 const STORAGE_KEY = 'uztm-projects';
@@ -652,7 +652,7 @@ export function useProjects() {
     // Характеристики берутся из каталога выбранной машины: они известны
     // сразу после выбора, и оставлять три колонки прочерками до расчёта
     // значит показывать полупустую строку там, где данные уже есть.
-    const specs = CRUSHERS.find((c) => c.name === primaryName)?.values;
+    const specs = catalogOf('crushers').find((c) => c.name === primaryName)?.values;
 
     const project: Project = {
       id: makeId(),

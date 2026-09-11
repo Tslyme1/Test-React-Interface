@@ -3,7 +3,8 @@ import { Badge, Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralm
 import type { Step } from '@uralmash/design-system';
 import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
-import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
+import { ORE_SPECS } from '@/data/oreSamples';
+import { useUserCatalog } from '@/state/userCatalog';
 import { GeometryStep } from './GeometryStep';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
@@ -31,6 +32,9 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   // он остаётся на шаге 0, а поверх него открывается выбор пробы. Показывать
   // шаг заглушкой «нечем считать» хуже, чем сразу дать выбрать.
   const [orePickerOpen, setOrePickerOpen] = useState(false);
+  /* Справочник проб с правками пользователя — один на приложение:
+     заведённая в упрощённом режиме проба обязана находиться и здесь. */
+  const oreCatalog = useUserCatalog('ores');
   const [resultOpen, setResultOpen] = useState(false);
   // Последний непустой шаг результата держим отдельно от `resultOpen`:
   // при закрытии контент не должен мигать на пустое, пока `Drawer`
@@ -252,7 +256,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
       >
         <CatalogPicker
           specs={ORE_SPECS}
-          items={ORE_SAMPLES}
+          items={oreCatalog.items}
           value={project.ore || null}
           onPick={(picked) => {
             /* Снятие выбора здесь ничего не даёт: шаг без пробы закрыт
@@ -263,6 +267,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           nameLabel="Проба руды"
           inlineSpecs={['f', 'ρ, т/м³']}
           allowCreate
+          onCreateItem={oreCatalog.save}
         />
       </Modal>
 

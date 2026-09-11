@@ -1,8 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Checkbox, EmptyState, Field, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import { Button, Checkbox, EmptyState, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
 import type { Range, TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
+import type { CatalogEntry } from '@/domain/catalogEdits';
+import {
+  EMPTY_RANGE,
+  compareSpecValues,
+  formatBound,
+  matchesQuery,
+  rangeSpecsOf,
+  toBounds,
+  withinBounds,
+} from '@/domain/catalogFilter';
+import type { RangeMap, RangeSpec } from '@/domain/catalogFilter';
+import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
+import { useTopEscape } from '@/hooks/useTopEscape';
 import styles from './CatalogPicker.module.css';
 
 export type CatalogPickerProps = {
@@ -70,26 +83,13 @@ export type CatalogPickerProps = {
    * руды на шагах «Дробилка» и «Руда», в инженерном и упрощённом режиме.
    */
   allowCreate?: boolean;
+  /**
+   * Куда сохранить заведённую позицию — правки справочника живут отдельно
+   * от проекта (`state/userCatalog`). Без него «+ Новая» не показывается:
+   * кнопка, после которой позиция никуда не попадает, обманывает.
+   */
+  onCreateItem?: (entry: CatalogEntry) => void;
 };
-
-/**
- * Границы по короткой подписи колонки.
- *
- * Сам `Range` приходит из системы вместе с `RangeSelect`: поле и хранилище
- * его значения обязаны говорить об одном и том же одним типом.
- */
-type RangeMap = Record<string, Range>;
-
-/** Колонка, пригодная для отбора диапазоном, и шкала её значений в справочнике. */
-type RangeSpec = { spec: SpecColumn; min: number; max: number };
-
-/** Разобранное условие: `null` — граница не задана. */
-type Bound = { key: string; from: number | null; to: number | null };
-
-const EMPTY_RANGE: Range = { from: '', to: '' };
-
-/** Прочерк в справочнике: величина не измерялась. */
-const DASH = '—';
 
 /**
  * Выбор позиции справочника таблицей характеристик.
@@ -120,11 +120,11 @@ export function CatalogPicker({
   inlineSpecs,
   visibleNames,
   allowCreate = false,
+  onCreateItem,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [draftName, setDraftName] = useState('');
 
   /**
    * Диапазоны характеристик: применённые и черновик окна фильтров.
@@ -137,40 +137,14 @@ export function CatalogPicker({
   const [ranges, setRanges] = useState<RangeMap>({});
   const [rangeDraft, setRangeDraft] = useState<RangeMap>({});
 
-  /**
-   * Esc закрывает только верхнее окно.
-   *
-   * Каталог живёт внутри окна нового проекта, а окно фильтров открывается
-   * поверх него — два `Modal` разом. Каждый вешает свой обработчик Esc на
-   * `document` в фазе всплытия, и порядок срабатывания у них — порядок
-   * подписки: внешнее окно смонтировано раньше, поэтому первым закрывается
-   * оно. Нажатие Esc в фильтрах уносило вместе с ними и весь выбор дробилки.
-   *
-   * Перехватываем на погружении: обработчик на `document` в фазе capture
-   * идёт раньше любых всплывающих на том же узле, поэтому здесь событие
-   * можно остановить и закрыть ровно то окно, которое сверху. Своё закрытие
-   * приходится делать руками — остановленное событие не дойдёт и до
-   * собственного обработчика окна фильтров.
-   *
-   * Это подпорка под дефект системы: `Modal` не проверяет, верхний ли он
-   * слой. Заявка в дизайн-систему — отдельно; чинить там, а не здесь.
-   */
-  useEffect(() => {
-    if (!filtersOpen) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.stopPropagation();
-      /* Тот же путь, что у крестика и клика по фону: Esc — это отказ,
-         и черновик он обязан отбросить. Раньше здесь стояло голое
-         закрытие, и невзятое условие доживало до следующего открытия. */
-      onFiltersCancel?.();
-      setFiltersOpen(false);
-    };
-
-    document.addEventListener('keydown', onKeyDown, true);
-    return () => document.removeEventListener('keydown', onKeyDown, true);
-  }, [filtersOpen, onFiltersCancel]);
+  /* Окно фильтров открывается поверх окна, в котором живёт сам каталог, —
+     Esc обязан закрыть только его. Тот же путь, что у крестика и клика
+     по фону: Esc — это отказ, и черновик он обязан отбросить. */
+  const escapeFilters = useCallback(() => {
+    onFiltersCancel?.();
+    setFiltersOpen(false);
+  }, [onFiltersCancel]);
+  useTopEscape(filtersOpen, escapeFilters);
 
   /**
    * Сортировка по первой характеристике — у дробилок это диаметр конуса,
@@ -182,33 +156,8 @@ export function CatalogPicker({
     specs.length > 0 ? { key: specs[0].short, direction: 'asc' } : null
   );
 
-  /**
-   * Колонки, по которым можно отбирать диапазоном.
-   *
-   * Не все: у дробилок значения числовые целиком («2200», «5-15», «160/250»),
-   * а у проб руды половина колонок — словесные («до 170», «X (очень крепкие)»,
-   * «высокоабраз. Ка=3.16»). Поле «от — до» над такой колонкой обещало бы
-   * отбор, которого не выйдет: сравнивать там нечего. Поэтому набор фильтров
-   * выводится из самих значений, а не из списка колонок.
-   *
-   * Границы шкалы берутся по всему справочнику, а не по текущей выборке:
-   * подсказка «от 900» не должна ездить вслед за уже применённым фильтром.
-   */
-  const rangeSpecs = useMemo<RangeSpec[]>(() => {
-    const out: RangeSpec[] = [];
-
-    for (const spec of specs) {
-      const values = items.map((item) => item.values[spec.short] ?? '').filter((v) => v && v !== DASH);
-      if (values.length === 0 || !values.every(isNumericValue)) continue;
-
-      const numbers = values.flatMap(numbersIn);
-      if (numbers.length === 0) continue;
-
-      out.push({ spec, min: Math.min(...numbers), max: Math.max(...numbers) });
-    }
-
-    return out;
-  }, [specs, items]);
+  /** Колонки, пригодные для отбора диапазоном, — см. `rangeSpecsOf`. */
+  const rangeSpecs = useMemo<RangeSpec[]>(() => rangeSpecsOf(specs, items), [specs, items]);
 
   /* Порядок — как в справочнике, а не как в списке вызывающего: строка
      фильтров обязана читаться в том же порядке, что и колонки таблицы. */
@@ -240,12 +189,7 @@ export function CatalogPicker({
     const filtered = items.filter((item) => {
       if (allowed && !allowed.has(item.name)) return false;
       if (!withinBounds(item, activeBounds)) return false;
-      if (!query) return true;
-      // Ищем и по названию, и по значениям: инженер помнит «2200», а не имя целиком.
-      return (
-        item.name.toLowerCase().includes(query) ||
-        Object.values(item.values).some((v) => v.toLowerCase().includes(query))
-      );
+      return matchesQuery(item, query);
     });
 
     /* Свои позиции — вне поиска и фильтров по характеристикам: у них этих
@@ -281,33 +225,23 @@ export function CatalogPicker({
     onPick(name === value ? null : name);
   };
 
-  const startCreating = () => {
-    setDraftName('');
-    setCreating(true);
-  };
-
-  const cancelCreating = () => {
-    setCreating(false);
-    setDraftName('');
-  };
-
   /**
-   * Подтверждение «+ Новая» ведёт себя как клик по строке: если имя уже
-   * есть в наборе (совпало с каталожным или с ранее заведённым своим),
-   * повторно добавлять нечего — просто закрываем форму. Так набор не
-   * захламляется двумя одинаковыми отметками одного и того же имени.
+   * Заведённая позиция сразу и попадает в справочник, и оказывается
+   * выбранной: кнопку «Новая» нажимают посреди выбора, и заставлять
+   * искать только что заведённую машину в таблице значило бы прервать
+   * ровно то действие, ради которого её и заводили.
+   *
+   * Если имя уже в наборе, повторно добавлять нечего — набор не должен
+   * захламляться двумя одинаковыми отметками одного имени.
    */
-  const confirmCreating = () => {
-    const name = draftName.trim();
-    if (!name) return;
+  const saveCreated = (entry: CatalogEntry) => {
+    onCreateItem?.(entry);
     if (multiple) {
       const current = selected ?? [];
-      if (!current.includes(name)) onPickMultiple?.([...current, name]);
+      if (!current.includes(entry.name)) onPickMultiple?.([...current, entry.name]);
     } else {
-      onPick(name);
+      onPick(entry.name);
     }
-    setCreating(false);
-    setDraftName('');
   };
 
   const hasFilters = Boolean(filter) || rangeSpecs.length > 0;
@@ -357,6 +291,10 @@ export function CatalogPicker({
         <Checkbox
           checked={multiple ? (selected ?? []).includes(item.name) : item.name === value}
           onChange={() => toggle(item.name)}
+          /* Клик по флажку не должен доигрываться до строки: `onRowClick`
+             в системе висит на самом `<tr>`, и всплывший клик переключал бы
+             выбор второй раз — то есть возвращал бы его обратно. */
+          onClick={(event) => event.stopPropagation()}
           aria-label={`Выбрать ${item.name}`}
         />
       ),
@@ -442,56 +380,12 @@ export function CatalogPicker({
           </Button>
         ) : null}
 
-        {allowCreate && !creating ? (
-          <Button variant="secondary" iconStart="plus" onClick={startCreating}>
+        {allowCreate && onCreateItem ? (
+          <Button variant="secondary" iconStart="plus" onClick={() => setCreating(true)}>
             Новая
           </Button>
         ) : null}
       </div>
-
-      {/*
-       * Форма своей позиции — строкой под панелью поиска, а не поповером
-       * или вложенным окном: `CatalogPicker` уже живёт внутри чужого окна
-       * (см. шапку файла), а окно фильтров чуть ниже и так вынуждено
-       * подпирать перехват Esc костылём — плодить третий слой того же
-       * дефекта незачем. Требуется только имя: показать/сравнить машину
-       * по характеристикам можно только для того, что есть в справочнике,
-       * а своя позиция — это ровно то, чего в нём нет.
-       */}
-      {allowCreate && creating ? (
-        <div className={styles.createRow}>
-          <div className={styles.createField}>
-            <Field label={`Название: ${nameLabel.toLowerCase()}`} fullWidth>
-              {(props) => (
-                <Input
-                  {...props}
-                  fullWidth
-                  autoFocus
-                  placeholder={nameLabel}
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      confirmCreating();
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      cancelCreating();
-                    }
-                  }}
-                />
-              )}
-            </Field>
-          </div>
-          <Button variant="secondary" onClick={cancelCreating}>
-            Отмена
-          </Button>
-          <Button variant="primary" disabled={!draftName.trim()} onClick={confirmCreating}>
-            Добавить
-          </Button>
-        </div>
-      ) : null}
 
       {/* `.scroll` — фиксированная высота (52vh) и собственный `overflow-y`:
           ровно предок с ограниченной высотой, которого требует `stickyHeader`,
@@ -587,99 +481,22 @@ export function CatalogPicker({
           ) : null}
         </Stack>
       </Modal>
+
+      {/* Своя позиция заводится тем же окном, каким правят каталожную:
+          вопрос один и тот же — какие у этой машины характеристики.
+          Окно во окне здесь неизбежно (каталог сам живёт внутри окна),
+          поэтому Esc перехвачен так же, как у фильтров. */}
+      {allowCreate && onCreateItem ? (
+        <CatalogItemForm
+          open={creating}
+          onClose={() => setCreating(false)}
+          item={null}
+          specs={specs}
+          nameLabel={nameLabel}
+          takenNames={items.map((item) => item.name)}
+          onSave={saveCreated}
+        />
+      ) : null}
     </Stack>
   );
-}
-
-/**
- * Сравнение значений характеристик.
- *
- * Значения инженерные и неоднородные: «2200», «5-15», «160/250», «—».
- * Сортировка по строке поставила бы «1200» выше «900», поэтому сравниваем
- * по первому числу, а к строковому сравнению падаем только когда числа нет.
- * Прочерк всегда уходит вниз: отсутствие величины — не наименьшее значение.
- */
-function compareSpecValues(a: string, b: string): number {
-  const DASH = '—';
-  if (a === DASH && b === DASH) return 0;
-  if (a === DASH) return 1;
-  if (b === DASH) return -1;
-
-  const na = leadingNumber(a);
-  const nb = leadingNumber(b);
-  if (na !== null && nb !== null && na !== nb) return na - nb;
-
-  return a.localeCompare(b, 'ru', { numeric: true });
-}
-
-function leadingNumber(value: string): number | null {
-  const match = value.replace(',', '.').match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : null;
-}
-
-/**
- * Годится ли колонка для отбора диапазоном.
- *
- * Годится, когда каждое её значение состоит из чисел и разделителей —
- * «2200», «5-15», «160/250», «16.8 (15-18)». Любая буква означает словесную
- * величину («до 170», «высокоабраз. Ка=3.16»), а её нельзя ни сравнить,
- * ни отобрать по границам; предложить над такой колонкой поле «от — до»
- * значило бы пообещать отбор, которого не выйдет.
- *
- * Классы записаны через 0-9, а не через сокращения: в них не должно
- * оказаться ни букв, ни знаков, которых мы не разбираем.
- */
-function isNumericValue(value: string): boolean {
-  return /[0-9]/.test(value) && /^[0-9 .,()/–—-]+$/.test(value);
-}
-
-/** Все числа значения по порядку. Знак не разбирается: отрицательных величин в справочниках нет. */
-function numbersIn(value: string): number[] {
-  return [...value.matchAll(/[0-9]+(?:[.,][0-9]+)?/g)].map((m) => Number(m[0].replace(',', '.')));
-}
-
-/**
- * Отрезок, который занимает значение ячейки: «5-15» — это [5, 15], «2200» —
- * точка [2200, 2200]. Прочерк отрезка не даёт: неизмеренная величина
- * ни в какие границы не попадает.
- */
-function spanOf(value: string | undefined): { lo: number; hi: number } | null {
-  if (!value || value === DASH) return null;
-  const numbers = numbersIn(value);
-  if (numbers.length === 0) return null;
-  return { lo: Math.min(...numbers), hi: Math.max(...numbers) };
-}
-
-/** Введённая граница. Пустая строка и нечисло — «не задано», а не ноль. */
-function parseBound(input: string): number | null {
-  const raw = input.trim().replace(',', '.');
-  if (!raw) return null;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-/** Условия, которые действительно что-то ограничивают: пустая пара полей условием не является. */
-function toBounds(rangeSpecs: RangeSpec[], map: RangeMap): Bound[] {
-  return rangeSpecs
-    .map(({ spec }) => {
-      const range = map[spec.short] ?? EMPTY_RANGE;
-      return { key: spec.short, from: parseBound(range.from), to: parseBound(range.to) };
-    })
-    .filter((bound) => bound.from !== null || bound.to !== null);
-}
-
-/** Пересекается ли значение строки с запрошенными границами — по каждому условию. */
-function withinBounds(item: CatalogItem, bounds: Bound[]): boolean {
-  return bounds.every((bound) => {
-    const span = spanOf(item.values[bound.key]);
-    if (!span) return false;
-    if (bound.from !== null && span.hi < bound.from) return false;
-    if (bound.to !== null && span.lo > bound.to) return false;
-    return true;
-  });
-}
-
-/** Подсказка в поле: целое — без хвоста, дробное — с запятой, как в справочнике. */
-function formatBound(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(value).replace('.', ',');
 }

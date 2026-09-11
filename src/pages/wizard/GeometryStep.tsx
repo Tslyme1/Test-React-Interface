@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { Box, Button, Chip, Field, Input, Modal, Popover, Select, Stack, Surface, Text } from '@uralmash/design-system';
 import type { GeomData, ZoneCount } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
-import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
+import { CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import type { ChamberHighlightKey, ChamberSchemeLayers } from '@/components/ChamberScheme/ChamberScheme';
 import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
@@ -14,6 +14,7 @@ import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
 import { limitIn, validateGeom } from '@/domain/geomLimits';
 import type { LimitedField } from '@/domain/geomLimits';
 import { convertAngleUnit } from '@/domain/angleUnit';
+import { useUserCatalog } from '@/state/userCatalog';
 import styles from './GeometryStep.module.css';
 
 /** Границы масштаба схемы — те же, что и в прототипе-источнике. */
@@ -106,6 +107,9 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
   // ── смена дробилки ──
   const [crusherPickerOpen, setCrusherPickerOpen] = useState(false);
+  /* Справочник с правками пользователя: заведённая в упрощённом режиме
+     машина обязана находиться и здесь — справочник один на приложение. */
+  const crusherCatalog = useUserCatalog('crushers');
 
   // ── режим отображения: поля ввода (подсветка участка) и дельта ──
   const [displayOpen, setDisplayOpen] = useState(false);
@@ -770,7 +774,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
       <Modal open={crusherPickerOpen} onClose={() => setCrusherPickerOpen(false)} title="Сменить дробилку" size="lg">
         <CatalogPicker
           specs={CRUSHER_SPECS}
-          items={CRUSHERS}
+          items={crusherCatalog.items}
           value={crusherName}
           onPick={(name) => {
             // Повторный клик по уже выбранной строке снимает выбор (`onPick(null)`) —
@@ -783,6 +787,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           nameLabel="Дробилка"
           inlineSpecs={['D, мм', 'Q, т/ч']}
           allowCreate
+          onCreateItem={crusherCatalog.save}
         />
       </Modal>
     </div>

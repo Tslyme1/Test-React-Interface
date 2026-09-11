@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { seedSession, watchConsole } from './helpers';
 
 /**
@@ -22,13 +22,26 @@ async function switchToSimplified(page: Page) {
  * подтверждает себя автоматически при создании — по возврату окно уже
  * стоит на шаге «Руда» с непустым выбором дробилок позади.
  */
+/**
+ * Отмечает позицию в подборе по параметрам.
+ *
+ * Справа сперва пусто: пока параметр не задан, показывать тридцать машин
+ * как «результат подбора» было бы неправдой. Поэтому путь к строке идёт
+ * через поле параметров слева — это и есть сценарий режима, а не обход
+ * пустого состояния.
+ */
+async function pickByName(dialog: Locator, name: string) {
+  await dialog.getByLabel(/^Поиск:/).fill(name);
+  await dialog.getByRole('row', { name: new RegExp(name) }).click();
+}
+
 async function createSimplifiedProject(page: Page) {
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Выбор дробилки' });
   await expect(dialog).toBeVisible();
 
-  await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
-  await dialog.getByRole('row', { name: /КСД-2000Т/ }).click();
+  await pickByName(dialog, 'КМД-2000Т');
+  await pickByName(dialog, 'КСД-2000Т');
   await dialog.getByLabel('Название проекта').fill('Упрощённый расчёт');
   await dialog.getByRole('button', { name: 'Заказчик *' }).click();
   await page.getByRole('option').first().click();
@@ -66,10 +79,10 @@ test.describe('Упрощённый режим — до создания про�
     const dialog = page.getByRole('dialog', { name: 'Выбор дробилки' });
     await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
 
-    await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
+    await pickByName(dialog, 'КМД-2000Т');
     await expect(dialog.getByText('Выбрано дробилок: 1')).toBeVisible();
 
-    await dialog.getByRole('row', { name: /КСД-2000Т/ }).click();
+    await pickByName(dialog, 'КСД-2000Т');
     await expect(dialog.getByText('Выбрано дробилок: 2')).toBeVisible();
   });
 });
@@ -96,8 +109,8 @@ test.describe('Упрощённый режим', () => {
   test('можно выбрать несколько проб руды на шаге «Руда»', async ({ page }) => {
     const dialog = page.getByRole('dialog');
 
-    await dialog.getByRole('row').nth(1).click();
-    await dialog.getByRole('row').nth(2).click();
+    await pickByName(dialog, 'Костомукшская');
+    await pickByName(dialog, 'Михайловская');
 
     // Ровно те же две строки отмечены флажком — окно держит набор, не форму.
     await expect(dialog.getByRole('checkbox', { checked: true })).toHaveCount(2);
@@ -105,8 +118,8 @@ test.describe('Упрощённый режим', () => {
 
   test('расчёт по шагу «Продукт» открывает отчёт с навигацией по комбинациям — то же окно', async ({ page }) => {
     const dialog = page.getByRole('dialog');
-    await dialog.getByRole('row').nth(1).click();
-    await dialog.getByRole('row').nth(2).click();
+    await pickByName(dialog, 'Костомукшская');
+    await pickByName(dialog, 'Михайловская');
     await dialog.getByRole('button', { name: 'Продолжить' }).click();
 
     // `exact` — иначе матчит заодно заголовок самого окна («Упрощённый расчёт — Продукт»).

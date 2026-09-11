@@ -16,7 +16,7 @@ import type { CheckRow, GranRow, KvRow, ProfileRow } from '@/domain/estimates';
 import { exportGeomToKompas, exportStepToExcel } from '@/domain/exportReport';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
-import { CRUSHERS } from '@/data/crushers';
+import { catalogOf } from '@/state/userCatalog';
 import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
@@ -235,7 +235,7 @@ export function ResultsDrawer({
   project: Project;
   onUpdateProject: (id: string, patch: Partial<Project>) => void;
 }) {
-  const power = CRUSHERS.find((c) => c.name === project.crusherName)?.values['N, кВт'];
+  const power = catalogOf('crushers').find((c) => c.name === project.crusherName)?.values['N, кВт'];
 
   // ── отображение таблицы «Грансостав» — см. `granDrawerColumns` выше ──
   const [granViewOpen, setGranViewOpen] = useState(false);
