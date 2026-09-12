@@ -229,6 +229,32 @@ test.describe('Подбор по параметрам: две половины �
     await expect(badge).toHaveCount(0);
   });
 
+  test('бейдж не всплывает в новой работе из-за правок, сделанных раньше', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
+    const form = page.getByRole('dialog', { name: /правка данных/ });
+    await form.getByLabel('N, кВт', { exact: true }).fill('777');
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(dialog.getByText('Данные дробилок изменены')).toBeVisible();
+
+    // Закрываем окно и начинаем новую работу.
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    const fresh = page.getByRole('dialog', { name: 'Выбор дробилки' });
+    await expect(fresh).toBeVisible();
+
+    /* Правка в справочнике осталась — значение по-прежнему 777, — но
+       бейдж про неё молчит: он о том, что поменяли в этой работе,
+       а не о всей истории справочника. */
+    await expect(fresh.getByText('Данные дробилок изменены')).toHaveCount(0);
+    await fresh.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await fresh.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
+    await expect(page.getByRole('dialog', { name: /правка данных/ }).getByLabel('N, кВт', { exact: true })).toHaveValue('777');
+  });
+
   test('в инженерном режиме свою дробилку заводят прямо в окне нового проекта', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
