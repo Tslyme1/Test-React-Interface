@@ -90,6 +90,23 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByRole('row', { name: /КМД-2000Т/ })).toBeVisible();
   });
 
+  test('пустое состояние занимает правую половину целиком, а не полоску под шапкой', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    const empty = dialog.getByTestId('match-empty');
+    await expect(empty).toBeVisible();
+
+    /* Половина остаётся половиной, даже когда показывать в ней пока нечего:
+       иначе правый столбец схлопывается в полоску, и разделённое надвое
+       окно перестаёт читаться как разделённое надвое ровно в тот момент,
+       когда пользователь видит его впервые. Половина задана как 52vh
+       (`CatalogMatchPicker.module.css`) — при высоте окна 720px это
+       ~370px минус заголовок половины. */
+    const box = await empty.boundingBox();
+    expect(box, 'пустое состояние должно быть в разметке').not.toBeNull();
+    expect(box!.height).toBeGreaterThan(280);
+  });
+
   test('отбор диапазоном сужает правую половину', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
