@@ -82,21 +82,3 @@
   justify-content: space-between;
   gap: var(--space-sm);
 }
-
-/**
- * Список изменений под таблицей. Своя прокрутка и потолок в треть
- * половины: правок бывает много, но они — справка о том, что уже
- * сделано, и вытеснять ими сам подбор нельзя.
- */
-.changes {
-  flex: 0 0 auto;
-  max-height: 33%;
-  overflow-y: auto;
-}
-
-/** Строка изменения: «величина: было → стало». */
-.changeLine {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}

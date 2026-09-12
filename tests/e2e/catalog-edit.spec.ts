@@ -138,7 +138,12 @@ test.describe('Подбор по параметрам: две половины �
     // Заведённая машина сразу отмечена: её для того и заводили.
     await expect(dialog.getByText('Выбрано дробилок: 1')).toBeVisible();
     await expect(dialog.getByRole('row', { name: /КСД-9000 опытная/ })).toBeVisible();
-    await expect(dialog.getByText('КСД-9000 опытная — новая позиция')).toBeVisible();
+
+    // Подробности — в окне рядом со счётчиком, а не полосой под таблицей.
+    await dialog.getByRole('button', { name: 'Данные дробилок изменены' }).click();
+    const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
+    await expect(changes.getByText('КСД-9000 опытная', { exact: true })).toBeVisible();
+    await expect(changes.getByText('новая дробилка')).toBeVisible();
   });
 
   test('у каждого параметра слева есть подпись и подсказка с полным именем величины', async ({ page }) => {
@@ -157,7 +162,7 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByLabel('P, МН')).toBeVisible();
   });
 
-  test('правка данных машины показывает под таблицей, что было и что стало', async ({ page }) => {
+  test('правка данных машины видна в окне изменений: что было и что стало', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
     await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
@@ -173,10 +178,17 @@ test.describe('Подбор по параметрам: две половины �
     await power.fill('777');
     await form.getByRole('button', { name: 'Сохранить' }).click();
 
-    await expect(dialog.getByText('КМД-2000Т — данные изменены')).toBeVisible();
-    await expect(dialog.getByText(`N, кВт: было ${before} → стало 777`)).toBeVisible();
     // Правка данных — не выбор машины: набор она не трогает.
     await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Данные дробилок изменены' }).click();
+    const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
+    await expect(changes.getByText('КМД-2000Т', { exact: true })).toBeVisible();
+    await expect(changes.getByText('данные изменены')).toBeVisible();
+
+    const row = changes.getByRole('row').filter({ hasText: 'N, кВт' });
+    await expect(row).toContainText(before);
+    await expect(row).toContainText('777');
   });
 
   test('в инженерном режиме свою дробилку заводят прямо в окне нового проекта', async ({ page }) => {

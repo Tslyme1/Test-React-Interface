@@ -15,6 +15,7 @@ import { limitIn, validateGeom } from '@/domain/geomLimits';
 import type { LimitedField } from '@/domain/geomLimits';
 import { convertAngleUnit } from '@/domain/angleUnit';
 import { useUserCatalog } from '@/state/userCatalog';
+import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import styles from './GeometryStep.module.css';
 
 /** Границы масштаба схемы — те же, что и в прототипе-источнике. */
@@ -771,7 +772,34 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
         </div>
       </InlineSidebar>
 
-      <Modal open={crusherPickerOpen} onClose={() => setCrusherPickerOpen(false)} title="Сменить дробилку" size="lg">
+      <Modal
+        open={crusherPickerOpen}
+        onClose={() => setCrusherPickerOpen(false)}
+        title="Сменить дробилку"
+        size="lg"
+        footer={
+          /* Футер появился ради «Новой» слева: заведение своей машины —
+             второстепенное действие, и в полосе над таблицей оно отнимало
+             ширину у поиска и условий отбора. Раз футер есть, у окна
+             появляется и явное «Отмена» — как у окна выбора пробы. */
+          <Modal.Footer
+            aside={
+              <CatalogCreateButton
+                kind="crushers"
+                nameLabel="Дробилка"
+                onCreated={(name) => {
+                  onChangeCrusher(name);
+                  setCrusherPickerOpen(false);
+                }}
+              />
+            }
+          >
+            <Button variant="secondary" onClick={() => setCrusherPickerOpen(false)}>
+              Отмена
+            </Button>
+          </Modal.Footer>
+        }
+      >
         <CatalogPicker
           specs={CRUSHER_SPECS}
           items={crusherCatalog.items}
@@ -786,8 +814,6 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
           }}
           nameLabel="Дробилка"
           inlineSpecs={['D, мм', 'Q, т/ч']}
-          allowCreate
-          onCreateItem={crusherCatalog.save}
         />
       </Modal>
     </div>

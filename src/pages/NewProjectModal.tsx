@@ -3,6 +3,7 @@ import { Button, Field, Input, Modal, Select } from '@uralmash/design-system';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHER_SPECS, crusherFamily } from '@/data/crushers';
 import { useUserCatalog } from '@/state/userCatalog';
+import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import { CUSTOMER_OPTIONS } from '@/data/reference';
 import styles from './NewProjectModal.module.css';
 
@@ -127,7 +128,18 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
            «Отмена» убрана: окно закрывается крестиком в шапке, кликом по фону
            и клавишей Esc. Четвёртый способ уйти ничего не добавлял, но занимал
            место рядом с действием, ради которого окно открывали. */
-        <Modal.Footer>
+        <Modal.Footer
+          /* Слева внизу — заведение своей машины: это второстепенное
+             действие рядом с главным «Продолжить», и в полосе над
+             таблицей оно отнимало ширину у поиска и условий отбора. */
+          aside={
+            <CatalogCreateButton
+              kind="crushers"
+              nameLabel="Дробилка"
+              onCreated={(name) => pickCrusher(name)}
+            />
+          }
+        >
           <div className={styles.footerFields}>
             <div className={styles.footerField}>
               {/* Плавающая подпись: она лежит в поле и уходит наверх при
@@ -213,11 +225,6 @@ export function NewProjectModal({ open, onClose, defaultExecutor, onCreate }: Ne
             onChange={(next) => setFamilyDraft((next as Family) ?? null)}
           />
         }
-        /* Своя машина заводится и здесь — это первое место, где инженер
-           выбирает дробилку, и отсутствие кнопки здесь означало бы «сначала
-           заведи проект на чужой машине, потом смени её на свою». */
-        allowCreate
-        onCreateItem={crusherCatalog.save}
       />
     </Modal>
   );
