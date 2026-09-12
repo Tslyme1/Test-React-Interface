@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Checkbox, EmptyState, Field, Input, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
+import { Badge, Button, Checkbox, EmptyState, Field, Input, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { CatalogItem } from '@/data/crushers';
 import type { CatalogEntry } from '@/domain/catalogEdits';
@@ -238,9 +238,17 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
                   чего экран открыт. Здесь же, рядом со счётчиком, о них
                   сказано одной строкой, и подробности открываются по ней. */}
               {catalog.changes.length > 0 ? (
-                <Button variant="ghost" size="sm" onClick={() => setChangesOpen(true)}>
-                  Данные {countLabel} изменены
-                </Button>
+                /* Бейдж, а не обычная кнопка: справочник разошёлся с
+                   паспортными данными завода, и это состояние, требующее
+                   внимания, — расчёт дальше пойдёт по правленым числам.
+                   Кнопка без вида вокруг него — тем же приёмом, что
+                   у образца цвета в сборе тега (`NewTagButton`): свой
+                   вид у обёртки читался бы как рамка вокруг бейджа. */
+                <button type="button" className={styles.badgeButton} onClick={() => setChangesOpen(true)}>
+                  <Badge tone="warning" icon>
+                    Данные {countLabel} изменены
+                  </Badge>
+                </button>
               ) : null}
             </Stack>
             <Button variant="ghost" size="sm" iconStart="plus" onClick={() => setEditing({ item: null })}>
@@ -299,6 +307,7 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
         onClose={() => setChangesOpen(false)}
         changes={catalog.changes}
         nameLabel={nameLabel}
+        onRevert={catalog.revert}
       />
 
       <CatalogItemForm

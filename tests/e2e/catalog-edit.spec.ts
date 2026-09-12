@@ -83,6 +83,8 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByText('Задайте параметры слева')).toBeVisible();
     // Ни одной строки: тридцать машин «по умолчанию» — не результат подбора.
     await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+    // Справочник не тронут — бейджа об изменениях быть не должно.
+    await expect(dialog.getByText('Данные дробилок изменены')).toHaveCount(0);
 
     await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
 
@@ -140,7 +142,7 @@ test.describe('Подбор по параметрам: две половины �
     await expect(dialog.getByRole('row', { name: /КСД-9000 опытная/ })).toBeVisible();
 
     // Подробности — в окне рядом со счётчиком, а не полосой под таблицей.
-    await dialog.getByRole('button', { name: 'Данные дробилок изменены' }).click();
+    await dialog.getByText('Данные дробилок изменены').click();
     const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
     await expect(changes.getByText('КСД-9000 опытная', { exact: true })).toBeVisible();
     await expect(changes.getByText('новая дробилка')).toBeVisible();
@@ -181,7 +183,7 @@ test.describe('Подбор по параметрам: две половины �
     // Правка данных — не выбор машины: набор она не трогает.
     await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
 
-    await dialog.getByRole('button', { name: 'Данные дробилок изменены' }).click();
+    await dialog.getByText('Данные дробилок изменены').click();
     const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
     await expect(changes.getByText('КМД-2000Т', { exact: true })).toBeVisible();
     await expect(changes.getByText('данные изменены')).toBeVisible();
@@ -189,6 +191,42 @@ test.describe('Подбор по параметрам: две половины �
     const row = changes.getByRole('row').filter({ hasText: 'N, кВт' });
     await expect(row).toContainText(before);
     await expect(row).toContainText('777');
+  });
+
+  test('сохранение формы без единой правки не поднимает бейдж', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
+
+    const form = page.getByRole('dialog', { name: /правка данных/ });
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(form).toHaveCount(0);
+
+    /* Правка считается от справочника, а не от факта нажатия «Сохранить»:
+       открыть форму и закрыть её кнопкой — не изменение данных. */
+    await expect(dialog.getByText('Данные дробилок изменены')).toHaveCount(0);
+  });
+
+  test('правку можно снять — бейдж уходит вместе с расхождением', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
+    const form = page.getByRole('dialog', { name: /правка данных/ });
+    await form.getByLabel('N, кВт', { exact: true }).fill('777');
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+
+    const badge = dialog.getByText('Данные дробилок изменены');
+    await expect(badge).toBeVisible();
+
+    await badge.click();
+    const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
+    await changes.getByRole('button', { name: 'Вернуть каталожные' }).click();
+
+    await expect(changes.getByText('Справочник не тронут')).toBeVisible();
+    await changes.getByRole('button', { name: 'Готово' }).click();
+    await expect(badge).toHaveCount(0);
   });
 
   test('в инженерном режиме свою дробилку заводят прямо в окне нового проекта', async ({ page }) => {

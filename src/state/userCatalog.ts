@@ -2,7 +2,7 @@ import { useMemo, useSyncExternalStore } from 'react';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
 import { CRUSHERS, CRUSHER_SPECS } from '@/data/crushers';
 import { ORE_SAMPLES, ORE_SPECS } from '@/data/oreSamples';
-import { catalogChanges, mergeCatalog, withCatalogEntry } from '@/domain/catalogEdits';
+import { catalogChanges, mergeCatalog, withCatalogEntry, withoutCatalogEntry } from '@/domain/catalogEdits';
 import type { CatalogChange, CatalogEntry } from '@/domain/catalogEdits';
 
 /** Какой из двух справочников правят. */
@@ -81,6 +81,13 @@ export function saveCatalogEntry(kind: CatalogKind, entry: CatalogEntry) {
   for (const listener of listeners) listener();
 }
 
+/** Возвращает позицию к каталожной: правка снимается, своя — удаляется. */
+export function revertCatalogEntry(kind: CatalogKind, name: string) {
+  state = { ...state, [kind]: withoutCatalogEntry(state[kind], name) };
+  persist();
+  for (const listener of listeners) listener();
+}
+
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -99,6 +106,8 @@ export type UserCatalog = {
   /** Чем правки отличаются от справочника: «было → стало» под таблицей. */
   changes: CatalogChange[];
   save: (entry: CatalogEntry) => void;
+  /** Снять правку с позиции — вернуть её к каталожной или убрать свою. */
+  revert: (name: string) => void;
 };
 
 export function useUserCatalog(kind: CatalogKind): UserCatalog {
@@ -112,6 +121,7 @@ export function useUserCatalog(kind: CatalogKind): UserCatalog {
       specs,
       changes: catalogChanges(base, entries, specs),
       save: (entry: CatalogEntry) => saveCatalogEntry(kind, entry),
+      revert: (name: string) => revertCatalogEntry(kind, name),
     };
   }, [kind, stored]);
 }
