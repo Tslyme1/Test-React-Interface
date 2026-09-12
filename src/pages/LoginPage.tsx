@@ -1,20 +1,24 @@
 import { useState } from 'react';
-import { Field, Input, Button, Link, Text } from '@uralmash/design-system';
+import { Button, Field, Input, Link, SegmentedControl, Stack, Text } from '@uralmash/design-system';
+import type { ProjectMode } from '@/types';
 import { AuthShell } from './AuthShell';
 
 export type LoginPageProps = {
-  onLogin: (login: string, password: string) => string | null;
+  onLogin: (login: string, password: string, mode: ProjectMode) => string | null;
+  /** Режим, выбранный в прошлый раз, — форма открывается на нём. */
+  defaultMode: ProjectMode;
   onGoRegister: () => void;
   onGoForgot: () => void;
 };
 
-export function LoginPage({ onLogin, onGoRegister, onGoForgot }: LoginPageProps) {
+export function LoginPage({ onLogin, defaultMode, onGoRegister, onGoForgot }: LoginPageProps) {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<ProjectMode>(defaultMode);
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
-    const result = onLogin(login, password);
+    const result = onLogin(login, password, mode);
     setError(result);
   };
 
@@ -46,6 +50,33 @@ export function LoginPage({ onLogin, onGoRegister, onGoForgot }: LoginPageProps)
           />
         )}
       </Field>
+
+      {/* Режим спрашивается здесь, а не после входа: он задаёт форму шагов
+          нового проекта, и первое, что пользователь делает после входа, —
+          заводит проект. Менять решение потом можно в «Профиле», но начинать
+          работу с угаданного за пользователя режима незачем.
+
+          Не `Field` — см. пояснение в `GeometryStep`: `SegmentedControl`
+          несёт свой `fieldset` и не принимает `id`, поэтому обёртка
+          оставила бы подпись без контрола. */}
+      <Stack gap="2xs" direction="column" align="start">
+        <Text variant="label">Режим работы</Text>
+        <SegmentedControl
+          fullWidth
+          legend="Режим работы"
+          options={[
+            { value: 'engineering', label: 'Инженерный' },
+            { value: 'simplified', label: 'Упрощённый' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
+        <Text variant="caption" color="textMuted">
+          {mode === 'engineering'
+            ? 'Все параметры методики вводятся вручную, с расчётом и чертежом камеры.'
+            : 'Дробилка и руда подбираются по параметрам, ввод — только крупность продукта.'}
+        </Text>
+      </Stack>
 
       <Link
         tone="muted"

@@ -18,10 +18,10 @@ import { NewProjectModal } from '@/pages/NewProjectModal';
 import { SimplifiedProjectModal } from '@/pages/SimplifiedProjectModal';
 import { WizardPage } from '@/pages/wizard/WizardPage';
 import { defaultWizardData } from '@/data/wizardDefaults';
-import type { Project, ProjectMode } from '@/types';
+import type { Project } from '@/types';
 
 export function App() {
-  const { user, login, logout } = useSession();
+  const { user, mode: defaultMode, setMode: setDefaultMode, login, logout } = useSession();
   const {
     projects,
     trash,
@@ -77,8 +77,6 @@ export function App() {
 
   /** Раздел сайдбара. Открытый и показанный инженерный проект временно перекрывает его — сайдбар в этот момент скрыт целиком. */
   const [view, setView] = useState<SidebarView>('projects');
-  /** Режим следующего нового проекта — задаётся переключателем в «Профиле». */
-  const [defaultMode, setDefaultMode] = useState<ProjectMode>('engineering');
   /**
    * Заказчик, из которого провалились со страницы «Заказчики» — держится,
    * пока список проектов им отфильтрован, а не на один переход: пока фильтр
@@ -94,6 +92,7 @@ export function App() {
       <>
         <LoginPage
           onLogin={login}
+          defaultMode={defaultMode}
           onGoRegister={() => showToast('Регистрация — в следующей итерации')}
           onGoForgot={() => showToast('Восстановление пароля — в следующей итерации')}
         />

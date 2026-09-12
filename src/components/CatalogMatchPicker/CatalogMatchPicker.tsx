@@ -236,33 +236,45 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
             </Button>
           </div>
 
-          <div className={styles.paneScroll}>
-            <Table
-              columns={columns}
-              rows={rows}
-              rowKey={(item) => item.name}
-              caption={nameLabel}
-              captionHidden
-              rowActionKey="name"
-              stickyHeader
-              onRowClick={(item) => toggle(item.name)}
-              empty={
-                hasParams ? (
-                  <EmptyState
-                    icon="search"
-                    title="Ничего не подходит"
-                    description="Ослабьте условия слева или заведите свою позицию."
-                  />
-                ) : (
-                  <EmptyState
-                    icon="slidersHorizontal"
-                    title="Задайте параметры слева"
-                    description={`Подходящие ${countLabel} появятся здесь.`}
-                  />
-                )
-              }
-            />
-          </div>
+          {/* Пустое состояние занимает всю половину, а не жмётся полоской
+              под шапкой таблицы. Оно здесь — не «таблица, в которой пока
+              нет строк», а единственное содержимое половины: столбец
+              с одними названиями без единой строки не несёт ничего, ради
+              чего стоило бы держать его шапку. Поэтому таблица уступает
+              место целиком, а не отдаёт одну ячейку. */}
+          {rows.length === 0 ? (
+            <div className={styles.emptyPane} data-testid="match-empty">
+              {hasParams ? (
+                <EmptyState
+                  icon="search"
+                  title="Ничего не подходит"
+                  description="Ослабьте условия слева или заведите свою позицию."
+                />
+              ) : (
+                <EmptyState
+                  icon="slidersHorizontal"
+                  title="Задайте параметры слева"
+                  /* «Подходящие позиции», а не «подходящие дробилок»:
+                     `countLabel` стоит в родительном падеже — он для
+                     счётчика («Выбрано дробилок: 2»), а не для подлежащего. */
+                  description="Подходящие позиции появятся здесь."
+                />
+              )}
+            </div>
+          ) : (
+            <div className={styles.paneScroll}>
+              <Table
+                columns={columns}
+                rows={rows}
+                rowKey={(item) => item.name}
+                caption={nameLabel}
+                captionHidden
+                rowActionKey="name"
+                stickyHeader
+                onRowClick={(item) => toggle(item.name)}
+              />
+            </div>
+          )}
 
           {/* Что именно поправили — под таблицей, как и просили: правка
               уходит в справочник молча, и без этого списка о ней потом
