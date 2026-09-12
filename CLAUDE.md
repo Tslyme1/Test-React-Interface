@@ -82,7 +82,7 @@ npm run ds:docs   # принесёт документацию системы в 
 npm run check        # типы + линтер + E2E, всё вместе
 npm run typecheck    # приложение и тесты
 npm run ds:lint      # обход дизайн-системы
-npm run test:e2e     # 201 сценарий Playwright
+npm run test:e2e     # 202 сценария Playwright
 npm run screens      # 11 экранов × 2 темы в screenshots-review/
 ```
 

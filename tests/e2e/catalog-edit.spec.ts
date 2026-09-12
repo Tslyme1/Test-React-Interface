@@ -60,6 +60,16 @@ test.describe('Правки справочника: правила', () => {
   });
 });
 
+/**
+ * Отмечает позицию в подборе. Через параметр слева: справа сперва пусто —
+ * пока условие не задано, показывать тридцать машин как результат подбора
+ * было бы неправдой.
+ */
+async function pickByName(dialog: Locator, name: string) {
+  await dialog.getByLabel('Название', { exact: true }).fill(name);
+  await dialog.getByRole('row', { name: new RegExp(name) }).click();
+}
+
 async function openCrusherStep(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Профиль' }).click();
   await page.getByRole('option', { name: 'Упрощённый' }).click();
@@ -167,7 +177,7 @@ test.describe('Подбор по параметрам: две половины �
   test('правка данных машины видна в окне изменений: что было и что стало', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
-    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await pickByName(dialog, 'КМД-2000Т');
     await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
 
     const form = page.getByRole('dialog', { name: /правка данных/ });
@@ -181,7 +191,7 @@ test.describe('Подбор по параметрам: две половины �
     await form.getByRole('button', { name: 'Сохранить' }).click();
 
     // Правка данных — не выбор машины: набор она не трогает.
-    await expect(dialog.getByText('Выбрано дробилок: 0')).toBeVisible();
+    await expect(dialog.getByText('Выбрано дробилок: 1')).toBeVisible();
 
     await dialog.getByText('Данные дробилок изменены').click();
     const changes = page.getByRole('dialog', { name: 'Изменения в справочнике' });
@@ -193,10 +203,27 @@ test.describe('Подбор по параметрам: две половины �
     await expect(row).toContainText('777');
   });
 
+  test('карандаш стоит только у выбранной позиции', async ({ page }) => {
+    const dialog = await openCrusherStep(page);
+
+    /* Правка данных — часть работы с машиной, которую взяли в расчёт,
+       а не способ листать справочник. */
+    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await expect(dialog.getByRole('row', { name: /КМД-2000Т/ })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /^Изменить данные:/ })).toHaveCount(0);
+
+    await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
+    await expect(dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' })).toBeVisible();
+
+    // Сняли отметку — карандаш ушёл вместе с ней.
+    await dialog.getByRole('row', { name: /КМД-2000Т/ }).click();
+    await expect(dialog.getByRole('button', { name: /^Изменить данные:/ })).toHaveCount(0);
+  });
+
   test('сохранение формы без единой правки не поднимает бейдж', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
-    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await pickByName(dialog, 'КМД-2000Т');
     await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
 
     const form = page.getByRole('dialog', { name: /правка данных/ });
@@ -211,7 +238,7 @@ test.describe('Подбор по параметрам: две половины �
   test('правку можно снять — бейдж уходит вместе с расхождением', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
-    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await pickByName(dialog, 'КМД-2000Т');
     await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
     const form = page.getByRole('dialog', { name: /правка данных/ });
     await form.getByLabel('N, кВт', { exact: true }).fill('777');
@@ -232,7 +259,7 @@ test.describe('Подбор по параметрам: две половины �
   test('бейдж не всплывает в новой работе из-за правок, сделанных раньше', async ({ page }) => {
     const dialog = await openCrusherStep(page);
 
-    await dialog.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await pickByName(dialog, 'КМД-2000Т');
     await dialog.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
     const form = page.getByRole('dialog', { name: /правка данных/ });
     await form.getByLabel('N, кВт', { exact: true }).fill('777');
@@ -250,7 +277,7 @@ test.describe('Подбор по параметрам: две половины �
        бейдж про неё молчит: он о том, что поменяли в этой работе,
        а не о всей истории справочника. */
     await expect(fresh.getByText('Данные дробилок изменены')).toHaveCount(0);
-    await fresh.getByLabel('Название', { exact: true }).fill('КМД-2000Т');
+    await pickByName(fresh, 'КМД-2000Т');
     await fresh.getByRole('button', { name: 'Изменить данные: КМД-2000Т' }).click();
     await expect(page.getByRole('dialog', { name: /правка данных/ }).getByLabel('N, кВт', { exact: true })).toHaveValue('777');
   });
