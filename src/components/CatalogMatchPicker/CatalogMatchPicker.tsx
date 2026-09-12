@@ -28,6 +28,15 @@ export type CatalogMatchPickerProps = {
   countLabel: string;
   selected: string[];
   onChange: (names: string[]) => void;
+  /**
+   * Позиции, тронутые в этой работе. Бейдж и окно изменений считаются
+   * только по ним: правки справочника копятся навсегда и общие на все
+   * проекты, а вопрос у пользователя — «что я поменял здесь», а не
+   * «что вообще когда-либо правили в справочнике».
+   */
+  touched: string[];
+  /** Позицию только что завели или поправили. */
+  onTouch: (name: string) => void;
 };
 
 /**
@@ -47,7 +56,15 @@ export type CatalogMatchPickerProps = {
  * Правки справочника (своя машина, исправленная характеристика) живут
  * в `state/userCatalog` и видны во всех проектах — см. пояснение там.
  */
-export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onChange }: CatalogMatchPickerProps) {
+export function CatalogMatchPicker({
+  kind,
+  nameLabel,
+  countLabel,
+  selected,
+  onChange,
+  touched,
+  onTouch,
+}: CatalogMatchPickerProps) {
   const catalog = useUserCatalog(kind);
 
   const [query, setQuery] = useState('');
@@ -95,8 +112,18 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
     setRanges({});
   };
 
+  /* Расхождения со справочником — только по тронутому здесь. Само
+     расхождение при этом считается честно, от каталога: если значение
+     вернули к паспортному, позиция уходит отсюда сама, даже оставшись
+     в списке тронутых. */
+  const changes = useMemo(
+    () => catalog.changes.filter((change) => touched.includes(change.name)),
+    [catalog.changes, touched]
+  );
+
   const saveEntry = (entry: CatalogEntry) => {
     catalog.save(entry);
+    onTouch(entry.name);
     /* Заведённая позиция сразу оказывается выбранной: её для того
        и заводили. Правка каталожной выбор не трогает — пользователь
        поправил данные, а не передумал насчёт машины. */
@@ -237,7 +264,7 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
                   много, — а это справка о уже сделанном, а не то, ради
                   чего экран открыт. Здесь же, рядом со счётчиком, о них
                   сказано одной строкой, и подробности открываются по ней. */}
-              {catalog.changes.length > 0 ? (
+              {changes.length > 0 ? (
                 /* Бейдж, а не обычная кнопка: справочник разошёлся с
                    паспортными данными завода, и это состояние, требующее
                    внимания, — расчёт дальше пойдёт по правленым числам.
@@ -305,7 +332,7 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
       <CatalogChangesModal
         open={changesOpen}
         onClose={() => setChangesOpen(false)}
-        changes={catalog.changes}
+        changes={changes}
         nameLabel={nameLabel}
         onRevert={catalog.revert}
       />

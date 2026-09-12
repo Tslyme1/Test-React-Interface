@@ -68,6 +68,21 @@ export function SimplifiedProjectModal({
   const [customer, setCustomer] = useState<string | null>(null);
   const [draftCrushers, setDraftCrushers] = useState<string[]>([]);
 
+  /**
+   * Позиции справочника, тронутые в этой работе, — по ним и считается
+   * бейдж «Данные дробилок изменены».
+   *
+   * Список держит окно, а не сам подбор: подбор живёт только пока
+   * показан его шаг, и правка, сделанная на «Дробилке», пропадала бы
+   * из отчёта при переходе на «Руду» и обратно. И не справочник: правки
+   * в нём накапливаются навсегда и общие на все проекты, так что бейдж
+   * висел бы на каждом новом проекте, сообщая о том, что пользователь
+   * делал неделю назад в другом расчёте. Вопрос у него другой — «что
+   * я поменял здесь».
+   */
+  const [touched, setTouched] = useState<string[]>([]);
+  const touch = (name: string) => setTouched((current) => (current.includes(name) ? current : [...current, name]));
+
   const resetPreCreationDraft = () => {
     setName('');
     setSuggested('');
@@ -83,6 +98,9 @@ export function SimplifiedProjectModal({
    */
   useEffect(() => {
     if (!open) return;
+    /* Новая работа начинается с чистого отчёта о правках — они про эту
+       работу, а не про историю справочника. */
+    setTouched([]);
     if (!project) {
       setStep(0);
       setResultOpen(false);
@@ -276,6 +294,8 @@ export function SimplifiedProjectModal({
               countLabel="дробилок"
               selected={draftCrushers}
               onChange={pickDraftCrushers}
+              touched={touched}
+              onTouch={touch}
             />
           </Stack>
         ) : resultOpen ? (
@@ -328,6 +348,8 @@ export function SimplifiedProjectModal({
             countLabel="дробилок"
             selected={project.crusherNames}
             onChange={changeCrusherNames}
+            touched={touched}
+            onTouch={touch}
           />
         ) : step === 1 ? (
           <CatalogMatchPicker
@@ -336,6 +358,8 @@ export function SimplifiedProjectModal({
             countLabel="проб"
             selected={project.oreNames}
             onChange={changeOreNames}
+            touched={touched}
+            onTouch={touch}
           />
         ) : (
           <ProdStep data={project.data.prod} onChange={patchProd} simplified />
