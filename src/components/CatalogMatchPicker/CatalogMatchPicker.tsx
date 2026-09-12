@@ -13,6 +13,7 @@ import {
   withinBounds,
 } from '@/domain/catalogFilter';
 import type { RangeMap } from '@/domain/catalogFilter';
+import { CatalogChangesModal } from '@/components/CatalogMatchPicker/CatalogChangesModal';
 import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { useUserCatalog } from '@/state/userCatalog';
@@ -53,6 +54,7 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
   const [ranges, setRanges] = useState<RangeMap>({});
   /** `null` — форма закрыта; `{ item: null }` — заводим свою позицию. */
   const [editing, setEditing] = useState<{ item: CatalogItem | null } | null>(null);
+  const [changesOpen, setChangesOpen] = useState(false);
 
   const rangeSpecs = useMemo(() => rangeSpecsOf(catalog.specs, catalog.items), [catalog.specs, catalog.items]);
   const bounds = useMemo(() => toBounds(rangeSpecs, ranges), [rangeSpecs, ranges]);
@@ -230,8 +232,18 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
                   подходит: {matchCount}
                 </Text>
               ) : null}
+              {/* Правки вынесены из-под таблицы в окно: под таблицей они
+                  отъедали у неё треть половины ровно тогда, когда правок
+                  много, — а это справка о уже сделанном, а не то, ради
+                  чего экран открыт. Здесь же, рядом со счётчиком, о них
+                  сказано одной строкой, и подробности открываются по ней. */}
+              {catalog.changes.length > 0 ? (
+                <Button variant="ghost" size="sm" onClick={() => setChangesOpen(true)}>
+                  Данные {countLabel} изменены
+                </Button>
+              ) : null}
             </Stack>
-            <Button variant="secondary" size="sm" iconStart="plus" onClick={() => setEditing({ item: null })}>
+            <Button variant="ghost" size="sm" iconStart="plus" onClick={() => setEditing({ item: null })}>
               Новая
             </Button>
           </div>
@@ -276,32 +288,18 @@ export function CatalogMatchPicker({ kind, nameLabel, countLabel, selected, onCh
             </div>
           )}
 
-          {/* Что именно поправили — под таблицей, как и просили: правка
-              уходит в справочник молча, и без этого списка о ней потом
-              напоминает только изменившееся число в ячейке. */}
-          {catalog.changes.length > 0 ? (
-            <div className={styles.changes}>
-              <Stack gap="xs" direction="column">
-                <Text variant="label">Изменения в справочнике</Text>
-                {catalog.changes.map((change) => (
-                  <Stack key={change.name} gap="xs" direction="column">
-                    <Text variant="bodySm">
-                      {change.name} — {change.kind === 'added' ? 'новая позиция' : 'данные изменены'}
-                    </Text>
-                    {change.fields.map((field) => (
-                      <div key={field.spec} className={styles.changeLine}>
-                        <Text variant="bodySm" color="textMuted">
-                          {field.spec}: было {field.before} → стало {field.after}
-                        </Text>
-                      </div>
-                    ))}
-                  </Stack>
-                ))}
-              </Stack>
-            </div>
-          ) : null}
         </div>
       </div>
+
+      {/* Что именно разошлось со справочником. Окно во окне — каталог сам
+          живёт внутри окна шага, поэтому Esc перехвачен так же, как
+          у формы правки. */}
+      <CatalogChangesModal
+        open={changesOpen}
+        onClose={() => setChangesOpen(false)}
+        changes={catalog.changes}
+        nameLabel={nameLabel}
+      />
 
       <CatalogItemForm
         open={editing !== null}

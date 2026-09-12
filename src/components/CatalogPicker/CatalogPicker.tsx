@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { Button, Checkbox, EmptyState, Input, Modal, RangeSelect, Stack, Table, Text } from '@uralmash/design-system';
 import type { Range, TableColumn, TableSort } from '@uralmash/design-system';
 import type { CatalogItem, SpecColumn } from '@/data/crushers';
-import type { CatalogEntry } from '@/domain/catalogEdits';
 import {
   EMPTY_RANGE,
   compareSpecValues,
@@ -14,7 +13,6 @@ import {
   withinBounds,
 } from '@/domain/catalogFilter';
 import type { RangeMap, RangeSpec } from '@/domain/catalogFilter';
-import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
 import { useTopEscape } from '@/hooks/useTopEscape';
 import styles from './CatalogPicker.module.css';
 
@@ -76,19 +74,6 @@ export type CatalogPickerProps = {
   filterDraftCount?: number;
   /** Уже отфильтрованный снаружи набор имён. Пусто — показываются все. */
   visibleNames?: string[];
-  /**
-   * Разрешает завести позицию, которой нет в справочнике: свою дробилку,
-   * свою пробу руды. Выключено по умолчанию — включается там, где выбор
-   * из каталога не обязан быть исчерпывающим: пикеры дробилки и пробы
-   * руды на шагах «Дробилка» и «Руда», в инженерном и упрощённом режиме.
-   */
-  allowCreate?: boolean;
-  /**
-   * Куда сохранить заведённую позицию — правки справочника живут отдельно
-   * от проекта (`state/userCatalog`). Без него «+ Новая» не показывается:
-   * кнопка, после которой позиция никуда не попадает, обманывает.
-   */
-  onCreateItem?: (entry: CatalogEntry) => void;
 };
 
 /**
@@ -119,12 +104,9 @@ export function CatalogPicker({
   inlineFilter,
   inlineSpecs,
   visibleNames,
-  allowCreate = false,
-  onCreateItem,
 }: CatalogPickerProps) {
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
 
   /**
    * Диапазоны характеристик: применённые и черновик окна фильтров.
@@ -223,25 +205,6 @@ export function CatalogPicker({
       return;
     }
     onPick(name === value ? null : name);
-  };
-
-  /**
-   * Заведённая позиция сразу и попадает в справочник, и оказывается
-   * выбранной: кнопку «Новая» нажимают посреди выбора, и заставлять
-   * искать только что заведённую машину в таблице значило бы прервать
-   * ровно то действие, ради которого её и заводили.
-   *
-   * Если имя уже в наборе, повторно добавлять нечего — набор не должен
-   * захламляться двумя одинаковыми отметками одного имени.
-   */
-  const saveCreated = (entry: CatalogEntry) => {
-    onCreateItem?.(entry);
-    if (multiple) {
-      const current = selected ?? [];
-      if (!current.includes(entry.name)) onPickMultiple?.([...current, entry.name]);
-    } else {
-      onPick(entry.name);
-    }
   };
 
   const hasFilters = Boolean(filter) || rangeSpecs.length > 0;
@@ -380,11 +343,6 @@ export function CatalogPicker({
           </Button>
         ) : null}
 
-        {allowCreate && onCreateItem ? (
-          <Button variant="secondary" iconStart="plus" onClick={() => setCreating(true)}>
-            Новая
-          </Button>
-        ) : null}
       </div>
 
       {/* `.scroll` — фиксированная высота (52vh) и собственный `overflow-y`:
@@ -482,21 +440,6 @@ export function CatalogPicker({
         </Stack>
       </Modal>
 
-      {/* Своя позиция заводится тем же окном, каким правят каталожную:
-          вопрос один и тот же — какие у этой машины характеристики.
-          Окно во окне здесь неизбежно (каталог сам живёт внутри окна),
-          поэтому Esc перехвачен так же, как у фильтров. */}
-      {allowCreate && onCreateItem ? (
-        <CatalogItemForm
-          open={creating}
-          onClose={() => setCreating(false)}
-          item={null}
-          specs={specs}
-          nameLabel={nameLabel}
-          takenNames={items.map((item) => item.name)}
-          onSave={saveCreated}
-        />
-      ) : null}
     </Stack>
   );
 }

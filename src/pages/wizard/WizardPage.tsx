@@ -5,6 +5,7 @@ import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { ORE_SPECS } from '@/data/oreSamples';
 import { useUserCatalog } from '@/state/userCatalog';
+import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import { GeometryStep } from './GeometryStep';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
@@ -247,7 +248,17 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         title="Выбор пробы руды"
         size="lg"
         footer={
-          <Modal.Footer>
+          /* Слева внизу — заведение своей пробы: второстепенное действие,
+             и в полосе над таблицей оно отнимало ширину у поиска. */
+          <Modal.Footer
+            aside={
+              <CatalogCreateButton
+                kind="ores"
+                nameLabel="Проба руды"
+                onCreated={(name) => pickOre(name)}
+              />
+            }
+          >
             <Button variant="secondary" onClick={() => setOrePickerOpen(false)}>
               Отмена
             </Button>
@@ -266,8 +277,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           }}
           nameLabel="Проба руды"
           inlineSpecs={['f', 'ρ, т/м³']}
-          allowCreate
-          onCreateItem={oreCatalog.save}
         />
       </Modal>
 
