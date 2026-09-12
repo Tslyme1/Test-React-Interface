@@ -119,3 +119,16 @@ export function withCatalogEntry(entries: CatalogEntry[], entry: CatalogEntry): 
   if (index === -1) return [...entries, next];
   return entries.map((item, i) => (i === index ? next : item));
 }
+
+/**
+ * Снимает правку с позиции: каталожная возвращается к паспортным
+ * значениям, своя — исчезает из справочника совсем.
+ *
+ * Без этого правка необратима: «было → стало» показывает расхождение,
+ * но убрать его можно было только вводом прежнего числа руками — то есть
+ * пользователю пришлось бы помнить, каким оно было, хотя приложение
+ * это прекрасно знает.
+ */
+export function withoutCatalogEntry(entries: CatalogEntry[], name: string): CatalogEntry[] {
+  return entries.filter((entry) => entry.name !== name);
+}

@@ -82,3 +82,23 @@
   justify-content: space-between;
   gap: var(--space-sm);
 }
+
+/**
+ * Бейдж об изменённых данных — кнопка без собственного вида: показывает
+ * она сам бейдж, а рамка вокруг него читалась бы как часть бейджа.
+ * Тот же приём, что у образца цвета в сборе тега (`NewTagButton`).
+ */
+.badgeButton {
+  display: inline-flex;
+  padding: 0;
+
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.badgeButton:focus-visible {
+  outline: var(--border-strong) solid var(--color-focus-ring);
+  outline-offset: var(--space-2xs);
+}
