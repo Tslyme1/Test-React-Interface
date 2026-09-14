@@ -147,7 +147,7 @@ test.describe('Этап 1: расчёт профиля по методике', (
        начало рекурсии раскрытия, поэтому в нижнем сечении оно совпадает
        с полем формы при любом введённом значении. */
     await page.getByRole('button', { name: 'Закрыть' }).click();
-    await page.getByLabel('Ширина разгрузочной щели S0, мм').fill('64');
+    await page.getByLabel('Ширина разгрузочной щели S0').fill('64');
     await page.getByRole('button', { name: 'Пересчитать' }).click();
     await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 

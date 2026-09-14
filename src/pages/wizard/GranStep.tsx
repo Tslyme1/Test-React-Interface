@@ -98,19 +98,19 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
       </Stack>
 
       <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность Dmin, мм" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
+        <Field label="Минимальная крупность Dmin" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
           {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
+            <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} suffix="мм" />
           )}
         </Field>
 
-        <Field label="Кондиционная крупность Dk, мм" hint={hintWithDelta('dk')} labelHint={<FieldHint>{GRAN_GLOSSARY.dk}</FieldHint>}>
-          {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} />}
+        <Field label="Кондиционная крупность Dk" hint={hintWithDelta('dk')} labelHint={<FieldHint>{GRAN_GLOSSARY.dk}</FieldHint>}>
+          {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} suffix="мм" />}
         </Field>
 
-        <Field label="Максимальная крупность Dmax, мм" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMax}</FieldHint>}>
+        <Field label="Максимальная крупность Dmax" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMax}</FieldHint>}>
           {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
+            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
           )}
         </Field>
 

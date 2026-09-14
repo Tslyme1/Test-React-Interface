@@ -47,12 +47,12 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
         </Stack>
 
         <Field
-          label="Максимальная крупность продукта Dmax, мм"
+          label="Максимальная крупность продукта Dmax"
           required
           labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}
         >
           {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
+            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
           )}
         </Field>
       </Stack>
@@ -79,15 +79,15 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
       </Stack>
 
       <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность продукта Dmin, мм" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{PROD_GLOSSARY.dMin}</FieldHint>}>
+        <Field label="Минимальная крупность продукта Dmin" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{PROD_GLOSSARY.dMin}</FieldHint>}>
           {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} />
+            <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} suffix="мм" />
           )}
         </Field>
 
-        <Field label="Максимальная крупность продукта Dmax, мм" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}>
+        <Field label="Максимальная крупность продукта Dmax" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}>
           {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} />
+            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
           )}
         </Field>
 
