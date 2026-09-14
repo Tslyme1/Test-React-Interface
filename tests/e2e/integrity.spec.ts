@@ -61,8 +61,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
       await seedSession(page, { empty: true });
       await createProject(page);
       await runStepCalc(page);
-      await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
-      await expect(page.getByRole('dialog', { name: /Результат/ })).toBeVisible();
+      await expect(page.getByRole('main')).toBeVisible();
     },
   },
 ];

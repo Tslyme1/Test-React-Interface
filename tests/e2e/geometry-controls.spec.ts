@@ -149,7 +149,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     const console_ = watchConsole(page);
 
     await runStepCalc(page);
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
 
     // Расчёт закрывает окно ввода — правим данные, открыв его заново.
     await openStepEditor(page);

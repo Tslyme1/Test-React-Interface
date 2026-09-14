@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
-import { Box, Button, EmptyState, Stack, Surface, Table, Text } from '@uralmash/design-system';
-import type { TableColumn } from '@uralmash/design-system';
+import { Box, Button, EmptyState, Stack, Surface, Text } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
-import { GranulometryChart } from '@/components/GranulometryChart/GranulometryChart';
 import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
-import { estimateGeom, estimateGran, estimateProd } from '@/domain/estimates';
-import type { GranRow, KvRow } from '@/domain/estimates';
+import { StepReport } from './StepReport';
 import styles from './StepOverview.module.css';
 
 export type StepOverviewProps = {
@@ -15,20 +12,8 @@ export type StepOverviewProps = {
   calculated: boolean;
   /** Открыть окно ввода — единственный способ поправить данные этапа. */
   onEdit: () => void;
+  onUpdateProject: (id: string, patch: Partial<Project>) => void;
 };
-
-const kvColumns: TableColumn<KvRow>[] = [
-  { key: 'label', title: 'Величина' },
-  { key: 'value', title: 'Значение', align: 'end' },
-  { key: 'unit', title: 'Ед.', align: 'end' },
-];
-
-const granColumns: TableColumn<GranRow>[] = [
-  { key: 'class', title: 'Класс крупности, мм' },
-  { key: 'dMid', title: 'D сред', align: 'end' },
-  { key: 'gamma', title: 'γ', align: 'end' },
-  { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
-];
 
 /** Пара «величина — значение» в сводке исходных данных. */
 type SummaryItem = { label: string; value: string };
@@ -45,7 +30,7 @@ type SummaryItem = { label: string; value: string };
  * и поле ввода в нём было бы вторым местом, где те же данные меняются,
  * — рядом с окном, которое для этого и открывают.
  */
-export function StepOverview({ project, stepKey, calculated, onEdit }: StepOverviewProps) {
+export function StepOverview({ project, stepKey, calculated, onEdit, onUpdateProject }: StepOverviewProps) {
   const { geom, gran, prod } = project.data;
 
   const summary = useMemo<SummaryItem[]>(() => {
@@ -90,30 +75,38 @@ export function StepOverview({ project, stepKey, calculated, onEdit }: StepOverv
 
   return (
     <Stack gap="xl" direction="column">
-      <div className={styles.head}>
-        <Text variant="headingMd">{TITLES[stepKey]}</Text>
-        <Button variant="secondary" iconStart="pencil" onClick={onEdit}>
-          Изменить данные
-        </Button>
-      </div>
+      <Text variant="headingMd">{TITLES[stepKey]}</Text>
 
       <div className={styles.split}>
         {/* Сводка — узкой колонкой слева: её читают по диагонали, чтобы
             убедиться, что считали с тем, с чем собирались. Место экрана
-            отдано результату. */}
-        <Surface level="flat" border radius="md" padding="lg">
-          <Stack gap="sm" direction="column">
-            <Text variant="label">Исходные данные</Text>
-            {summary.map((item) => (
-              <div key={item.label} className={styles.row}>
-                <Text variant="bodySm" color="textMuted">
-                  {item.label}
-                </Text>
-                <Text variant="bodySm">{item.value}</Text>
-              </div>
-            ))}
-          </Stack>
-        </Surface>
+            отдано результату.
+
+            Колонка не уезжает при прокрутке: отчёт длинный, а вопрос
+            «с чем это посчитано» возникает не на первом экране, а как раз
+            где-нибудь посреди таблицы профиля. Кнопка правки живёт здесь
+            же — она относится к этим самым данным, и держать её наверху
+            страницы значило бы отрывать действие от того, над чем оно
+            совершается. */}
+        <div className={styles.summary}>
+          <Surface level="flat" border radius="md" padding="lg">
+            <Stack gap="sm" direction="column">
+              <Text variant="label">Исходные данные</Text>
+              {summary.map((item) => (
+                <div key={item.label} className={styles.row}>
+                  <Text variant="bodySm" color="textMuted">
+                    {item.label}
+                  </Text>
+                  <Text variant="bodySm">{item.value}</Text>
+                </div>
+              ))}
+
+              <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
+                Изменить данные
+              </Button>
+            </Stack>
+          </Surface>
+        </div>
 
         <div className={styles.result}>
           {/* Чертёж — часть результата этапа, а не его постоянный фон:
@@ -128,29 +121,7 @@ export function StepOverview({ project, stepKey, calculated, onEdit }: StepOverv
           ) : null}
 
           {calculated ? (
-            <Stack gap="md" direction="column">
-              <Text variant="label">Результат этапа</Text>
-              {stepKey === 'gran' ? (
-                <>
-                  <Table
-                    columns={granColumns}
-                    rows={estimateGran(gran)}
-                    rowKey={(r) => r.class}
-                    caption="Характеристика гранулометрического состава"
-                    captionHidden
-                  />
-                  <GranulometryChart rows={estimateGran(gran)} />
-                </>
-              ) : (
-                <Table
-                  columns={kvColumns}
-                  rows={stepKey === 'geom' ? estimateGeom(geom) : estimateProd(prod, geom)}
-                  rowKey={(r) => r.label}
-                  caption="Результат этапа"
-                  captionHidden
-                />
-              )}
-            </Stack>
+            <StepReport project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} />
           ) : (
             <EmptyState
               icon="fileText"

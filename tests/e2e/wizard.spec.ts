@@ -22,17 +22,16 @@ test.describe('Инженерный визард', () => {
     await runStepCalc(page);
 
     await expect(page.getByText('Шаг «Дробилка» рассчитан')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Руда/ })).toBeEnabled();
 
     console_.assertClean();
   });
 
-  test('результат открывается панелью и показывает вычисленные значения', async ({ page }) => {
+  test('отчёт этапа стоит прямо на странице и показывает вычисленные значения', async ({ page }) => {
     await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
     await expect(drawer).toBeVisible();
 
     // Габарит основания идёт прямо из формы — связь формы и результата жива.
@@ -43,18 +42,15 @@ test.describe('Инженерный визард', () => {
        совпасть с документацией: R1 нижнего сечения 1222,1 мм при S1 = S₀. */
     await expect(drawer.getByRole('row').filter({ hasText: '1222.1' }).last()).toContainText('43.00');
 
-    await drawer.getByRole('button', { name: 'Закрыть', exact: true }).click();
-    await expect(drawer).toBeHidden();
   });
 
-  test('шторка результата показывает метаданные расчёта и позволяет завести тег на месте', async ({ page }) => {
+  test('отчёт показывает метаданные расчёта и позволяет завести тег на месте', async ({ page }) => {
     await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
     await expect(drawer.getByText('Дата расчёта')).toBeVisible();
     // Дробилка и мощность — из каталога, по названию выбранной машины (КСД-2200Т).
-    await expect(drawer.getByText('КСД-2200Т', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('КСД-2200Т', { exact: true }).first()).toBeVisible();
     await expect(drawer.getByText('315/400 кВт', { exact: true })).toBeVisible();
     await expect(drawer.getByText(DEMO_USER.name)).toBeVisible();
 
@@ -84,17 +80,6 @@ test.describe('Инженерный визард', () => {
     await expect(workingOption).toBeVisible();
     await workingOption.click();
     await expect(drawer.getByRole('button', { name: 'Снять метку' })).toHaveCount(2);
-  });
-
-  test('панель результата закрывается по Esc', async ({ page }) => {
-    await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
-
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
-    await expect(drawer).toBeVisible();
-
-    await page.keyboard.press('Escape');
-    await expect(drawer).toBeHidden();
   });
 
   test('переход по шагам меняет форму', async ({ page }) => {
@@ -162,7 +147,7 @@ test.describe('Инженерный визард', () => {
     // а не только верхний уровень записи проекта.
     await page.getByLabel('Диаметр основания D').fill('1900');
     await runStepCalc(page);
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
 
     await page.reload();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
@@ -170,17 +155,17 @@ test.describe('Инженерный визард', () => {
     await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
     await closeStepEditor(page);
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
   });
 
   test('посчитанный шаг остаётся посчитанным после возврата', async ({ page }) => {
     await runStepCalc(page);
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
   });
 
   /**
@@ -347,9 +332,8 @@ test.describe('Инженерный визард', () => {
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
     await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 2 этапа' }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат/ });
+    const drawer = page.getByRole('main');
     // По умолчанию — только по минусу, как было до появления переключателя.
     await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toBeVisible();
     await expect(drawer.getByRole('columnheader', { name: 'Выход по плюсу, %' })).toHaveCount(0);
@@ -379,9 +363,8 @@ test.describe('Инженерный визард', () => {
     await runStepCalc(page);
     await goToWizardStep(page, /Продукт/);
     await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат/ });
+    const drawer = page.getByRole('main');
     await expect(drawer).toBeVisible();
 
     await expect(drawer.getByText('Грансостав продукта дробления')).toBeVisible();
@@ -405,9 +388,8 @@ test.describe('Инженерный визард', () => {
     await runStepCalc(page);
     await goToWizardStep(page, /Продукт/);
     await runStepCalc(page);
-    await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат/ });
+    const drawer = page.getByRole('main');
 
     await expect(drawer.getByText('Этап 1. Геометрия камеры дробления')).toBeVisible();
     await expect(drawer.getByText('Профиль камеры по точкам')).toBeVisible();

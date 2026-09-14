@@ -9,6 +9,15 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
+
+  /**
+   * 45 секунд вместо стандартных 30. Сценарии стали тяжелее: почти каждый
+   * проходит через окно ввода с его появлением и уходом, а пять рабочих
+   * процессов делят одну машину — под нагрузкой отдельные шаги упирались
+   * в тридцать секунд там, где поодиночке укладываются в три. Это запас
+   * на планировщик, а не на ожидание чего-то по-настоящему долгого.
+   */
+  timeout: 45_000,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
