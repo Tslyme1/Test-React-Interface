@@ -88,17 +88,7 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 
   return (
-    <div className={styles.page}>
-      {/* Шапка этапа отмеряет отступ себе сама — внешнего у страницы нет,
-          иначе он отдавал бы снизу полосу пустоты над футером. */}
-      <div className={styles.header}>
-        <Stack gap="lg" direction="column">
-          <Text variant="headingMd">{TITLES[stepKey]}</Text>
-          {calculated ? <StepMeta project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} /> : null}
-        </Stack>
-      </div>
-
-      <div className={styles.split}>
+    <div className={styles.split}>
         {/* Сводка — узкой колонкой слева: её читают по диагонали, чтобы
             убедиться, что считали с тем, с чем собирались. Место экрана
             отдано результату.
@@ -110,7 +100,14 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             страницы значило бы отрывать действие от того, над чем оно
             совершается. */}
         <div className={styles.summary}>
-          <Stack gap="md" direction="column">
+          <Stack gap="lg" direction="column">
+            {/* Заголовок этапа и метаданные расчёта живут в левой колонке,
+                а не общей полосой над обеими: только так разделитель между
+                половинами идёт от самого верха экрана, а не начинается
+                где-то на трети его высоты. */}
+            <Text variant="headingMd">{TITLES[stepKey]}</Text>
+            {calculated ? <StepMeta project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} /> : null}
+
             {/* Подпись вынесена из таблицы наружу, как и в отчёте справа,
                 а правка стоит рядом с ней: действие относится к этим самым
                 данным, и под таблицей оно читалось бы как её продолжение. */}
@@ -130,14 +127,21 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
               caption="Исходные данные"
               captionHidden
             />
-
-            {/* Выгрузка и печать — внизу левой колонки, над футером:
-                действия над готовым этапом, а не над его первой таблицей. */}
-            {calculated ? <StepActions project={project} stepKey={stepKey} /> : null}
           </Stack>
         </div>
 
         <div className={styles.result}>
+          {/* Шапка отчёта не уезжает при прокрутке: таблиц до семи, и,
+              пролистав до середины, легко забыть, чей это отчёт и чем его
+              выгрузить. Действия здесь же — они над готовым отчётом,
+              а не над первой из его таблиц. */}
+          <div className={styles.resultHead}>
+            <Stack gap="md" direction="column">
+              <Text variant="headingMd">Результаты расчёта</Text>
+              {calculated ? <StepActions project={project} stepKey={stepKey} /> : null}
+            </Stack>
+          </div>
+
           {calculated ? (
             <StepReport project={project} stepKey={stepKey} />
           ) : (
@@ -163,7 +167,6 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             </Stack>
           ) : null}
         </div>
-      </div>
     </div>
   );
 }

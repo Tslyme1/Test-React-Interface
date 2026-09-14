@@ -49,6 +49,19 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   const [editOpen, setEditOpen] = useState(false);
 
   /**
+   * Куда форма этапа рисует свои действия — плашку выбранного объекта
+   * и «Отображение».
+   *
+   * Узлом, а не готовой разметкой: сами действия принадлежат форме
+   * (это её режимы отображения и её выбор дробилки), а место им —
+   * в шапке окна, рядом с заголовком. Поднимать ради этого состояние
+   * формы сюда значило бы размазать её по двум файлам; проще дать ей
+   * точку, куда она отрисуется порталом. Тот же приём, которым сама
+   * система уводит поповеры внутрь окна (`LayerRootProvider`).
+   */
+  const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null);
+
+  /**
    * Непосчитанный этап всегда показан с окном ввода.
    *
    * Страница этапа отвечает на вопрос «что вышло», и до расчёта ответа
@@ -263,6 +276,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
            виду. У «Руды» и «Продукта» чертежа нет — им хватает узкого,
            а широкое растягивало бы десяток полей на всю ширину экрана. */
         size={stepKey === 'geom' ? 'lg' : 'sm'}
+        headerActions={<div ref={setHeaderSlot} />}
+        /* Своего отступа у содержимого нет: форма и панель со схемой
+           рисуют края сами, а общий отступ окна отрывал бы чертёж
+           от его футера и правой кромки. */
+        contentFlush
         footer={
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
@@ -284,7 +302,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           </Modal.Footer>
         }
       >
-        <div className={stepKey === 'geom' ? styles.editorBody : undefined}>
+        <div className={stepKey === 'geom' ? styles.editorBody : styles.editorForm}>
         {stepKey === 'geom' ? (
           <GeometryStep
             data={project.data.geom}
@@ -292,6 +310,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             baseline={project.initialData.geom}
             crusherName={project.crusherName}
             onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
+            actionsSlot={headerSlot}
           />
         ) : stepKey === 'gran' ? (
           <GranStep
@@ -301,8 +320,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             ore={project.ore}
             onRequestOrePicker={() => setOrePickerOpen(true)}
             showToast={showToast}
+            actionsSlot={headerSlot}
           />
         ) : (
+          /* Своих действий у формы «Продукт» нет — плашки объекта тоже:
+             ни дробилку, ни пробу на этом этапе не выбирают. */
           <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} />
         )}
         </div>

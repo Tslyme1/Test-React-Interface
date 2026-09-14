@@ -3,6 +3,7 @@ import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl,
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
 import { GRAN_GLOSSARY } from '@/data/paramGlossary';
+import { portalActions } from './portalActions';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { SieveAnalysis } from './SieveAnalysis';
@@ -23,6 +24,8 @@ export type GranStepProps = {
   onRequestOrePicker: () => void;
   /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
   showToast: (message: string) => void;
+  /** Узел в шапке окна для действий формы — см. `portalActions`. */
+  actionsSlot?: HTMLElement | null;
 };
 
 /**
@@ -34,7 +37,7 @@ export type GranStepProps = {
  * `WizardPage` перехватывает переход без неё раньше; ветка ниже — подстраховка
  * на случай, если проба всё же оказалась пустой.
  */
-export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, showToast }: GranStepProps) {
+export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, showToast, actionsSlot }: GranStepProps) {
   // ── режим отображения: только дельта — диаграммы на этом шаге нет ──
   const [displayOpen, setDisplayOpen] = useState(false);
   const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
@@ -60,9 +63,14 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           и без неё, а строка с чипсом под подписью разводила заголовок
           с действиями по разной высоте. */}
       {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
-      <Stack direction="row" justify="end" align="center" gap="sm" wrap>
-        <Stack direction="row" align="center" gap="sm">
-          <Chip icon="fileText" action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}>
+      {portalActions(
+        actionsSlot,
+        <>
+          <Chip
+            size="sm"
+            icon="fileText"
+            action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}
+          >
             {ore}
           </Chip>
 
@@ -93,8 +101,8 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
               </Stack>
             </Stack>
           </Popover>
-        </Stack>
-      </Stack>
+        </>
+      )}
 
       <Stack direction="column" gap="md">
         <Field label="Минимальная крупность Dmin" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
