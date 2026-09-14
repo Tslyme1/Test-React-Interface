@@ -116,11 +116,12 @@ export function StepOverview({ project, stepKey, calculated, onEdit }: StepOverv
         </Surface>
 
         <div className={styles.result}>
-          {stepKey === 'geom' ? (
-            /* Чертёж — и есть результат этапа: профиль камеры считается
-               по введённым числам и виден целиком, без расчёта по кнопке.
-               Наведения тут нет: связь «поле ↔ участок» живёт там же,
-               где поля, — в окне ввода. */
+          {/* Чертёж — часть результата этапа, а не его постоянный фон:
+              до расчёта он показывал бы профиль, которого в отчёте ещё
+              нет, — а страница отвечает на вопрос «что вышло», и до
+              расчёта честный ответ один: ничего. Смотреть на профиль
+              по ходу ввода есть где — он стоит рядом с полями в окне. */}
+          {stepKey === 'geom' && calculated ? (
             <Box padding="md" border radius="md" fullWidth>
               <ChamberScheme input={schemeInput} testId="chamber-overview" />
             </Box>

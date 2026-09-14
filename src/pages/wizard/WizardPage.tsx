@@ -257,7 +257,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         open={editOpen}
         onClose={() => setEditOpen(false)}
         title={`Исходные данные: ${STEP_META[step].label}`}
-        size="lg"
+        /* Широкое окно нужно только «Геометрии»: там рядом с полями стоит
+           чертёж, и связь «поле ↔ участок» работает, лишь когда оба на
+           виду. У «Руды» и «Продукта» чертежа нет — им хватает узкого,
+           а широкое растягивало бы десяток полей на всю ширину экрана. */
+        size={stepKey === 'geom' ? 'lg' : 'sm'}
         footer={
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setEditOpen(false)}>
@@ -279,7 +283,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           </Modal.Footer>
         }
       >
-        <div className={styles.editorBody}>
+        <div className={stepKey === 'geom' ? styles.editorBody : undefined}>
         {stepKey === 'geom' ? (
           <GeometryStep
             data={project.data.geom}
