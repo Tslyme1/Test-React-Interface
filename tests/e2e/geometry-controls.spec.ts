@@ -169,28 +169,32 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await createProject(page);
   });
 
-  test('число зон дробления задаёт, сколько зон участвует в расчёте', async ({ page }) => {
-    /* Число зон — исходное данное методики (третья строка файла геометрии):
-       оно задаёт длину массивов l₁(i), β₁(i), β₄(i). Лишние тройки полей
-       не показываются, и участок профиля, который пользователь не задавал,
-       в чертёж не попадает. */
+  test('число зон дробления вводится числом и задаёт, сколько зон в расчёте', async ({ page }) => {
+    /* Число зон — исходное данное методики: оно задаёт длину массивов
+       l₁(i), β₁(i), β₄(i). Поле ввода, а не список: методика числом зон
+       не ограничена. */
     const svg = page.getByTestId('chamber-scheme');
-    const zones = page.getByRole('button', { name: 'Число зон дробления' });
-    await expect(zones).toContainText('2');
-    await expect(page.getByLabel('Зона 2 — l₁₂')).toBeVisible();
+    const zones = page.getByLabel('Число зон дробления');
+
+    await expect(zones).toHaveValue('2');
+    await expect(page.getByLabel('Зона 2 — длина')).toBeVisible();
     await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).not.toHaveCount(0);
 
-    await zones.click();
-    // Больше двух зон форма не спрашивает: третьей тройки полей в ней нет.
-    await expect(page.getByRole('option')).toHaveCount(2);
-    await expect(page.getByRole('option', { name: '3', exact: true })).toHaveCount(0);
-    await page.getByRole('option', { name: '1', exact: true }).click();
+    await zones.fill('1');
 
     // Узлов стало на один меньше: 40 · 4i · 3 вместо 40 · 41 · 4i · 3.
-    await expect(page.getByLabel('Зона 2 — l₁₂')).toHaveCount(0);
-    await expect(page.getByLabel('Зона 1 — l₁₁')).toBeVisible();
+    await expect(page.getByLabel('Зона 2 — длина')).toHaveCount(0);
+    await expect(page.getByLabel('Зона 1 — длина')).toBeVisible();
     await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'Сегмент 10→1i' })).not.toHaveCount(0);
+
+    /* Больше двух зон тоже можно: новая тройка дописывается копией
+       последней — заполнять её с нуля значило бы вводить заново то,
+       что уже введено рядом. */
+    await zones.fill('4');
+    await expect(page.getByLabel('Зона 4 — длина')).toBeVisible();
+    await expect(page.getByLabel('Зона 4 — длина')).toHaveValue(await page.getByLabel('Зона 1 — длина').inputValue());
+    await expect(svg.locator('title', { hasText: 'Сегмент 13→1i' })).not.toHaveCount(0);
   });
 
   test('поповер «Слои» — строка сама переключает видимость участка схемы', async ({ page }) => {

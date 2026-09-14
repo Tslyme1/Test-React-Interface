@@ -6,7 +6,10 @@ import type { AngleUnit, GeomData } from '@/types';
  * перечислены, а не выведены по названию поля: `a` — коэффициент профиля,
  * а не угол, и различить по одной букве нельзя.
  */
-const ANGLE_FIELDS = ['b40', 'b41', 'b42', 'b10', 'b11', 'b12', 'b2', 'theta'] as const;
+const ANGLE_FIELDS = ['b40', 'b10', 'b2', 'theta'] as const;
+
+/** То же внутри зоны дробления: длина остаётся длиной, углы переводятся. */
+const ZONE_ANGLE_FIELDS = ['b1', 'b4'] as const;
 
 function toNum(raw: string): number | null {
   const n = Number(String(raw ?? '').replace(',', '.'));
@@ -31,11 +34,25 @@ export function convertAngleUnit(data: GeomData, to: AngleUnit): Partial<GeomDat
   const factor = to === 'рад' ? Math.PI / 180 : 180 / Math.PI;
   const patch: Partial<GeomData> = { angleUnit: to };
 
+  const convert = (raw: string): string | null => {
+    const value = toNum(raw);
+    return value === null ? null : String(Math.round(value * factor * 10000) / 10000);
+  };
+
   for (const field of ANGLE_FIELDS) {
-    const value = toNum(data[field]);
-    if (value === null) continue;
-    patch[field] = String(Math.round(value * factor * 10000) / 10000);
+    const next = convert(data[field]);
+    if (next !== null) patch[field] = next;
   }
+
+  /* Зоны переводятся целиком новым массивом: точечная правка внутри
+     объекта зоны разъехалась бы с тем, что форма считает текущими
+     данными, — она сравнивает наборы по ссылке. */
+  patch.zones = data.zones.map((zone) => ({
+    ...zone,
+    ...Object.fromEntries(
+      ZONE_ANGLE_FIELDS.map((field) => [field, convert(zone[field]) ?? zone[field]] as const)
+    ),
+  }));
 
   return patch;
 }

@@ -40,29 +40,34 @@ const DEFAULT_LAYERS: Required<ChamberSchemeLayers> = {
  */
 export type ChamberHighlightKey =
   | 'a40'
-  | 'n40'
-  | 'n41'
-  | 'n42'
-  | 'n4i'
   | 't3'
   | 'a10'
-  | 'n10'
-  | 'n11'
-  | 'n12'
-  | 'n1i'
   | 't2'
   | 'theta'
   | 'axis'
   | 'apex'
   | 'bowl'
   | 'cone'
-  | 'gap0'
-  | 'gap1'
-  | 'gap2'
-  | 'gap3'
-  | 'gap4'
   | 'dim-h'
-  | 'dim-d';
+  | 'dim-d'
+  /* Узлы и зазоры нумерованы, а не перечислены поимённо: зон дробления
+     столько, сколько задал пользователь, и закрытый список ключей
+     упирался в потолок ровно там, где методика его не ставит. `nb0` —
+     узел 40 у чаши, `nc0` — узел 10 у конуса, дальше по сечениям. */
+  | `nb${number}`
+  | `nc${number}`
+  | `gap${number}`;
+
+/**
+ * Узлы, которыми кончается зона дробления `index` (считая с нуля), —
+ * ключи подсветки для полей этой зоны в форме.
+ *
+ * Экспортируется, чтобы форма и чертёж брали ключ из одного места:
+ * связь «поле ↔ участок» рвалась ровно тогда, когда её считали дважды.
+ */
+export function zoneNodeKeys(index: number): { bowl: ChamberHighlightKey; cone: ChamberHighlightKey } {
+  return { bowl: `nb${index + 1}`, cone: `nc${index + 1}` };
+}
 
 export type ChamberSchemeProps = {
   /** Исходные данные этапа 1 — из них считается и профиль, и чертёж. */
@@ -113,14 +118,11 @@ function nodeNames(count: number, side: 'b' | 'c'): string[] {
 }
 
 function nodeKeys(count: number, side: 'b' | 'c'): ChamberHighlightKey[] {
-  const named = side === 'b' ? ['n40', 'n41', 'n42', 'n4i'] : ['n10', 'n11', 'n12', 'n1i'];
+  const prefix = side === 'b' ? 'nb' : 'nc';
   const last: ChamberHighlightKey = side === 'b' ? 't3' : 't2';
-  const iKey = side === 'b' ? 'n4i' : 'n1i';
-  return Array.from({ length: count }, (_, j) => {
-    if (j === count - 1) return last;
-    if (j === count - 2) return iKey as ChamberHighlightKey;
-    return (named[j] ?? iKey) as ChamberHighlightKey;
-  });
+  return Array.from({ length: count }, (_, j) =>
+    j === count - 1 ? last : (`${prefix}${j}` as ChamberHighlightKey)
+  );
 }
 
 /** Подписи сегментов: зоны дробления l₁₁…l₁ᵢ и зона калибровки l₂. */
@@ -128,15 +130,21 @@ function segmentLabels(segments: number): string[] {
   return Array.from({ length: segments }, (_, j) => {
     if (j === segments - 1) return 'l₂';
     if (j === segments - 2) return 'l₁ᵢ';
-    return `l₁${SUB[j + 1]}`;
+    return `l₁${sub(j + 1)}`;
   });
+}
+
+/** Нижний индекс числом. За пределами одной цифры — как есть: подписей
+    столько, сколько зон, а зон пользователь волен задать и больше девяти. */
+function sub(value: number): string {
+  return SUB[value] ?? String(value);
 }
 
 /** Подписи раскрытия камеры в узлах: S₁…Sᵢ по сечениям, S₀ на разгрузке. */
 function gapLabels(count: number): string[] {
-  return Array.from({ length: count }, (_, j) => (j === count - 1 ? 'S₀' : `S${SUB[j + 1]}`));
+  return Array.from({ length: count }, (_, j) => (j === count - 1 ? 'S₀' : `S${sub(j + 1)}`));
 }
-const GAP_KEYS: ChamberHighlightKey[] = ['gap0', 'gap1', 'gap2', 'gap3', 'gap4'];
+const gapKey = (i: number): ChamberHighlightKey => `gap${i}`;
 
 /** Ширина прозрачной цели для курсора поверх тонкой линии. */
 const HIT_WIDTH = 18;
@@ -407,8 +415,8 @@ export function ChamberScheme({
 
     /* Подписи радиусов — двумя выносками, как на исходном чертеже. */
     const packs = [
-      { list: B, raw: bowlTrue, names: NAMES_B, keys: ['a40', ...KEYS_B.slice(0, 4)] as ChamberHighlightKey[], anchor: { x: apex.x - 286, y: apex.y - 46 } },
-      { list: C, raw: coneTrue, names: NAMES_C, keys: ['a10', ...KEYS_C.slice(0, 4)] as ChamberHighlightKey[], anchor: { x: apex.x - 158, y: apex.y + 206 } },
+      { list: B, raw: bowlTrue, names: NAMES_B, keys: ['a40', ...KEYS_B] as ChamberHighlightKey[], anchor: { x: apex.x - 286, y: apex.y - 46 } },
+      { list: C, raw: coneTrue, names: NAMES_C, keys: ['a10', ...KEYS_C] as ChamberHighlightKey[], anchor: { x: apex.x - 158, y: apex.y + 206 } },
     ];
     packs.forEach((pack, packIndex) => {
       pack.names.forEach((name, i) => {
@@ -460,7 +468,7 @@ export function ChamberScheme({
          калибровки раскрытие постоянно и равно S₀. */
       const section = sectionGaps[i];
       const raw = i === LAST ? gapRaw : (section?.S1 ?? gapRaw);
-      const key = GAP_KEYS[Math.min(i, GAP_KEYS.length - 1)];
+      const key = gapKey(i);
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       parts.push(
         <g key={`gap-${i}`} className={cls(key)} {...zone(key)}>
@@ -564,8 +572,8 @@ export function ChamberScheme({
         </g>
       );
     };
-    stub(B[0], input.beta40, 'n40', `Зона входа, броня чаши: β₄₀ = ${fmt((input.beta40 * 180) / Math.PI, 2)}°`);
-    stub(C[0], input.beta10 - input.theta, 'n10', `Зона входа, броня конуса: β₁₀ = ${fmt((input.beta10 * 180) / Math.PI, 2)}° (действующий β₁₀−θ)`);
+    stub(B[0], input.beta40, 'nb0', `Зона входа, броня чаши: β₄₀ = ${fmt((input.beta40 * 180) / Math.PI, 2)}°`);
+    stub(C[0], input.beta10 - input.theta, 'nc0', `Зона входа, броня конуса: β₁₀ = ${fmt((input.beta10 * 180) / Math.PI, 2)}° (действующий β₁₀−θ)`);
   }
 
   /* ── дуги узловых углов β ── */

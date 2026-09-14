@@ -67,7 +67,9 @@ test.describe('Этап 1: границы исходных данных', () => 
 
     await expect(help).toContainText('Угол нутации θ — от 0,1 до 6°');
     await expect(help).toContainText('Диаметр основания D — от 300 до 4000 мм');
-    await expect(help).toContainText('Углы чаши β40 · β41 · β42 — от 1 до 90°');
+    await expect(help).toContainText('Угол чаши в зоне входа β40 — от 1 до 90°');
+    // Величины зоны подписаны один раз без номера: зон столько, сколько завёл пользователь.
+    await expect(help).toContainText('Длина зоны дробления — от 10 до 2000 мм');
 
     // Крупность: ситовый размер — сторона квадратной ячейки.
     await expect(help).toContainText('сторона квадратной ячейки сита');

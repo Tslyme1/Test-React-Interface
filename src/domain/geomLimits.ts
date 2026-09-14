@@ -1,4 +1,4 @@
-import type { GeomData } from '@/types';
+import type { GeomData, ZoneData } from '@/types';
 import { buildChamberProfileInput } from '@/domain/chamberInput';
 
 /**
@@ -41,15 +41,30 @@ const ANGLE_CONE: Pick<GeomLimit, 'min' | 'max' | 'kind'> = { min: 1, max: 89, k
 const ANGLE_BOWL: Pick<GeomLimit, 'min' | 'max' | 'kind'> = { min: 1, max: 90, kind: 'deg' };
 const ZONE_LENGTH: Pick<GeomLimit, 'min' | 'max' | 'kind'> = { min: 10, max: 2000, kind: 'mm' };
 
+const CONE_WHY = 'Угол при основании конуса: вне (0°; 90°) образующая либо горизонтальна, либо вырождается в ось.';
+const BOWL_WHY = 'Угол при основании чаши: свыше 90° образующая уходит внутрь камеры.';
+const ZONE_WHY = 'Длина зоны дробления вдоль образующей. У машин на руках 150–393 мм.';
+
+/**
+ * Границы величин одной зоны дробления. Отдельно от `GEOM_LIMITS`,
+ * потому что зон столько, сколько задал пользователь: ключом здесь
+ * служит имя величины внутри зоны, а не имя поля формы.
+ */
+export const ZONE_LIMITS = {
+  l1: { ...ZONE_LENGTH, why: ZONE_WHY },
+  b1: { ...ANGLE_CONE, why: CONE_WHY },
+  b4: { ...ANGLE_BOWL, why: BOWL_WHY },
+} as const satisfies Record<keyof ZoneData, GeomLimit>;
+
+export type ZoneField = keyof typeof ZONE_LIMITS;
+
+export const ZONE_FIELDS = Object.keys(ZONE_LIMITS) as ZoneField[];
+
 export const GEOM_LIMITS = {
-  b10: { ...ANGLE_CONE, why: 'Угол при основании конуса: вне (0°; 90°) образующая либо горизонтальна, либо вырождается в ось.' },
-  b11: { ...ANGLE_CONE, why: 'Угол при основании конуса: вне (0°; 90°) образующая либо горизонтальна, либо вырождается в ось.' },
-  b12: { ...ANGLE_CONE, why: 'Угол при основании конуса: вне (0°; 90°) образующая либо горизонтальна, либо вырождается в ось.' },
+  b10: { ...ANGLE_CONE, why: CONE_WHY },
   b2: { ...ANGLE_CONE, why: 'Угол при основании конуса в зоне калибровки: вне (0°; 90°) зона перестаёт быть зоной.' },
 
   b40: { ...ANGLE_BOWL, why: 'Угол при основании чаши. Свыше 90° методика расчёт не ведёт: ветка β₄₀ > π/2 в модели движения куска не реализована (§8.1).' },
-  b41: { ...ANGLE_BOWL, why: 'Угол при основании чаши: свыше 90° образующая уходит внутрь камеры.' },
-  b42: { ...ANGLE_BOWL, why: 'Угол при основании чаши: свыше 90° образующая уходит внутрь камеры.' },
 
   theta: {
     min: 0.1,
@@ -58,8 +73,6 @@ export const GEOM_LIMITS = {
     why: 'Перекос оси конуса. При нуле конус не качается и дробления нет — угол стоит в знаменателе минимальной частоты качаний (§4.5.4). У реальных КСД и КМД это 1–3°.',
   },
 
-  l11: { ...ZONE_LENGTH, why: 'Длина зоны дробления вдоль образующей. У машин на руках 150–393 мм.' },
-  l12: { ...ZONE_LENGTH, why: 'Длина зоны дробления вдоль образующей. У машин на руках 150–393 мм.' },
   l2: { min: 10, max: 1000, kind: 'mm', why: 'Длина зоны калибровки ниже последнего сечения. У машин на руках 152 и 360 мм.' },
 
   D: { min: 300, max: 4000, kind: 'mm', why: 'Диаметр основания дробящего конуса. Типоразмеры КСД и КМД — от 600 до 3000 мм.' },
@@ -81,7 +94,15 @@ function toNum(raw: string): number | null {
 
 /** Границы в тех единицах, в которых поле показано прямо сейчас. */
 export function limitIn(field: LimitedField, data: GeomData): { min: number; max: number; unit: string } {
-  const limit = GEOM_LIMITS[field];
+  return limitOf(GEOM_LIMITS[field], data);
+}
+
+/** То же для величины внутри зоны дробления. */
+export function zoneLimitIn(field: ZoneField, data: GeomData): { min: number; max: number; unit: string } {
+  return limitOf(ZONE_LIMITS[field], data);
+}
+
+function limitOf(limit: GeomLimit, data: GeomData): { min: number; max: number; unit: string } {
   if (limit.kind !== 'deg') {
     return { min: limit.min, max: limit.max, unit: limit.kind === 'm' ? 'м' : 'мм' };
   }
@@ -96,7 +117,17 @@ function fmt(v: number): string {
   return String(Math.round(v * 1e4) / 1e4).replace('.', ',');
 }
 
-export type GeomErrors = Partial<Record<keyof GeomData, string>>;
+/** Ошибки одной зоны — по тем же ключам, что и её величины. */
+export type ZoneErrors = Partial<Record<ZoneField, string>>;
+
+/**
+ * Ошибки формы. Зоны отдельным массивом, а не плоскими ключами:
+ * их столько, сколько завёл пользователь, и плоское имя поля вроде
+ * `l11` больше ничего не адресует.
+ */
+export type GeomErrors = Partial<Record<Exclude<keyof GeomData, 'zones'>, string>> & {
+  zones?: ZoneErrors[];
+};
 
 /**
  * Проверка ввода этапа 1: сначала границы отдельных величин, затем две
@@ -110,6 +141,10 @@ export type GeomErrors = Partial<Record<keyof GeomData, string>>;
 export function validateGeom(data: GeomData): GeomErrors {
   const errors: GeomErrors = {};
 
+  /* Градус пишется вплотную к числу, остальные единицы — через пробел. */
+  const message = (min: number, max: number, unit: string) =>
+    `Допустимо от ${fmt(min)} до ${unit === '°' ? `${fmt(max)}°` : `${fmt(max)} ${unit}`}`;
+
   for (const field of LIMITED_FIELDS) {
     const value = toNum(data[field]);
     if (value === null) {
@@ -117,12 +152,22 @@ export function validateGeom(data: GeomData): GeomErrors {
       continue;
     }
     const { min, max, unit } = limitIn(field, data);
-    if (value < min || value > max) {
-      /* Градус пишется вплотную к числу, остальные единицы — через пробел. */
-      const tail = unit === '°' ? `${fmt(max)}°` : `${fmt(max)} ${unit}`;
-      errors[field] = `Допустимо от ${fmt(min)} до ${tail}`;
-    }
+    if (value < min || value > max) errors[field] = message(min, max, unit);
   }
+
+  errors.zones = data.zones.map((zone) => {
+    const zoneErrors: ZoneErrors = {};
+    for (const field of ZONE_FIELDS) {
+      const value = toNum(zone[field]);
+      if (value === null) {
+        zoneErrors[field] = 'Нужно число';
+        continue;
+      }
+      const { min, max, unit } = zoneLimitIn(field, data);
+      if (value < min || value > max) zoneErrors[field] = message(min, max, unit);
+    }
+    return zoneErrors;
+  });
 
   if (errors.l2 || errors.D || errors.H || errors.b2) return errors;
 
@@ -141,5 +186,7 @@ export function validateGeom(data: GeomData): GeomErrors {
 
 /** Есть ли хоть одна ошибка — для блокировки расчёта по заведомо неверным данным. */
 export function hasGeomErrors(data: GeomData): boolean {
-  return Object.keys(validateGeom(data)).length > 0;
+  const { zones, ...scalar } = validateGeom(data);
+  if (Object.keys(scalar).length > 0) return true;
+  return (zones ?? []).some((zone) => Object.keys(zone).length > 0);
 }
