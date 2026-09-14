@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { GeomData, GranData, ProdData, Project, ProjectMode, SieveRowData, WizardData, ZoneCount } from '@/types';
+import type { GeomData, GranData, ProdData, Project, ProjectMode, SieveRowData, WizardData, ZoneData } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { buildSampleProjects } from '@/data/sampleProjects';
 import { catalogOf } from '@/state/userCatalog';
@@ -65,7 +65,7 @@ const STORAGE_KEY = 'uztm-projects';
  * умолчанию: проекты — это работа пользователя, и терять её из-за того,
  * что мы дописали поле, нельзя.
  */
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 type StoredPayload = { version: number; projects: Project[]; trash: Project[]; seeded?: boolean };
 
@@ -98,37 +98,40 @@ function readState(): StoredState {
     const seeded = payload.seeded === true;
 
     if (payload.version === SCHEMA_VERSION) return seedIfNeeded({ projects: payload.projects, trash, seeded });
+    if (payload.version === 18) {
+      return seedIfNeeded({ projects: payload.projects.map(migrateZoneListV19), trash, seeded });
+    }
     if (payload.version === 17) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 16) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 15) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 14) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 13) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 12) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 11) {
-      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18), trash, seeded });
+      return seedIfNeeded({ projects: payload.projects.map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19), trash, seeded });
     }
     if (payload.version === 10) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+        projects: payload.projects.map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
     }
     if (payload.version === 9) {
       return seedIfNeeded({
-        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+        projects: payload.projects.map(migrateTagsV10).map(migrateInitialDataV11).map(migrateGeomChainV12).map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -140,7 +143,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -152,7 +155,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -165,7 +168,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -178,7 +181,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -192,7 +195,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -206,7 +209,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded,
       });
@@ -220,7 +223,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded: false,
       });
@@ -235,7 +238,7 @@ function readState(): StoredState {
           .map(migrateTagsV10)
           .map(migrateInitialDataV11)
           .map(migrateGeomChainV12)
-          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18),
+          .map(migrateDkV13).map(migrateCalcSnapshotV14).map(migrateShapeToGranV15).map(migrateGeomProfileV16).map(migrateZonesBackV17).map(migrateTwoZonesV18).map(migrateZoneListV19),
         trash,
         seeded: false,
       });
@@ -358,22 +361,22 @@ function migrateGeomChainV12(project: Project): Project {
   const defaults = defaultWizardData().geom;
 
   const convert = (data: WizardData): WizardData => {
-    const geom = data.geom as GeomData & LegacyGeom;
+    const geom = data.geom as unknown as FlatGeom & LegacyGeom;
     // Уже новая форма — цепочка на месте, трогать нечего.
     if (typeof geom.b40 === 'string' && typeof geom.b41 === 'string') return data;
 
     return {
       ...data,
       geom: {
-        ...defaults,
+        ...flatDefaults(defaults),
         // Что было в форме — переносится как есть.
         b40: geom.beta40 ?? defaults.b40,
         b10: geom.beta10 ?? defaults.b10,
         b2: geom.beta2 ?? defaults.b2,
-        l11: geom.l11 ?? defaults.l11,
+        l11: geom.l11 ?? defaults.zones[0].l1,
         /* `l12` в старой форме участвовал в построении только при двух
            зонах — при одной адаптер брал умолчание, и на схеме стояло оно. */
-        l12: geom.zones === '2' && geom.l12 ? geom.l12 : defaults.l12,
+        l12: geom.zones === '2' && geom.l12 ? geom.l12 : defaults.zones[1].l1,
         l2: geom.l2 ?? defaults.l2,
         // Габариты, единицы углов и коэффициенты живут своей жизнью.
         D: geom.D ?? defaults.D,
@@ -383,7 +386,7 @@ function migrateGeomChainV12(project: Project): Project {
         angleUnit: geom.angleUnit ?? defaults.angleUnit,
         R: geom.R ?? defaults.R,
         a: geom.a ?? defaults.a,
-      },
+      } as unknown as GeomData,
     };
   };
 
@@ -493,7 +496,7 @@ function migrateGeomProfileV16(project: Project): Project {
   const defaults = defaultWizardData().geom;
 
   const convert = (data: WizardData): WizardData => {
-    const geom = data.geom as GeomData & LegacyGeom;
+    const geom = data.geom as unknown as FlatGeom & LegacyGeom;
     if (geom.a40 === undefined && geom.L10 === undefined && geom.b3 === undefined) return data;
 
     const {
@@ -514,8 +517,8 @@ function migrateGeomProfileV16(project: Project): Project {
        Тройка здесь ещё возможна — ввод ограничили одной-двумя зонами
        позже, и приводит её к потолку следующая миграция (v18). */
     const stored = (kept as { zones?: string }).zones;
-    const zones = (stored === '2' || stored === '3' ? stored : '1') as ZoneCount;
-    return { ...data, geom: { ...defaults, ...kept, zones } };
+    const zones = stored === '2' || stored === '3' ? stored : '1';
+    return { ...data, geom: { ...flatDefaults(defaults), ...kept, zones } as unknown as GeomData };
   };
 
   return {
@@ -536,12 +539,10 @@ function migrateGeomProfileV16(project: Project): Project {
  * как в контрольном примере методики и как рисовал чертёж всё это время.
  */
 function migrateZonesBackV17(project: Project): Project {
-  const fallback = defaultWizardData().geom.zones;
-
   const convert = (data: WizardData): WizardData => {
-    const geom = data.geom as GeomData & { zones?: ZoneCount };
+    const geom = data.geom as unknown as FlatGeom;
     if (geom.zones !== undefined) return data;
-    return { ...data, geom: { ...geom, zones: fallback } };
+    return { ...data, geom: { ...geom, zones: '2' } as unknown as GeomData };
   };
 
   return { ...project, data: convert(project.data), initialData: convert(project.initialData) };
@@ -568,10 +569,107 @@ function migrateZonesBackV17(project: Project): Project {
  */
 function migrateTwoZonesV18(project: Project): Project {
   const convert = (data: WizardData): WizardData => {
-    const geom = data.geom as GeomData & { l1i?: string; b1i?: string; b4i?: string; zones?: string };
+    const geom = data.geom as unknown as FlatGeom & { l1i?: string; b1i?: string; b4i?: string };
     const { l1i: _l1i, b1i: _b1i, b4i: _b4i, ...kept } = geom;
-    const zones: ZoneCount = kept.zones === '1' ? '1' : '2';
-    return { ...data, geom: { ...(kept as GeomData), zones } };
+    const zones = kept.zones === '1' ? '1' : '2';
+    return { ...data, geom: { ...kept, zones } as unknown as GeomData };
+  };
+
+  return {
+    ...project,
+    data: convert(project.data),
+    initialData: convert(project.initialData),
+    calcSnapshot: [null, null, null],
+  };
+}
+
+/**
+ * Плоская форма геометрии — та, что была в хранилище до версии 19:
+ * зоны стояли отдельными полями `l11`/`b11`/`b41`, `l12`/`b12`/`b42`,
+ * а их число — строкой `zones`.
+ *
+ * Ранние миграции работают с ней, а не с сегодняшним `GeomData`: они
+ * разбирают записи, которые новой формы ещё не видели, и приводить их
+ * к массиву зон по дороге незачем — это делает v19, одна на всех.
+ */
+type FlatGeom = Record<string, string | undefined>;
+
+/** Сегодняшние умолчания в плоском виде — опора для ранних миграций. */
+function flatDefaults(geom: GeomData): FlatGeom {
+  const [first, second] = geom.zones;
+  return {
+    b40: geom.b40,
+    b10: geom.b10,
+    b2: geom.b2,
+    l2: geom.l2,
+    theta: geom.theta,
+    angleUnit: geom.angleUnit,
+    D: geom.D,
+    H: geom.H,
+    S0: geom.S0,
+    R: geom.R,
+    a: geom.a,
+    zones: String(geom.zones.length),
+    l11: first.l1,
+    b11: first.b1,
+    b41: first.b4,
+    l12: second?.l1 ?? first.l1,
+    b12: second?.b1 ?? first.b1,
+    b42: second?.b4 ?? first.b4,
+  };
+}
+
+/**
+ * v19 — зоны дробления стали набором, а не парой именованных троек.
+ *
+ * Число зон больше не хранится отдельной строкой: им служит длина
+ * самого набора. Отдельное поле-счётчик неизбежно разъезжалось с набором
+ * троек — ровно это и случалось, когда зон стало то три, то две.
+ *
+ * Плоские поля `l11`/`b11`/`b41` и `l12`/`b12`/`b42` складываются
+ * в массив по сохранённому числу зон: тройка, которую пользователь
+ * не показывал и не заполнял, в набор не попадает.
+ *
+ * `calcSnapshot` сбрасывается: снимок снят с прежней формы `GeomData`,
+ * и сравнение с ним показывало бы расхождение там, где пользователь
+ * ничего не менял.
+ */
+function migrateZoneListV19(project: Project): Project {
+  const defaults = defaultWizardData().geom;
+
+  const convert = (data: WizardData): WizardData => {
+    const geom = data.geom as unknown as FlatGeom;
+    if (Array.isArray((geom as { zones?: unknown }).zones)) return data;
+
+    const count = Math.max(1, Math.min(Number(geom.zones) || 1, 2));
+    const flat: [string, string, string][] = [
+      ['l11', 'b11', 'b41'],
+      ['l12', 'b12', 'b42'],
+    ];
+
+    const zones: ZoneData[] = flat.slice(0, count).map(([l1, b1, b4], i) => ({
+      l1: geom[l1] ?? defaults.zones[i]?.l1 ?? defaults.zones[0].l1,
+      b1: geom[b1] ?? defaults.zones[i]?.b1 ?? defaults.zones[0].b1,
+      b4: geom[b4] ?? defaults.zones[i]?.b4 ?? defaults.zones[0].b4,
+    }));
+
+    return {
+      ...data,
+      geom: {
+        b40: geom.b40 ?? defaults.b40,
+        b10: geom.b10 ?? defaults.b10,
+        zones,
+        l2: geom.l2 ?? defaults.l2,
+        b2: geom.b2 ?? defaults.b2,
+        theta: geom.theta ?? defaults.theta,
+        angleUnit: geom.angleUnit === 'рад' ? 'рад' : 'deg',
+        D: geom.D ?? defaults.D,
+        H: geom.H ?? defaults.H,
+        S0: geom.S0 ?? defaults.S0,
+        R: geom.R ?? defaults.R,
+        a: geom.a ?? defaults.a,
+      },
+    };
   };
 
   return {

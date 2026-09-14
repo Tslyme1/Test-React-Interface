@@ -11,17 +11,12 @@ import { defaultWizardData } from '@/data/wizardDefaults';
 const FALLBACK = defaultWizardData().geom;
 
 /**
- * Число зон дробления — исходное данное методики: оно задаёт, сколько
- * троек «длина зоны + угол конуса + угол чаши» читается из формы.
- * Разбор строкой, потому что в форме это `Select` со строковым значением.
- *
- * Потолок — две зоны: столько троек есть в `GeomData`. Ограничение
- * формы, а не методики — сам `computeChamberProfile` считает любое число
- * зон, и контрольный пример §7 с тремя проверяется на нём напрямую.
+ * Число зон дробления — длина самого набора зон, а не отдельное поле.
+ * Ноль зон камерой не является: профиль из одной зоны калибровки —
+ * это уже не камера дробления, поэтому минимум один.
  */
 export function crushingZones(data: GeomData): number {
-  const parsed = Number(data.zones);
-  return Number.isFinite(parsed) && parsed >= 1 ? Math.min(2, Math.round(parsed)) : 1;
+  return Math.max(1, data.zones.length);
 }
 
 function toNum(raw: string, fallback: string): number {
@@ -50,17 +45,20 @@ export function buildChamberProfileInput(data: GeomData): ChamberProfileInput {
   const mm = (raw: string, fallback: string): number => toNum(raw, fallback);
 
   const zones = crushingZones(data);
-  /* Массивы обрезаются по числу зон: поля второй зоны при одной зоне
-     в форме не показываются и в расчёт идти не должны, иначе профиль
-     получил бы участок, которого пользователь не задавал. */
+  /* Пустой набор зон (его в форме не завести, но данные приходят
+     и из хранилища) достраивается одной зоной по умолчанию — иначе
+     рекурсия считала бы профиль без единого участка дробления. */
+  const list = data.zones.length > 0 ? data.zones : [FALLBACK.zones[0]];
+  const fb = FALLBACK.zones[0];
+
   return {
     zones,
     beta10: rad(data.b10, FALLBACK.b10),
-    beta1: [rad(data.b11, FALLBACK.b11), rad(data.b12, FALLBACK.b12)].slice(0, zones),
+    beta1: list.map((zone) => rad(zone.b1, fb.b1)),
     beta2: rad(data.b2, FALLBACK.b2),
     beta40: rad(data.b40, FALLBACK.b40),
-    beta4: [rad(data.b41, FALLBACK.b41), rad(data.b42, FALLBACK.b42)].slice(0, zones),
-    l1: [mm(data.l11, FALLBACK.l11), mm(data.l12, FALLBACK.l12)].slice(0, zones),
+    beta4: list.map((zone) => rad(zone.b4, fb.b4)),
+    l1: list.map((zone) => mm(zone.l1, fb.l1)),
     l2: mm(data.l2, FALLBACK.l2),
     D: mm(data.D, FALLBACK.D),
     H: mm(data.H, FALLBACK.H),

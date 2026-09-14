@@ -129,9 +129,7 @@ test.describe('Этап 1: расчёт профиля по методике', (
     await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('4');
 
     await page.getByRole('button', { name: 'Закрыть' }).click();
-    const zones = page.getByRole('button', { name: 'Число зон дробления' });
-    await zones.click();
-    await page.getByRole('option', { name: '1', exact: true }).click();
+    await page.getByLabel('Число зон дробления').fill('1');
     await page.getByRole('button', { name: 'Пересчитать' }).click();
     await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 

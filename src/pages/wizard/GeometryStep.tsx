@@ -1,22 +1,33 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { Box, Button, Chip, Field, Input, Modal, Popover, Select, Stack, Surface, Text } from '@uralmash/design-system';
-import type { GeomData, ZoneCount } from '@/types';
+import { Box, Button, Chip, Field, Input, Modal, Popover, Stack, Surface, Text } from '@uralmash/design-system';
+import type { GeomData } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
+import { zoneNodeKeys } from '@/components/ChamberScheme/ChamberScheme';
 import type { ChamberHighlightKey, ChamberSchemeLayers } from '@/components/ChamberScheme/ChamberScheme';
 import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
-import { GEOM_GLOSSARY } from '@/data/paramGlossary';
+import { GEOM_GLOSSARY, ZONE_GLOSSARY } from '@/data/paramGlossary';
 import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
-import { limitIn, validateGeom } from '@/domain/geomLimits';
-import type { LimitedField } from '@/domain/geomLimits';
+import { limitIn, validateGeom, zoneLimitIn } from '@/domain/geomLimits';
+import type { LimitedField, ZoneField } from '@/domain/geomLimits';
 import { convertAngleUnit } from '@/domain/angleUnit';
 import { useUserCatalog } from '@/state/userCatalog';
 import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import styles from './GeometryStep.module.css';
+
+/**
+ * Потолок числа зон. Методика его не ставит — это защита от опечатки:
+ * «20» вместо «2» превратило бы форму в сотню полей, а чертёж —
+ * в частокол. Реальные камеры укладываются в две-три зоны.
+ */
+const MAX_ZONES = 9;
+
+const ZONE_COUNT_HINT =
+  'Сколько зон между зоной входа и зоной калибровки. Для каждой вводятся своя длина и свои углы образующих конуса и чаши.';
 
 /** Границы масштаба схемы — те же, что и в прототипе-источнике. */
 const ZOOM_MIN = 0.4;
@@ -50,14 +61,28 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   const zoneCount = crushingZones(data);
 
   /**
-   * Узлы последней зоны дробления на чертеже подписаны i-ми (`4i` / `1i`):
-   * в методике i — номер последней зоны, поэтому при одной зоне это та же
-   * зона 1, при двух — зона 2. Ключи подсветки идут по тому же правилу,
-   * иначе связь «поле ↔ участок схемы» рвётся ровно на последней зоне —
-   * а её поля пользователь трогает чаще всего.
+   * Правка одной зоны. Набор пересобирается новым массивом: правка
+   * объекта на месте не дошла бы до `React` — он сравнивает по ссылке,
+   * и чертёж остался бы на старых числах.
    */
-  const LAST_ZONE = { bowl: 'n4i', cone: 'n1i' } as const;
-  const zone1Keys = zoneCount === 1 ? LAST_ZONE : ({ bowl: 'n41', cone: 'n11' } as const);
+  const changeZone = (index: number, patch: Partial<GeomData['zones'][number]>) =>
+    onChange({ zones: data.zones.map((zone, i) => (i === index ? { ...zone, ...patch } : zone)) });
+
+  /**
+   * Смена числа зон. Лишние тройки отрезаются, новые дописываются копией
+   * последней: соседние зоны обычно отличаются немногим, и заполнять
+   * новую с нуля значило бы вводить заново то, что уже введено рядом.
+   */
+  const changeZoneCount = (raw: string) => {
+    const parsed = Math.round(Number(raw));
+    if (!Number.isFinite(parsed)) return;
+    const next = Math.max(1, Math.min(parsed, MAX_ZONES));
+    if (next === data.zones.length) return;
+
+    const last = data.zones[data.zones.length - 1];
+    const zones = Array.from({ length: next }, (_, i) => data.zones[i] ?? { ...last });
+    onChange({ zones });
+  };
 
   /**
    * Границы исходных данных (`geomLimits`). Ошибка выводится под полем
@@ -70,6 +95,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
   /** `min`/`max` в тех же единицах, в которых поле показано сейчас. */
   const bounds = (field: LimitedField) => {
     const { min, max } = limitIn(field, data);
+    return { min, max };
+  };
+
+  /** То же для величины внутри зоны — границы у всех зон одни и те же. */
+  const zoneBounds = (field: ZoneField) => {
+    const { min, max } = zoneLimitIn(field, data);
     return { min, max };
   };
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -152,6 +183,18 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
     const was = baseline[key];
     if (was === data[key]) return base;
     return base ? `${base} · было: ${was}` : `было: ${was}`;
+  };
+
+  /**
+   * Отклонение величины зоны от исходной. Зона опознаётся номером:
+   * если зон стало больше, чем было при создании проекта, сравнивать
+   * новой не с чем — подсказки у неё просто нет.
+   */
+  const hintWithZoneDelta = (index: number, key: keyof GeomData['zones'][number]): string | undefined => {
+    if (deltaMode !== 'show') return undefined;
+    const was = baseline.zones[index]?.[key];
+    if (was === undefined || was === data.zones[index][key]) return undefined;
+    return `было: ${was}`;
   };
 
   /** Постфикс поля угла — говорит, в чём сейчас читать число, не отсылая к отдельной подписи над формой. */
@@ -355,7 +398,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
             <div className={styles.pair}>
             {zoned(
-              'n10',
+              'nc0',
               <Field label="Угол конуса β10" hint={hintWithDelta('b10')} error={errors.b10} labelHint={<FieldHint>{GEOM_GLOSSARY.b10}</FieldHint>}>
                 {(props) => (
                   <Input
@@ -372,7 +415,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             )}
 
             {zoned(
-              'n40',
+              'nb0',
               <Field label="Угол чаши β40" hint={hintWithDelta('b40')} error={errors.b40} labelHint={<FieldHint>{GEOM_GLOSSARY.b40}</FieldHint>}>
                 {(props) => (
                   <Input
@@ -398,20 +441,28 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
             {/* Число зон — исходное данное методики (третья строка файла
                 геометрии): оно задаёт длину массивов l₁(i), β₁(i), β₄(i),
                 поэтому стоит здесь, над самими зонами, а не в коэффициентах
-                внизу формы. Лишние тройки полей просто не показываются
-                и в расчёт не идут. */}
-            <Field label="Число зон дробления" labelHint={<FieldHint>{GEOM_GLOSSARY.zones}</FieldHint>}>
+                внизу формы.
+
+                Поле ввода, а не выбор из списка: методика числом зон
+                не ограничена, и закрытый список упирался в потолок там,
+                где его нет. Уменьшение отрезает лишние тройки, увеличение
+                дописывает новые копией последней — чаще всего соседние
+                зоны отличаются немногим, и заполнять новую с нуля значило
+                бы вводить заново то, что уже введено рядом. */}
+            <Field
+              label="Число зон дробления"
+              hint="Число расчётных сечений равно зонам плюс два"
+              labelHint={<FieldHint>{ZONE_COUNT_HINT}</FieldHint>}
+            >
               {(props) => (
-                <Select
+                <Input
                   {...props}
                   fullWidth
-                  clearable={false}
-                  options={[
-                    { value: '1', label: '1' },
-                    { value: '2', label: '2' },
-                  ]}
-                  value={data.zones}
-                  onChange={(v) => onChange({ zones: v as ZoneCount })}
+                  type="number"
+                  min={1}
+                  max={MAX_ZONES}
+                  value={String(zoneCount)}
+                  onChange={(e) => changeZoneCount(e.target.value)}
                 />
               )}
             </Field>
@@ -420,100 +471,81 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 камеры, у чаши он идёт от 40 к 41, у конуса — от 10 к 11.
                 Методика и задаёт их одним массивом l₁(i). */}
             <div className={styles.triple}>
-            {zoneCount >= 1 ? (
-              <>
-                {zoned(
-                  zone1Keys.bowl,
-                  <Field label="Зона 1 — l₁₁" hint={hintWithDelta('l11')} error={errors.l11} labelHint={<FieldHint>{GEOM_GLOSSARY.l11}</FieldHint>}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.l11} onChange={(e) => onChange({ l11: e.target.value })} {...bounds('l11')} suffix="мм" />
-                    )}
-                  </Field>
-                )}
+            {data.zones.map((zone, index) => {
+              const keys = zoneNodeKeys(index);
+              const zoneErrors = errors.zones?.[index] ?? {};
+              const number = index + 1;
 
-                {zoned(
-                  zone1Keys.cone,
-                  <Field label="Угол конуса β11" hint={hintWithDelta('b11')} error={errors.b11} labelHint={<FieldHint>{GEOM_GLOSSARY.b11}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b11}
-                        onChange={(e) => onChange({ b11: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b11')}
-                      />
-                    )}
-                  </Field>
-                )}
+              return (
+                <Fragment key={index}>
+                  {zoned(
+                    keys.bowl,
+                    <Field
+                      label={`Зона ${number} — длина`}
+                      hint={hintWithZoneDelta(index, 'l1')}
+                      error={zoneErrors.l1}
+                      labelHint={<FieldHint>{ZONE_GLOSSARY.l1}</FieldHint>}
+                    >
+                      {(props) => (
+                        <Input
+                          {...props}
+                          fullWidth
+                          type="number"
+                          value={zone.l1}
+                          onChange={(e) => changeZone(index, { l1: e.target.value })}
+                          suffix="мм"
+                          {...zoneBounds('l1')}
+                        />
+                      )}
+                    </Field>
+                  )}
 
-                {zoned(
-                  zone1Keys.bowl,
-                  <Field label="Угол чаши β41" hint={hintWithDelta('b41')} error={errors.b41} labelHint={<FieldHint>{GEOM_GLOSSARY.b41}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b41}
-                        onChange={(e) => onChange({ b41: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b41')}
-                      />
-                    )}
-                  </Field>
-                )}
-              </>
-            ) : null}
+                  {zoned(
+                    keys.cone,
+                    <Field
+                      label={`Угол конуса β1${number}`}
+                      hint={hintWithZoneDelta(index, 'b1')}
+                      error={zoneErrors.b1}
+                      labelHint={<FieldHint>{ZONE_GLOSSARY.b1}</FieldHint>}
+                    >
+                      {(props) => (
+                        <Input
+                          {...props}
+                          fullWidth
+                          type="number"
+                          value={zone.b1}
+                          onChange={(e) => changeZone(index, { b1: e.target.value })}
+                          suffix={angleUnitSuffix}
+                          {...zoneBounds('b1')}
+                        />
+                      )}
+                    </Field>
+                  )}
 
-            {zoneCount >= 2 ? (
-              <>
-                {zoned(
-                  LAST_ZONE.bowl,
-                  <Field label="Зона 2 — l₁₂" hint={hintWithDelta('l12')} error={errors.l12} labelHint={<FieldHint>{GEOM_GLOSSARY.l12}</FieldHint>}>
-                    {(props) => (
-                      <Input {...props} fullWidth type="number" value={data.l12} onChange={(e) => onChange({ l12: e.target.value })} {...bounds('l12')} suffix="мм" />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  LAST_ZONE.cone,
-                  <Field label="Угол конуса β12" hint={hintWithDelta('b12')} error={errors.b12} labelHint={<FieldHint>{GEOM_GLOSSARY.b12}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b12}
-                        onChange={(e) => onChange({ b12: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b12')}
-                      />
-                    )}
-                  </Field>
-                )}
-
-                {zoned(
-                  LAST_ZONE.bowl,
-                  <Field label="Угол чаши β42" hint={hintWithDelta('b42')} error={errors.b42} labelHint={<FieldHint>{GEOM_GLOSSARY.b42}</FieldHint>}>
-                    {(props) => (
-                      <Input
-                        {...props}
-                        fullWidth
-                        type="number"
-                        value={data.b42}
-                        onChange={(e) => onChange({ b42: e.target.value })}
-                        suffix={angleUnitSuffix}
-                        {...bounds('b42')}
-                      />
-                    )}
-                  </Field>
-                )}
-              </>
-            ) : null}
-
+                  {zoned(
+                    keys.bowl,
+                    <Field
+                      label={`Угол чаши β4${number}`}
+                      hint={hintWithZoneDelta(index, 'b4')}
+                      error={zoneErrors.b4}
+                      labelHint={<FieldHint>{ZONE_GLOSSARY.b4}</FieldHint>}
+                    >
+                      {(props) => (
+                        <Input
+                          {...props}
+                          fullWidth
+                          type="number"
+                          value={zone.b4}
+                          onChange={(e) => changeZone(index, { b4: e.target.value })}
+                          suffix={angleUnitSuffix}
+                          {...zoneBounds('b4')}
+                        />
+                      )}
+                    </Field>
+                  )}
+                </Fragment>
+              );
+            })}
             </div>
           </Stack>
 
@@ -524,7 +556,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
 
             <div className={styles.pair}>
             {zoned(
-              'n4i',
+              zoneNodeKeys(zoneCount - 1).bowl,
               <Field label="Длина зоны l₂" hint={hintWithDelta('l2')} error={errors.l2} labelHint={<FieldHint>{GEOM_GLOSSARY.l2}</FieldHint>}>
                 {(props) => (
                   <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} {...bounds('l2')} suffix="мм" />
