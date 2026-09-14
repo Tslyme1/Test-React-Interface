@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, seedSession } from './helpers';
+import { createProject, openStepEditor, runStepCalc, seedSession } from './helpers';
 import { computeChamberProfile } from '../../src/domain/chamberProfile';
 
 /**
@@ -91,7 +91,7 @@ test.describe('Этап 1: расчёт профиля по методике', (
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
   });
 
@@ -129,8 +129,9 @@ test.describe('Этап 1: расчёт профиля по методике', (
     await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('4');
 
     await page.getByRole('button', { name: 'Закрыть' }).click();
+    await openStepEditor(page);
     await page.getByLabel('Число зон дробления').fill('1');
-    await page.getByRole('button', { name: 'Пересчитать' }).click();
+    await runStepCalc(page, 'Пересчитать');
     await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 
     await expect(drawer.getByRole('row').filter({ hasText: 'Число зон дробления' })).toContainText('1');
@@ -145,8 +146,9 @@ test.describe('Этап 1: расчёт профиля по методике', (
        начало рекурсии раскрытия, поэтому в нижнем сечении оно совпадает
        с полем формы при любом введённом значении. */
     await page.getByRole('button', { name: 'Закрыть' }).click();
+    await openStepEditor(page);
     await page.getByLabel('Ширина разгрузочной щели S0').fill('64');
-    await page.getByRole('button', { name: 'Пересчитать' }).click();
+    await runStepCalc(page, 'Пересчитать');
     await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
@@ -167,6 +169,7 @@ test.describe('Этап 1: чертёж совпадает с расчётом',
   test('отрезок между парными узлами равен раскрытию S1 из расчёта', async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    await openStepEditor(page);
 
     await page.getByRole('button', { name: 'Диаграмма' }).click();
     await page.getByRole('option', { name: 'Линии построения' }).click();
@@ -182,6 +185,7 @@ test.describe('Этап 1: чертёж совпадает с расчётом',
   test('дуги β показывают введённый угол к горизонтали', async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    await openStepEditor(page);
 
     await page.getByRole('button', { name: 'Диаграмма' }).click();
     await page.getByRole('option', { name: 'Линии построения' }).click();

@@ -300,9 +300,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               по вертикали. Подзаголовок убран — он повторял названия полей,
               которые тут же под ним и стоят, и разводил заголовок с чипсами
               по разной высоте. */}
+          {/* Своего заголовка у формы нет: она живёт в окне, и его
+              заголовок называет этап. Два названия подряд — «Исходные
+              данные: Дробилка» и «Геометрия камеры» — отвечали бы на один
+              вопрос дважды. */}
           <Stack direction="row" justify="between" align="center" gap="md" wrap>
-            <Text variant="headingMd">Геометрия камеры</Text>
-
             <Stack direction="row" align="center" gap="sm">
               <Chip
                 icon="fileText"

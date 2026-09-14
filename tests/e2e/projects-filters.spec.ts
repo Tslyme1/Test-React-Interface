@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createProject, openTrash, removeFirstProject, seedSession, watchConsole } from './helpers';
+import { createProject, openTrash, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Панель фильтров, меню строки и корзина. Все три работают на списке
@@ -344,7 +344,7 @@ test.describe('Печать по шагам из меню строки', () => {
   });
 
   test('печать открывает отчёт с таблицей посчитанного шага', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: /^Действия:/ }).first().click();

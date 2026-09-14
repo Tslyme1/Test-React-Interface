@@ -59,9 +59,8 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           подпись «Проба руды» над чипсом убрана — назначение плашки понятно
           и без неё, а строка с чипсом под подписью разводила заголовок
           с действиями по разной высоте. */}
+      {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
       <Stack direction="row" justify="between" align="center" gap="md" wrap>
-        <Text variant="headingMd">Характеристический грансостав</Text>
-
         <Stack direction="row" align="center" gap="sm">
           <Chip icon="fileText" action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}>
             {ore}

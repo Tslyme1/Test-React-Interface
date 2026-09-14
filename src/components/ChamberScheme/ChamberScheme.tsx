@@ -89,6 +89,11 @@ export type ChamberSchemeProps = {
    */
   onZoneHover?: (key: ChamberHighlightKey | null) => void;
   className?: string;
+  /**
+   * Имя для тестов. Чертёж бывает на экране дважды — рабочий в окне ввода
+   * и итоговый на странице этапа, — и одно имя на оба не различало бы их.
+   */
+  testId?: string;
 };
 
 const VB = { w: 1180, h: 840 };
@@ -210,6 +215,7 @@ export function ChamberScheme({
   highlight,
   onZoneHover,
   className,
+  testId = 'chamber-scheme',
 }: ChamberSchemeProps) {
   const L = { ...DEFAULT_LAYERS, ...layers };
   const geometry = useMemo(() => buildChamberGeometry(input), [input]);
@@ -929,7 +935,7 @@ export function ChamberScheme({
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Схема профиля камеры дробления"
-      data-testid="chamber-scheme"
+      data-testid={testId}
       data-highlight={highlight ?? undefined}
     >
       <defs>
