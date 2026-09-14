@@ -201,6 +201,7 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
     // Закрывает проект только крестик на его вкладке.
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'Закрыть проект' }).click();
     await expect(tab).toHaveCount(0);
   });

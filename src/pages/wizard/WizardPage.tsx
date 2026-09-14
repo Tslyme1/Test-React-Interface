@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge, Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
 import type { Step } from '@uralmash/design-system';
 import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
@@ -41,6 +41,22 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
    */
   const [editOpen, setEditOpen] = useState(false);
 
+  /**
+   * Непосчитанный этап всегда показан с окном ввода.
+   *
+   * Страница этапа отвечает на вопрос «что вышло», и до расчёта ответа
+   * у неё нет — попасть на неё раньше времени значит упереться в пустое
+   * место там, где ждали работу. Поэтому окно открывается на каждом
+   * появлении такого этапа: и при переходе по степперу, и при открытии
+   * проекта из списка, и при переключении вкладок.
+   *
+   * Посчитанный — наоборот, без окна: там смотрят результат, а правка
+   * данных это уже отдельное намерение («Изменить данные»).
+   */
+  useEffect(() => {
+    setEditOpen(!project.calc[step]);
+  }, [step, project.id]);
+
   /* Справочник проб с правками пользователя — один на приложение:
      заведённая в упрощённом режиме проба обязана находиться и здесь. */
   const oreCatalog = useUserCatalog('ores');
@@ -75,16 +91,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     }
     if (!available(i)) return;
     setStep(i);
-    /* Переход на непосчитанный этап сразу открывает ввод: считать нечего,
-       пока данные не введены, и первое, что там делают, — вводят их.
-       На посчитанный — без окна: там смотрят результат, а правка данных
-       это уже отдельное намерение.
-
-       Только по переходу, а не при каждом появлении этапа на экране:
-       иначе окно вставало бы поперёк и при открытии проекта из списка,
-       и при переключении вкладок — там, где пользователь шёл смотреть,
-       а не вводить. */
-    setEditOpen(!project.calc[i]);
   };
 
   /**
@@ -132,10 +138,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     setOrePickerOpen(false);
     setStep(1);
     applyOrFork(1, { ore });
-    /* Проба выбрана — дальше на этом этапе вводят параметры грансостава,
-       и окно ввода открывается сразу, как и при обычном переходе
-       на непосчитанный этап. */
-    if (!project.calc[1]) setEditOpen(true);
   };
 
   /*

@@ -151,14 +151,12 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
    * запускается расчёт, и большинству сценариев нужно именно оно.
    * Кому нужна страница за ним — `closeStepEditor`.
    */
-  await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
-
-  /**
-   * Ждём, пока окно нового проекта уйдёт из разметки, а не только с глаз:
-   * `Modal` в системе остаётся в дереве, пока доигрывает анимацию ухода,
-   * и следующее действие сценария успевало в закрывающееся окно.
-   */
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  /* Непосчитанный этап всегда показан с окном ввода — значит, сразу
+     после создания оно и открыто. Сценарии ниже чаще смотрят на
+     страницу, поэтому окно закрывается; кому нужны поля —
+     `openStepEditor`, он же дожидается окна, если оно открылось само. */
+  await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+  await closeStepEditor(page);
 }
 
 /**
@@ -168,6 +166,16 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
  * на посчитанном правка живёт кнопкой «Изменить данные» в шапке этапа.
  */
 export async function openStepEditor(page: Page) {
+  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  /* Уже открыто — непосчитанный этап показывается вместе с ним. Ждём,
+     а не спрашиваем мгновенно: окно открывается само, и быстрый вопрос
+     попадал бы в промежуток, пока оно доигрывает появление. */
+  const shown = await dialog
+    .waitFor({ state: 'visible', timeout: 1000 })
+    .then(() => true)
+    .catch(() => false);
+  if (shown) return;
+
   const enter = page.getByRole('button', { name: 'Ввести данные' });
   if (await enter.count()) await enter.click();
   else await page.getByRole('button', { name: 'Изменить данные' }).click();
