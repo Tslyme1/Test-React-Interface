@@ -21,7 +21,7 @@ test.describe('Подтверждение закрытия при неперес
   });
 
   test('правка поля после расчёта — закрытие вкладки спрашивает подтверждение', async ({ page }) => {
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
 
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
@@ -29,18 +29,18 @@ test.describe('Подтверждение закрытия при неперес
   });
 
   test('«Отмена» не закрывает вкладку', async ({ page }) => {
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page.getByRole('dialog', { name: 'Сохранить изменения?' }).getByRole('button', { name: 'Отмена' }).click();
 
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toBeVisible();
-    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
   });
 
   test('«Не сохранять» закрывает вкладку и возвращает значения к последнему расчёту', async ({ page }) => {
-    const before = await page.getByLabel('Диаметр основания D, мм').inputValue();
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    const before = await page.getByLabel('Диаметр основания D').inputValue();
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page.getByRole('dialog', { name: 'Сохранить изменения?' }).getByRole('button', { name: 'Не сохранять' }).click();
@@ -50,11 +50,11 @@ test.describe('Подтверждение закрытия при неперес
 
     // Правка после расчёта откатывается к снимку, с которым шаг считали.
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
-    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue(before);
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue(before);
   });
 
   test('«Сохранить» в диалоге закрывает вкладку, оставляя правки и снимая предупреждение', async ({ page }) => {
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page
@@ -65,7 +65,7 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
-    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
     await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
   });
 
@@ -77,7 +77,7 @@ test.describe('Подтверждение закрытия при неперес
   });
 
   test('пересчёт шага после правки снимает предупреждение при закрытии', async ({ page }) => {
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await expect(page.getByText('Есть непересчитанные изменения')).toBeVisible();
 
     await page.getByRole('button', { name: 'Пересчитать' }).click();

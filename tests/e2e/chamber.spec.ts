@@ -32,7 +32,7 @@ test.describe('Схема камеры дробления на шаге «Гео
   test('изменение ширины разгрузочной щели S0 пересчитывает зазор в схеме', async ({ page }) => {
     const svg = page.getByTestId('chamber-scheme');
 
-    const s0Field = page.getByLabel('Ширина разгрузочной щели S0, мм');
+    const s0Field = page.getByLabel('Ширина разгрузочной щели S0');
     await s0Field.fill('75');
 
     /* S₀ — исходная величина методики: раскрытие камеры S1 рекурсивно
@@ -67,7 +67,7 @@ test.describe('Схема камеры дробления на шаге «Гео
     const afterBeta42 = await svg.innerHTML();
     expect(afterBeta42).not.toBe(afterBeta40);
 
-    await page.getByLabel('Длина зоны l₂, мм').fill('260');
+    await page.getByLabel('Длина зоны l₂').fill('260');
     const afterL2 = await svg.innerHTML();
     expect(afterL2).not.toBe(afterBeta42);
   });
@@ -76,11 +76,11 @@ test.describe('Схема камеры дробления на шаге «Гео
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
 
-    await page.getByLabel('Диаметр основания D, мм').fill('2400');
+    await page.getByLabel('Диаметр основания D').fill('2400');
     const afterD = await svg.innerHTML();
     expect(afterD).not.toBe(before);
 
-    await page.getByLabel('Высота H от подвеса, мм').fill('1800');
+    await page.getByLabel('Высота H от подвеса').fill('1800');
     const afterH = await svg.innerHTML();
     expect(afterH).not.toBe(afterD);
   });
@@ -109,9 +109,9 @@ test.describe('Схема камеры дробления на шаге «Гео
     const console_ = watchConsole(page);
     const svg = page.getByTestId('chamber-scheme');
 
-    await page.getByLabel('Ширина разгрузочной щели S0, мм').fill('');
-    await page.getByLabel('Диаметр основания D, мм').fill('');
-    await page.getByLabel('Длина зоны l₂, мм').fill('');
+    await page.getByLabel('Ширина разгрузочной щели S0').fill('');
+    await page.getByLabel('Диаметр основания D').fill('');
+    await page.getByLabel('Длина зоны l₂').fill('');
 
     await expect(svg).toBeVisible();
     expect(await svg.locator('path').count()).toBeGreaterThan(0);
@@ -143,7 +143,7 @@ test.describe('Схема камеры: выносные размеры', () => 
     await expect(scheme).toContainText('D/2 = 1 100 мм');
 
     // Меняем диаметр — подпись обязана пойти за полем.
-    await page.getByLabel('Диаметр основания D, мм').fill('1750');
+    await page.getByLabel('Диаметр основания D').fill('1750');
     await expect(scheme).toContainText('D/2 = 875 мм');
   });
 });

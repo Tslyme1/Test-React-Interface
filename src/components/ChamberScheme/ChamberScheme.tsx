@@ -293,11 +293,14 @@ export function ChamberScheme({
       zones.push({
         key: KEYS_B[j],
         poly: [B[j], B[j + 1], C[j + 1], C[j]],
-        fill: calibration
-          ? 'var(--color-warning-subtle)'
-          : j === 0
-            ? 'var(--color-accent-subtle)'
-            : 'var(--color-surface-sunken)',
+        /* Все зоны залиты одинаково и нейтрально. Раньше первая была
+           акцентной, а зона калибровки — предупреждающей: цвет обещал
+           смысл, которого нет, — первая зона ничем не важнее второй,
+           а зона калибровки ни о чём не предупреждает. Границы между
+           зонами и так видны: их рисуют линии профиля поверх заливки.
+           Цвет здесь остаётся за подсветкой — он означает «вот этот
+           участок», а не «этот участок особенный сам по себе». */
+        fill: 'var(--color-surface-sunken)',
         title: calibration
           ? `Зона калибровки — участок ${NAMES_B[j]}–${NAMES_B[j + 1]} / ${NAMES_C[j]}–${NAMES_C[j + 1]}, длина ${LLAB[j]}. Щель здесь постоянна и равна S₀`
           : `Зона дробления ${j + 1} — участок ${NAMES_B[j]}–${NAMES_B[j + 1]} / ${NAMES_C[j]}–${NAMES_C[j + 1]}, длина ${LLAB[j]}`,
@@ -343,7 +346,11 @@ export function ChamberScheme({
      */
     const coneAxisEnd = polar(apex, bottom - apex.y + 40, thetaDeg);
     const R = 46;
-    const labelPoint = polar(apex, R + 16, thetaDeg / 2);
+    /* Подпись уезжает вниз по оси, а не жмётся к дуге. У точки подвеса
+       сходятся ось, оба контура и все якорные лучи — буква там тонула
+       среди линий. Ниже по оси, внутри конуса, место свободно, а к чему
+       относится подпись, видно по самой оси, вдоль которой она стоит. */
+    const labelPoint = polar(apex, R + 110, thetaDeg / 2);
     parts.push(
       <g key="theta" className={cls('theta')} {...zone('theta')}>
         <line
@@ -371,7 +378,7 @@ export function ChamberScheme({
             <title>θ — угол нутации конуса: {fmt(thetaDeg, 2)}°</title>
           </path>
         ) : null}
-        <text x={labelPoint.x - 4} y={labelPoint.y + 4} textAnchor="end" className={styles.fsXl} fontStyle="italic" fill="var(--color-text-muted)">
+        <text x={labelPoint.x - 8} y={labelPoint.y + 4} textAnchor="end" className={styles.fsXl} fontStyle="italic" fill="var(--color-text-muted)">
           θ
         </text>
       </g>
@@ -458,13 +465,15 @@ export function ChamberScheme({
       parts.push(
         <g key={`gap-${i}`} className={cls(key)} {...zone(key)}>
           <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={HIT_WIDTH} pointerEvents="stroke" />
-          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--color-accent)" strokeWidth={1.8}>
+          {/* Нейтрально, как и всё остальное на чертеже: акцент здесь —
+              признак подсветки (`.on`), а не постоянный вид линии. */}
+          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="var(--color-text-muted)" strokeWidth={1.8}>
             <title>
               {SLAB[i]} — раскрытие {NAMES_B[i]}–{NAMES_C[i]}: {fmt(raw)} мм
               {section && i !== 4 ? ` · просвет по нормали ${fmt(section.SOT)} мм` : ''}
             </title>
           </line>
-          <text x={mid.x} y={mid.y - 6} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-accent-text)">
+          <text x={mid.x} y={mid.y - 6} textAnchor="middle" className={styles.fsMd} fontStyle="italic" fill="var(--color-text-muted)">
             {SLAB[i]}
           </text>
         </g>

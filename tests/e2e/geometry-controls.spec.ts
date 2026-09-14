@@ -73,7 +73,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
 
-    const field = page.getByLabel('Диаметр основания D, мм');
+    const field = page.getByLabel('Диаметр основания D');
     await field.hover();
     await expect(async () => {
       expect(await svg.innerHTML()).not.toBe(before);
@@ -91,7 +91,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await page.keyboard.press('Escape');
 
     const wrapper = page
-      .getByLabel('Диаметр основания D, мм')
+      .getByLabel('Диаметр основания D')
       .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
 
@@ -115,7 +115,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
 
-    await page.getByLabel('Диаметр основания D, мм').hover();
+    await page.getByLabel('Диаметр основания D').hover();
     await page.waitForTimeout(150);
     expect(await svg.innerHTML()).toBe(before);
   });
@@ -123,7 +123,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test('в режиме «Только ввод» наведение на схему не подсвечивает поля', async ({ page }) => {
     // Обёртки с подсветкой в этом режиме нет вовсе — поле стоит в форме само по себе.
     await expect(
-      page.getByLabel('Диаметр основания D, мм').locator('xpath=ancestor::div[contains(@class,"zonedField")]')
+      page.getByLabel('Диаметр основания D').locator('xpath=ancestor::div[contains(@class,"zonedField")]')
     ).toHaveCount(0);
 
     const svg = page.getByTestId('chamber-scheme');
@@ -139,7 +139,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
-    const field = page.getByLabel('Диаметр основания D, мм');
+    const field = page.getByLabel('Диаметр основания D');
     await field.fill('1900');
 
     // Режим «Дельта: Показывать изменения» включён по умолчанию.
@@ -158,7 +158,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     // Раньше снимок заводился только при расчёте, и до первого «Выполнить
     // расчёт» дельта не показывала ничего, даже если поле уже отредактировано —
     // сейчас опора не расчёт, а значения на момент создания проекта.
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await expect(page.getByText(/было: 2200/)).toBeVisible();
   });
 });
@@ -177,7 +177,7 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     const svg = page.getByTestId('chamber-scheme');
     const zones = page.getByRole('button', { name: 'Число зон дробления' });
     await expect(zones).toContainText('2');
-    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toBeVisible();
+    await expect(page.getByLabel('Зона 2 — l₁₂')).toBeVisible();
     await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).not.toHaveCount(0);
 
     await zones.click();
@@ -187,8 +187,8 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     await page.getByRole('option', { name: '1', exact: true }).click();
 
     // Узлов стало на один меньше: 40 · 4i · 3 вместо 40 · 41 · 4i · 3.
-    await expect(page.getByLabel('Зона 2 — l₁₂, мм')).toHaveCount(0);
-    await expect(page.getByLabel('Зона 1 — l₁₁, мм')).toBeVisible();
+    await expect(page.getByLabel('Зона 2 — l₁₂')).toHaveCount(0);
+    await expect(page.getByLabel('Зона 1 — l₁₁')).toBeVisible();
     await expect(svg.locator('title', { hasText: 'Сегмент 11→1i' })).toHaveCount(0);
     await expect(svg.locator('title', { hasText: 'Сегмент 10→1i' })).not.toHaveCount(0);
   });

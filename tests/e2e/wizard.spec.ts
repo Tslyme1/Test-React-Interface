@@ -123,7 +123,7 @@ test.describe('Инженерный визард', () => {
 
     await pickOre(page);
 
-    await expect(page.getByLabel('Минимальная крупность Dmin, мм')).toBeVisible();
+    await expect(page.getByLabel('Минимальная крупность Dmin')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeEnabled();
 
     console_.assertClean();
@@ -142,26 +142,26 @@ test.describe('Инженерный визард', () => {
   });
 
   test('введённые значения переживают выход в список и возврат в проект', async ({ page }) => {
-    const field = page.getByLabel('Диаметр основания D, мм');
+    const field = page.getByLabel('Диаметр основания D');
     await field.fill('1900');
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
   });
 
   test('введённые значения и отметка расчёта переживают перезагрузку', async ({ page }) => {
     // Проверяет, что вложенные данные визарда переживают сериализацию,
     // а не только верхний уровень записи проекта.
-    await page.getByLabel('Диаметр основания D, мм').fill('1900');
+    await page.getByLabel('Диаметр основания D').fill('1900');
     await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     await page.reload();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByLabel('Диаметр основания D, мм')).toHaveValue('1900');
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
   });
 
