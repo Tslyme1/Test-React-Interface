@@ -15,6 +15,7 @@ import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
 import { limitIn, validateGeom, zoneLimitIn } from '@/domain/geomLimits';
 import type { LimitedField, ZoneField } from '@/domain/geomLimits';
 import { convertAngleUnit } from '@/domain/angleUnit';
+import { portalActions } from './portalActions';
 import { useUserCatalog } from '@/state/userCatalog';
 import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import styles from './GeometryStep.module.css';
@@ -53,9 +54,15 @@ export type GeometryStepProps = {
   baseline: GeomData;
   crusherName: string;
   onChangeCrusher: (name: string) => void;
+  /**
+   * Узел в шапке окна, куда уходят действия формы — плашка дробилки
+   * и «Отображение». Они относятся к окну целиком, а не к первой полосе
+   * его содержимого, где стояли раньше.
+   */
+  actionsSlot?: HTMLElement | null;
 };
 
-export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCrusher }: GeometryStepProps) {
+export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCrusher, actionsSlot }: GeometryStepProps) {
   const schemeInput = useMemo(() => buildChamberProfileInput(data), [data]);
   /** Сколько троек «длина + углы» показывать — см. `crushingZones`. */
   const zoneCount = crushingZones(data);
@@ -304,9 +311,11 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               заголовок называет этап. Два названия подряд — «Исходные
               данные: Дробилка» и «Геометрия камеры» — отвечали бы на один
               вопрос дважды. */}
-          <Stack direction="row" justify="end" align="center" gap="sm" wrap>
-            <Stack direction="row" align="center" gap="sm">
+          {portalActions(
+            actionsSlot,
+            <>
               <Chip
+                size="sm"
                 icon="fileText"
                 action={{ icon: 'pencil', label: 'Сменить дробилку', onClick: () => setCrusherPickerOpen(true) }}
               >
@@ -384,8 +393,8 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                   </Stack>
                 </Stack>
               </Popover>
-            </Stack>
-          </Stack>
+            </>
+          )}
 
           {/* Исходные данные профиля — ровно те, что принимает методика
               (§2.2): углы образующих обеих броней по зонам, длины зон,
