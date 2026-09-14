@@ -189,7 +189,15 @@ export async function openStepEditor(page: Page) {
  */
 export async function goToWizardStep(page: Page, name: RegExp) {
   await closeStepEditor(page);
-  await page.getByRole('button', { name }).click();
+  await wizardStepButton(page, name).click();
+}
+
+/**
+ * Кнопка этапа в степпере. Ищется внутри списка, а не по всей странице:
+ * рядом стоит «Следующий этап: Руда», и по одному имени они неразличимы.
+ */
+export function wizardStepButton(page: Page, name: RegExp) {
+  return page.getByRole('list').getByRole('button', { name });
 }
 
 /**
@@ -235,7 +243,7 @@ export async function closeStepEditor(page: Page) {
  */
 export async function pickOre(page: Page, ore = SAMPLE_PROJECT.ore) {
   await page.getByRole('dialog', { name: 'Выбор пробы руды' }).getByRole('button', { name: ore, exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
 }
 
 /**

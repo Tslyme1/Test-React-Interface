@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { DEMO_USER, SAMPLE_PROJECT, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession, watchConsole } from './helpers';
+import { DEMO_USER, SAMPLE_PROJECT, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession, watchConsole, wizardStepButton } from './helpers';
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
@@ -12,8 +12,8 @@ test.describe('Инженерный визард', () => {
     // кликабельность, которая ничего не делает, в системе запрещена. Поэтому
     // проверяется отсутствие кнопки, а не её disabled-состояние.
     await expect(page.getByText('Руда', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Руда/ })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Продукт/ })).toHaveCount(0);
+    await expect(wizardStepButton(page, /Руда/)).toHaveCount(0);
+    await expect(wizardStepButton(page, /Продукт/)).toHaveCount(0);
   });
 
   test('расчёт помечает шаг пройденным, показывает тост и открывает следующий', async ({ page }) => {
@@ -23,7 +23,7 @@ test.describe('Инженерный визард', () => {
 
     await expect(page.getByText('Шаг «Дробилка» рассчитан')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Руда/ })).toBeEnabled();
+    await expect(wizardStepButton(page, /Руда/)).toBeEnabled();
 
     console_.assertClean();
   });
@@ -88,7 +88,7 @@ test.describe('Инженерный визард', () => {
 
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
-    await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
 
     await goToWizardStep(page, /Дробилка/);
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
@@ -124,7 +124,7 @@ test.describe('Инженерный визард', () => {
     await goToWizardStep(page, /Дробилка/);
     await goToWizardStep(page, /Руда/);
 
-    await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
   });
 
