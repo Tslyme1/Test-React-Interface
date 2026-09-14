@@ -9,7 +9,7 @@ async function goToGranStep(page: Page) {
   await runStepCalc(page);
   await goToWizardStep(page, /Руда/);
   await pickOre(page);
-  await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
 }
 
 /** Убирает все строки (включая заготовку по умолчанию) — дальше тест заводит свои. */
@@ -152,7 +152,7 @@ test.describe('Ситовый анализ на шаге «Грансостав�
 
     await closeStepEditor(page);
     await goToWizardStep(page, /Руда/);
-    await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
 
     // Способ ввода остался «Ситовый анализ», строки и посчитанные по ним
     // величины на месте — состояние живёт в `GranData`, а не в самом шаге.

@@ -205,10 +205,49 @@ function TagsField({
   );
 }
 
-export type StepReportProps = {
+export type StepMetaProps = {
   project: Project;
   stepKey: StepKey;
   onUpdateProject: (id: string, patch: Partial<Project>) => void;
+};
+
+/**
+ * Кто, когда и на какой машине — контекст расчёта, который не виден
+ * из самих цифр отчёта. Стоит под заголовком этапа, а не внутри отчёта:
+ * это шапка экрана результата, и относится она к нему целиком, а не
+ * к первой из его таблиц.
+ *
+ * Дата и дробилка — по этому этапу конкретно (`calcDates[stepKey]`),
+ * а не по проекту в целом: этапы считаются не одновременно, и дата
+ * последнего расчёта другого была бы здесь неправдой.
+ */
+export function StepMeta({ project, stepKey, onUpdateProject }: StepMetaProps) {
+  const power = catalogOf('crushers').find((c) => c.name === project.crusherName)?.values['N, кВт'];
+
+  return (
+    <Stack direction="row" wrap gap="xl">
+      <MetaField label="Дата расчёта">
+        <Text variant="body">{project.calcDates[STEP_KEYS.indexOf(stepKey)] ?? '—'}</Text>
+      </MetaField>
+      <MetaField label="Дробилка">
+        <Text variant="body">{project.crusherName || '—'}</Text>
+      </MetaField>
+      <MetaField label="Мощность">
+        <Text variant="body">{power ? `${power} кВт` : '—'}</Text>
+      </MetaField>
+      <MetaField label="Исполнитель">
+        <Text variant="body">{project.executor}</Text>
+      </MetaField>
+      <MetaField label="Теги">
+        <TagsField project={project} onUpdateProject={onUpdateProject} />
+      </MetaField>
+    </Stack>
+  );
+}
+
+export type StepReportProps = {
+  project: Project;
+  stepKey: StepKey;
 };
 
 /**
@@ -220,9 +259,7 @@ export type StepReportProps = {
  * целиком — вместе с метаданными расчёта и тегами, без которых из одних
  * цифр не видно, кто и когда считал.
  */
-export function StepReport({ project, stepKey, onUpdateProject }: StepReportProps) {
-  const power = catalogOf('crushers').find((c) => c.name === project.crusherName)?.values['N, кВт'];
-
+export function StepReport({ project, stepKey }: StepReportProps) {
   const [granViewOpen, setGranViewOpen] = useState(false);
   const [granView, setGranView] = useState<Set<GranView>>(new Set<GranView>(['minus']));
   const toggleGranView = (key: GranView) => {
@@ -236,31 +273,6 @@ export function StepReport({ project, stepKey, onUpdateProject }: StepReportProp
 
   return (
     <Stack gap="lg" direction="column">
-      {/*
-       * Кто, когда и на какой машине — контекст расчёта, который не виден
-       * из самих цифр ниже. Дата и дробилка — по этому этапу конкретно
-       * (`calcDates[stepKey]`), а не по проекту в целом: этапы считаются
-       * не одновременно, и дата последнего расчёта другого была бы
-       * неправдой здесь.
-       */}
-      <Stack direction="row" wrap gap="xl">
-        <MetaField label="Дата расчёта">
-          <Text variant="body">{project.calcDates[STEP_KEYS.indexOf(stepKey)] ?? '—'}</Text>
-        </MetaField>
-        <MetaField label="Дробилка">
-          <Text variant="body">{project.crusherName || '—'}</Text>
-        </MetaField>
-        <MetaField label="Мощность">
-          <Text variant="body">{power ? `${power} кВт` : '—'}</Text>
-        </MetaField>
-        <MetaField label="Исполнитель">
-          <Text variant="body">{project.executor}</Text>
-        </MetaField>
-        <MetaField label="Теги">
-          <TagsField project={project} onUpdateProject={onUpdateProject} />
-        </MetaField>
-      </Stack>
-
       {/* Действия над отчётом. КОМПАС-3D — только для «Геометрии»: у неё
           есть профиль камеры, который и передают в CAD, у остальных
           этапов параметров модели нет. */}

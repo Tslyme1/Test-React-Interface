@@ -12,15 +12,23 @@
  */
 .split {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: var(--space-xl);
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--space-2xl);
   align-items: start;
 }
 
-/** На узком экране колонки встают друг под друга — сводка первой. */
+/** На узком экране колонки встают друг под друга — сводка первой,
+    и разделитель переезжает под неё. */
 @media (max-width: 900px) {
   .split {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .result {
+    border-inline-start: none;
+    padding-inline-start: 0;
+    border-block-start: var(--border-hairline) solid var(--color-border);
+    padding-block-start: var(--space-xl);
   }
 }
 
@@ -38,11 +46,20 @@
   top: 0;
 }
 
+/**
+ * Правая половина отделена линией, а не рамкой вокруг каждой: рамка
+ * вокруг сводки читалась как карточка — отдельный предмет на странице, —
+ * хотя это просто левая колонка того же экрана. Линия отделяет ровно то,
+ * что нужно отделить: что ввели от того, что вышло.
+ */
 .result {
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
   min-width: 0;
+
+  border-inline-start: var(--border-hairline) solid var(--color-border);
+  padding-inline-start: var(--space-2xl);
 }
 
 /**
@@ -54,5 +71,5 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }

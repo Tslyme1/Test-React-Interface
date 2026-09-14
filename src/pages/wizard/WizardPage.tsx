@@ -26,6 +26,14 @@ export type WizardPageProps = {
   showToast: (message: string) => void;
 };
 
+/** Последний посчитанный этап до `step`. `null` — считать ещё нечего. */
+function lastCalculatedBefore(project: Project, step: number): number | null {
+  for (let i = step - 1; i >= 0; i -= 1) {
+    if (project.calc[i]) return i;
+  }
+  return null;
+}
+
 /** Инженерный визард — три шага с вводом данных. Упрощённый режим ведёт `SimplifiedProjectModal`, сюда не заходит. */
 export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProject, showToast }: WizardPageProps) {
   const [step, setStep] = useState(0);
@@ -67,6 +75,21 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   const available = (i: number) => i === 0 || project.calc[i - 1] || project.calc[i];
   const stepKey = STEP_KEYS[step];
   const calculated = project.calc[step];
+
+  /**
+   * Какой этап показан страницей.
+   *
+   * Не обязательно текущий: пока данные нового этапа вводят, за окном
+   * должен оставаться последний посчитанный — то, над чем пользователь
+   * только что работал. Пустая страница «Этап ещё не посчитан» за окном
+   * ввода не сообщает ничего, а место занимает; «проваливаться» на новый
+   * этап правильно после расчёта, а не до него.
+   *
+   * Если посчитанных этапов ещё нет, показывать нечего — тогда это сам
+   * текущий этап, и его пустая страница целиком закрыта окном ввода.
+   */
+  const shownStep = calculated ? step : lastCalculatedBefore(project, step) ?? step;
+  const shownStepKey = STEP_KEYS[shownStep];
   // Числовая правка на посчитанном шаге не форкает (см. `patchGeom` ниже) —
   // отчёт по нему остаётся тем, что был на момент расчёта, пока не нажали
   // «Пересчитать» ещё раз.
@@ -175,9 +198,9 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         <Box paddingX="2xl" paddingY="2xl" fullWidth>
           <StepOverview
             project={project}
-            stepKey={stepKey}
-            calculated={calculated}
-            onEdit={() => setEditOpen(true)}
+            stepKey={shownStepKey}
+            calculated={project.calc[shownStep]}
+            onEdit={shownStep === step ? () => setEditOpen(true) : undefined}
             onUpdateProject={onUpdateProject}
           />
         </Box>
@@ -210,7 +233,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
                   iconEnd="chevronRight"
                   onClick={() => goToStep(step + 1)}
                 >
-                  Следующий этап
+                  Следующий этап: {STEP_META[step + 1].label}
                 </Button>
               ) : null}
               {stale ? (

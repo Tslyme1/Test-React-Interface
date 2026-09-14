@@ -1,17 +1,21 @@
 import { useMemo } from 'react';
-import { Box, Button, EmptyState, Stack, Surface, Text } from '@uralmash/design-system';
+import { Box, Button, EmptyState, Stack, Text } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
-import { StepReport } from './StepReport';
+import { StepMeta, StepReport } from './StepReport';
 import styles from './StepOverview.module.css';
 
 export type StepOverviewProps = {
   project: Project;
   stepKey: StepKey;
   calculated: boolean;
-  /** Открыть окно ввода — единственный способ поправить данные этапа. */
-  onEdit: () => void;
+  /**
+   * Открыть окно ввода. Не передаётся, когда страница показывает
+   * не тот этап, на котором сейчас стоит визард: править оттуда данные
+   * соседнего этапа значило бы менять не то, на что смотришь.
+   */
+  onEdit?: () => void;
   onUpdateProject: (id: string, patch: Partial<Project>) => void;
 };
 
@@ -77,6 +81,8 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
     <Stack gap="xl" direction="column">
       <Text variant="headingMd">{TITLES[stepKey]}</Text>
 
+      {calculated ? <StepMeta project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} /> : null}
+
       <div className={styles.split}>
         {/* Сводка — узкой колонкой слева: её читают по диагонали, чтобы
             убедиться, что считали с тем, с чем собирались. Место экрана
@@ -89,23 +95,23 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             страницы значило бы отрывать действие от того, над чем оно
             совершается. */}
         <div className={styles.summary}>
-          <Surface level="flat" border radius="md" padding="lg">
-            <Stack gap="sm" direction="column">
+          <Stack gap="md" direction="column">
               <Text variant="label">Исходные данные</Text>
               {summary.map((item) => (
                 <div key={item.label} className={styles.row}>
-                  <Text variant="bodySm" color="textMuted">
+                  <Text variant="body" color="textMuted">
                     {item.label}
                   </Text>
-                  <Text variant="bodySm">{item.value}</Text>
+                  <Text variant="body">{item.value}</Text>
                 </div>
               ))}
 
-              <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
-                Изменить данные
-              </Button>
-            </Stack>
-          </Surface>
+              {onEdit ? (
+                <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
+                  Изменить данные
+                </Button>
+              ) : null}
+          </Stack>
         </div>
 
         <div className={styles.result}>
@@ -121,7 +127,7 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
           ) : null}
 
           {calculated ? (
-            <StepReport project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} />
+            <StepReport project={project} stepKey={stepKey} />
           ) : (
             <EmptyState
               icon="fileText"
