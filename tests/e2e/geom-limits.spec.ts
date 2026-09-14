@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, seedSession } from './helpers';
+import { closeStepEditor, createProject, openStepEditor, seedSession } from './helpers';
 
 /**
  * Границы исходных данных этапа 1 (`src/domain/geomLimits.ts`).
@@ -12,6 +12,9 @@ test.describe('Этап 1: границы исходных данных', () => 
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('значение за границей помечает поле ошибкой, но не подменяет число', async ({ page }) => {
@@ -62,6 +65,8 @@ test.describe('Этап 1: границы исходных данных', () => 
   });
 
   test('справка перечисляет границы и объясняет ситовый размер', async ({ page }) => {
+    // Справка живёт в шапке приложения — окно ввода её перекрывает.
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'Справка по параметрам' }).click();
     const help = page.getByRole('dialog');
 

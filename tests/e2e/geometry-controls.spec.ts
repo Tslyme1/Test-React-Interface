@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, SAMPLE_PROJECT, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, createProject, openStepEditor, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Шаг «Геометрия»: степпер с одними заголовками, смена дробилки прямо
@@ -10,6 +10,9 @@ test.describe('Шаг «Геометрия»: заголовки шагов и �
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('степпер показывает только заголовки шагов, без подписей под ними', async ({ page }) => {
@@ -42,10 +45,16 @@ test.describe('Шаг «Геометрия»: смена дробилки', () =
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('плашка показывает текущую дробилку и открывает окно замены', async ({ page }) => {
-    await expect(page.getByText(SAMPLE_PROJECT.crusher, { exact: true })).toBeVisible();
+    /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
+       ввода. Здесь речь про плашку — она же и открывает замену. */
+    const editor = page.getByRole('dialog', { name: /Исходные данные/ });
+    await expect(editor.getByText(SAMPLE_PROJECT.crusher, { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Сменить дробилку' }).click();
     const dialog = page.getByRole('dialog', { name: 'Сменить дробилку' });
@@ -55,7 +64,7 @@ test.describe('Шаг «Геометрия»: смена дробилки', () =
     await dialog.getByRole('button', { name: 'КМД-2200Т6-Д', exact: true }).click();
 
     await expect(dialog).toHaveCount(0);
-    await expect(page.getByText('КМД-2200Т6-Д', { exact: true })).toBeVisible();
+    await expect(editor.getByText('КМД-2200Т6-Д', { exact: true })).toBeVisible();
   });
 });
 
@@ -63,6 +72,9 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('подсветка участка: наведение на поле D меняет разметку схемы, потеря фокуса — возвращает', async ({ page }) => {
@@ -79,7 +91,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
       expect(await svg.innerHTML()).not.toBe(before);
     }).toPass();
 
-    await page.getByRole('heading', { name: 'Геометрия камеры' }).hover();
+    await page.getByRole('dialog', { name: /Исходные данные/ }).getByText('Зона входа — приёмная часть камеры').hover();
     await expect(async () => {
       expect(await svg.innerHTML()).toBe(before);
     }).toPass();
@@ -107,7 +119,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
     // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
-    await page.getByRole('heading', { name: 'Геометрия камеры' }).hover();
+    await page.getByRole('dialog', { name: /Исходные данные/ }).getByText('Зона входа — приёмная часть камеры').hover();
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
   });
 
@@ -136,9 +148,11 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test('дельта: после расчёта правка поля показывает «было: …», выключение — прячет', async ({ page }) => {
     const console_ = watchConsole(page);
 
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
+    // Расчёт закрывает окно ввода — правим данные, открыв его заново.
+    await openStepEditor(page);
     const field = page.getByLabel('Диаметр основания D');
     await field.fill('1900');
 
@@ -167,6 +181,9 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('число зон дробления вводится числом и задаёт, сколько зон в расчёте', async ({ page }) => {

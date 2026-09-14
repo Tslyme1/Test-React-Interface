@@ -1,13 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createProject, pickOre, seedSession, watchConsole } from './helpers';
+import { closeStepEditor, createProject, goToWizardStep, pickOre, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Доходит до шага «Грансостав»: расчёт шага «Геометрия» открывает его,
  * а выбор пробы снимает заглушку (см. `available()` в `WizardPage`).
  */
 async function goToGranStep(page: Page) {
-  await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-  await page.getByRole('button', { name: /Руда/ }).click();
+  await runStepCalc(page);
+  await goToWizardStep(page, /Руда/);
   await pickOre(page);
   await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 }
@@ -144,10 +144,14 @@ test.describe('Ситовый анализ на шаге «Грансостав�
     await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
     await fillTwoClasses(page);
 
-    await page.getByRole('button', { name: /Дробилка/ }).click();
+    /* Степпер живёт в футере страницы — окно ввода его перекрывает.
+       Переход на непосчитанный этап открывает окно снова сам. */
+    await closeStepEditor(page);
+    await goToWizardStep(page, /Дробилка/);
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await closeStepEditor(page);
+    await goToWizardStep(page, /Руда/);
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
     // Способ ввода остался «Ситовый анализ», строки и посчитанные по ним
@@ -158,8 +162,10 @@ test.describe('Ситовый анализ на шаге «Грансостав�
 
     // Записанные a₀/Va₀ тоже пережили переход и видны при возврате к прямому вводу.
     await page.getByRole('button', { name: 'Записать a₀ и Va₀ в параметры' }).click();
-    await page.getByRole('button', { name: /Дробилка/ }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await closeStepEditor(page);
+    await goToWizardStep(page, /Дробилка/);
+    await closeStepEditor(page);
+    await goToWizardStep(page, /Руда/);
     await page.getByRole('radio', { name: 'Прямой ввод' }).check();
     await expect(page.getByLabel('Среднее относительное длины куска a₀')).toHaveValue('0.563');
   });

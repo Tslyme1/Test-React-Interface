@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { createProject, fillNewProjectForm, openTrash, pickOre, removeFirstProject, seedSession } from './helpers';
+import { createProject, fillNewProjectForm, goToWizardStep, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -56,8 +56,8 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`05 выбор пробы руды @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-      await page.getByRole('button', { name: /Руда/ }).click();
+      await runStepCalc(page);
+      await goToWizardStep(page, /Руда/);
       await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
       await shot(page, `05-catalog-ore-${scheme}`);
     });
@@ -72,7 +72,7 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`07 панель результата @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+      await runStepCalc(page);
       await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
       await expect(page.getByRole('dialog', { name: /Результат/ })).toBeVisible();
       await shot(page, `07-results-drawer-${scheme}`);
@@ -105,8 +105,8 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`09 ситовый анализ @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-      await page.getByRole('button', { name: /Руда/ }).click();
+      await runStepCalc(page);
+      await goToWizardStep(page, /Руда/);
       await pickOre(page);
       await page.getByRole('radio', { name: 'Ситовый анализ' }).check();
       await shot(page, `09-sieve-${scheme}`);

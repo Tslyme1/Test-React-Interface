@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { DEMO_USER, SAMPLE_PROJECT, createProject, pickOre, seedSession, watchConsole } from './helpers';
+import { DEMO_USER, SAMPLE_PROJECT, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession, watchConsole } from './helpers';
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
@@ -19,7 +19,7 @@ test.describe('Инженерный визард', () => {
   test('расчёт помечает шаг пройденным, показывает тост и открывает следующий', async ({ page }) => {
     const console_ = watchConsole(page);
 
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
 
     await expect(page.getByText('Шаг «Дробилка» рассчитан')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
@@ -29,7 +29,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('результат открывается панелью и показывает вычисленные значения', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
@@ -48,7 +48,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('шторка результата показывает метаданные расчёта и позволяет завести тег на месте', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
@@ -87,7 +87,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('панель результата закрывается по Esc', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
@@ -98,21 +98,22 @@ test.describe('Инженерный визард', () => {
   });
 
   test('переход по шагам меняет форму', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await openStepEditor(page);
+    await runStepCalc(page);
 
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Дробилка/ }).click();
+    await goToWizardStep(page, /Дробилка/);
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
   });
 
   test('переход на «Руда» без выбранной пробы открывает выбор пробы, оставляя шаг «Дробилка»', async ({ page }) => {
     const console_ = watchConsole(page);
 
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
 
     // Степпер не переключился: заглушки «нечем считать» на шаге «Грансостав»
     // быть не должно вовсе — вместо неё сразу открывается выбор пробы,
@@ -130,43 +131,50 @@ test.describe('Инженерный визард', () => {
   });
 
   test('выбранная проба руды переживает уход на другой шаг', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await openStepEditor(page);
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
-    await page.getByRole('button', { name: /Дробилка/ }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await goToWizardStep(page, /Дробилка/);
+    await goToWizardStep(page, /Руда/);
 
     await expect(page.getByRole('heading', { name: 'Характеристический грансостав' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
   });
 
   test('введённые значения переживают выход в список и возврат в проект', async ({ page }) => {
+    await openStepEditor(page);
     const field = page.getByLabel('Диаметр основания D');
     await field.fill('1900');
 
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
+    await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
   });
 
   test('введённые значения и отметка расчёта переживают перезагрузку', async ({ page }) => {
+    await openStepEditor(page);
     // Проверяет, что вложенные данные визарда переживают сериализацию,
     // а не только верхний уровень записи проекта.
     await page.getByLabel('Диаметр основания D').fill('1900');
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     await page.reload();
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
+    await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
+    await closeStepEditor(page);
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
   });
 
   test('посчитанный шаг остаётся посчитанным после возврата', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await expect(page.getByRole('button', { name: 'Смотреть результат 1 этапа' })).toBeVisible();
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
@@ -220,6 +228,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('переключение единиц углов меняет постфикс у полей угла', async ({ page }) => {
+    await openStepEditor(page);
     await expect(page.getByText('град°', { exact: true }).first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Отображение' }).click();
@@ -233,6 +242,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('ширину панели со схемой можно тянуть вручную', async ({ page }) => {
+    await openStepEditor(page);
     const panel = page.locator('[data-open="true"]');
     const before = await panel.boundingBox();
     if (!before) throw new Error('панель схемы не найдена');
@@ -256,8 +266,8 @@ test.describe('Инженерный визард', () => {
   });
 
   test('дельта работает на «Грансоставе» и «Продукте», не только на «Геометрии»', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
     const z0 = page.getByLabel('Параметр Z0');
@@ -270,8 +280,8 @@ test.describe('Инженерный визард', () => {
 
     // Шаг «Продукт» доступен только после расчёта «Грансостава» — это
     // про степпер, не про дельту, и не связано с проверкой выше.
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Продукт/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Продукт/);
     const wk = page.getByLabel('Работа разрушения Wk');
     const wkBefore = await wk.inputValue();
     await wk.fill(`${Number(wkBefore) + 1}`);
@@ -279,6 +289,7 @@ test.describe('Инженерный визард', () => {
   });
 
   test('дельта видна на совсем новом проекте — не нужно сперва считать шаг', async ({ page }) => {
+    await openStepEditor(page);
     // Регрессия: снимок раньше заводился только при расчёте, и до первого
     // «Выполнить расчёт» переключатель «Показывать изменения» не показывал
     // ничего, даже если поле уже отредактировано.
@@ -300,15 +311,18 @@ test.describe('Инженерный визард', () => {
   });
 
   test('«Грансостав»: заголовок без подзаголовка, плашка пробы без лейбла, своё «Отображение» с дельтой', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
+    /* Речь про саму форму: на странице этапа за окном стоит сводка,
+       и «Проба руды» подписью строки в ней — на месте. */
+    const editor = page.getByRole('dialog', { name: /Исходные данные/ });
     // Подзаголовок под заголовком шага убран.
-    await expect(page.getByText('Границы крупности питания')).toHaveCount(0);
+    await expect(editor.getByText('Границы крупности питания')).toHaveCount(0);
     // Подпись «Проба руды» над плашкой убрана — сама плашка достаточно называет своё назначение.
-    await expect(page.getByText('Проба руды', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Костомукшская', { exact: true })).toBeVisible();
+    await expect(editor.getByText('Проба руды', { exact: true })).toHaveCount(0);
+    await expect(editor.getByText('Костомукшская', { exact: true })).toBeVisible();
 
     // «Отображение» здесь своё — только дельта, без пунктов про диаграмму.
     await page.getByRole('button', { name: 'Отображение' }).click();
@@ -328,10 +342,10 @@ test.describe('Инженерный визард', () => {
   });
 
   test('результат «Грансостав»: отображение переключает по минусу / по плюсу / частные классы независимо', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 2 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат/ });
@@ -358,12 +372,12 @@ test.describe('Инженерный визард', () => {
   });
 
   test('результат «Продукт» показывает грансостав продукта таблицей и графиком', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Продукт/ }).click();
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Продукт/);
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат/ });
@@ -384,12 +398,12 @@ test.describe('Инженерный визард', () => {
   });
 
   test('результат «Продукт» в конце шторки показывает результаты этапов «Геометрия» и «Грансостав»', async ({ page }) => {
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Продукт/ }).click();
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Продукт/);
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'Смотреть результат 3 этапа' }).click();
 
     const drawer = page.getByRole('dialog', { name: /Результат/ });

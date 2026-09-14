@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, seedSession, watchConsole } from './helpers';
+import { createProject, goToWizardStep, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Окно фильтров каталога и фиксированная высота окна нового проекта.
@@ -134,8 +134,8 @@ test('в окне выбора пробы руды есть быстрые фи�
   await seedSession(page, { empty: true });
   await createProject(page);
 
-  await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-  await page.getByRole('button', { name: /Руда/ }).click();
+  await runStepCalc(page);
+  await goToWizardStep(page, /Руда/);
   const ore = page.getByRole('dialog', { name: 'Выбор пробы руды' });
   await expect(ore).toBeVisible();
 

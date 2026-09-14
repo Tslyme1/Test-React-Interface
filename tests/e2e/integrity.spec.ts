@@ -1,12 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import {
-  controlsWithoutAccessibleName,
-  createProject,
-  hasHorizontalOverflow,
-  orphanLabels,
-  seedSession,
-  watchConsole,
-} from './helpers';
+import { controlsWithoutAccessibleName, createProject, goToWizardStep, hasHorizontalOverflow, orphanLabels, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Сквозные инварианты — то, что должно быть верно на каждом экране.
@@ -48,8 +41,8 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-      await page.getByRole('button', { name: /Руда/ }).click();
+      await runStepCalc(page);
+      await goToWizardStep(page, /Руда/);
       await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
     },
   },
@@ -67,7 +60,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+      await runStepCalc(page);
       await page.getByRole('button', { name: 'Смотреть результат 1 этапа' }).click();
       await expect(page.getByRole('dialog', { name: /Результат/ })).toBeVisible();
     },

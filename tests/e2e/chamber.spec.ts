@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, seedSession, watchConsole } from './helpers';
+import { createProject, openStepEditor, seedSession, watchConsole } from './helpers';
 
 /**
  * Схема профиля камеры дробления на шаге «Геометрия» — перенос математики
@@ -12,12 +12,18 @@ test.describe('Схема камеры дробления на шаге «Гео
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
   });
 
   test('схема видна рядом с формой и доступна как изображение', async ({ page }) => {
     const console_ = watchConsole(page);
 
-    const scheme = page.getByRole('img', { name: /Схема профиля камеры дробления/ });
+    /* Чертёж на экране дважды: рабочий в окне ввода и итоговый на
+       странице этапа под ним. Здесь речь про рабочий. */
+    const scheme = page.getByTestId('chamber-scheme');
+    await expect(scheme).toHaveAttribute('aria-label', /Схема профиля камеры дробления/);
     await expect(scheme).toBeVisible();
 
     // Профиль строится из декларативных SVG-примитивов, а не из строки:
@@ -133,6 +139,9 @@ test.describe('Схема камеры: выносные размеры', () => 
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
+    /* Поля этапа живут в окне ввода — страница показывает сводку и
+       результат. Сценарий начинается там же, где и работа: в окне. */
+    await openStepEditor(page);
     await expect(page.getByTestId('chamber-scheme')).toBeVisible();
   });
 

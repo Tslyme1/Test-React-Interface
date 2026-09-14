@@ -142,22 +142,79 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
   await fillNewProjectForm(page, project);
   await page.getByRole('button', { name: 'Продолжить' }).click();
-  // Признак попадания в визард — первый шаг.
-  await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
 
   /**
-   * Ждём, пока окно уйдёт из разметки, а не только с глаз.
+   * Признак попадания в визард — открытое окно ввода первого шага.
    *
-   * `toBeVisible` у заголовка визарда проходит и при открытом окне: он
-   * проверяет видимость по стилям, а не перекрытие. Окно же остаётся
-   * в дереве, пока доигрывает анимацию ухода, — так устроен `Modal`
-   * в системе. Помощник возвращал управление в этот промежуток, и
-   * следующий шаг сценария видел на странице две таблицы: список проектов
-   * и каталог дробилок из закрывающегося окна.
-   *
-   * Ошибка при этом выглядела как дефект экрана, а не теста, и всплывала
-   * не всегда — только там, где следующее действие успевало в это окно.
+   * Непосчитанный этап открывается сразу с ним: считать нечего, пока
+   * данные не введены. Помощник его не закрывает — из него же и
+   * запускается расчёт, и большинству сценариев нужно именно оно.
+   * Кому нужна страница за ним — `closeStepEditor`.
    */
+  await expect(page.getByRole('heading', { name: 'Геометрия камеры дробления' })).toBeVisible();
+
+  /**
+   * Ждём, пока окно нового проекта уйдёт из разметки, а не только с глаз:
+   * `Modal` в системе остаётся в дереве, пока доигрывает анимацию ухода,
+   * и следующее действие сценария успевало в закрывающееся окно.
+   */
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
+/**
+ * Открывает окно ввода исходных данных текущего этапа.
+ *
+ * На непосчитанном этапе главное действие футера — «Ввести данные»,
+ * на посчитанном правка живёт кнопкой «Изменить данные» в шапке этапа.
+ */
+export async function openStepEditor(page: Page) {
+  const enter = page.getByRole('button', { name: 'Ввести данные' });
+  if (await enter.count()) await enter.click();
+  else await page.getByRole('button', { name: 'Изменить данные' }).click();
+  await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+}
+
+/**
+ * Переход по степперу. Степпер живёт в футере страницы, и открытое окно
+ * ввода его перекрывает — поэтому окно сначала закрывается. Переход
+ * на непосчитанный этап откроет его снова сам.
+ */
+export async function goToWizardStep(page: Page, name: RegExp) {
+  await closeStepEditor(page);
+  await page.getByRole('button', { name }).click();
+}
+
+/**
+ * Запускает расчёт этапа. Кнопка живёт в окне ввода — там, где видно,
+ * что именно уходит в расчёт, — поэтому окно при необходимости
+ * открывается, а после расчёта закрывается само.
+ */
+export async function runStepCalc(page: Page, label: 'Выполнить расчёт' | 'Пересчитать' = 'Выполнить расчёт') {
+  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  /* Ждём окно, а не спрашиваем про него сразу: переход на непосчитанный
+     этап открывает его сам, и мгновенная проверка попадала бы в промежуток,
+     пока оно ещё доигрывает появление. */
+  const shown = await dialog
+    .waitFor({ state: 'visible', timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  if (!shown) await openStepEditor(page);
+  await dialog.getByRole('button', { name: label }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
+/**
+ * Закрывает окно ввода исходных данных и ждёт, пока оно уйдёт
+ * из разметки, а не только с глаз: `Modal` в системе остаётся в дереве,
+ * пока доигрывает анимацию ухода, и следующее действие сценария
+ * успевало в закрывающееся окно.
+ */
+export async function closeStepEditor(page: Page) {
+  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  /* Тихо ничего не делает, когда окна нет: на посчитанном этапе оно
+     не открывается само, и сценариям незачем помнить, где именно. */
+  if ((await dialog.count()) === 0) return;
+  await dialog.getByRole('button', { name: 'Закрыть' }).first().click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 

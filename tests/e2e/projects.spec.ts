@@ -1,13 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  SAMPLE_PROJECT,
-  createProject,
-  fillNewProjectForm,
-  pickOre,
-  removeFirstProject,
-  seedSession,
-  watchConsole,
-} from './helpers';
+import { SAMPLE_PROJECT, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, pickOre, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 test.describe('Список проектов', () => {
   test.beforeEach(async ({ page }) => {
@@ -82,9 +74,10 @@ test.describe('Список проектов', () => {
   test('выбранная на шаге «Грансостав» проба руды попадает в строку таблицы', async ({ page }) => {
     await createProject(page);
 
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
+    await closeStepEditor(page);
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 

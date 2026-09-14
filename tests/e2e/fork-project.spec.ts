@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, pickOre, SAMPLE_PROJECT, seedSession } from './helpers';
+import { SAMPLE_PROJECT, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession } from './helpers';
 
 /**
  * Правка данных уже посчитанного шага не переписывает проект на месте —
@@ -10,7 +10,10 @@ test.describe('Форк проекта при правке посчитанно�
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
+    /* Расчёт закрывает окно ввода — сценариям ниже нужны поля и плашки,
+       то есть само окно, поэтому открываем его снова. */
+    await openStepEditor(page);
   });
 
   test('смена дробилки на посчитанном шаге предлагает создать копию', async ({ page }) => {
@@ -23,8 +26,9 @@ test.describe('Форк проекта при правке посчитанно�
     await confirm.getByRole('button', { name: 'Создать копию' }).click();
 
     // Открыт новый проект — с новой дробилкой, шаг снова не посчитан.
-    await expect(page.getByText('КМД-3000Т2', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeVisible();
+    await expect(page.getByText('КМД-3000Т2', { exact: true }).first()).toBeVisible();
+    await closeStepEditor(page);
+    await expect(page.getByRole('button', { name: 'Ввести данные' })).toBeVisible();
 
     // Исходный проект остаётся в списке нетронутым.
     await page.getByRole('button', { name: 'УЗТМ' }).click();
@@ -39,16 +43,18 @@ test.describe('Форк проекта при правке посчитанно�
 
     // Дробилка не поменялась, второй проект не появился.
     await expect(page.getByText(SAMPLE_PROJECT.crusher, { exact: true }).first()).toBeVisible();
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('row')).toHaveCount(2); // заголовок + один проект
   });
 
   test('смена пробы руды на посчитанном шаге «Грансостав» тоже форкает', async ({ page }) => {
-    await page.getByRole('button', { name: /Руда/ }).click();
+    await goToWizardStep(page, /Руда/);
     await pickOre(page);
     await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
 
+    await openStepEditor(page);
     await page.getByRole('button', { name: 'Сменить пробу руды' }).click();
     await page.getByRole('dialog', { name: 'Выбор пробы руды' }).getByRole('button', { name: 'Михайловская', exact: true }).click();
 

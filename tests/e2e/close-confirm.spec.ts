@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, SAMPLE_PROJECT, seedSession } from './helpers';
+import { SAMPLE_PROJECT, closeStepEditor, createProject, openStepEditor, runStepCalc, seedSession } from './helpers';
 
 async function hoverAndCloseTab(page: import('@playwright/test').Page, name: string) {
   const tab = page.getByRole('button', { name, exact: true });
@@ -17,12 +17,16 @@ test.describe('Подтверждение закрытия при неперес
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
-    await page.getByRole('button', { name: 'Выполнить расчёт' }).click();
+    await runStepCalc(page);
+    /* Расчёт закрывает окно ввода — сценариям ниже нужны поля и плашки,
+       то есть само окно, поэтому открываем его снова. */
+    await openStepEditor(page);
   });
 
   test('правка поля после расчёта — закрытие вкладки спрашивает подтверждение', async ({ page }) => {
     await page.getByLabel('Диаметр основания D').fill('1900');
 
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toBeVisible();
@@ -30,17 +34,20 @@ test.describe('Подтверждение закрытия при неперес
 
   test('«Отмена» не закрывает вкладку', async ({ page }) => {
     await page.getByLabel('Диаметр основания D').fill('1900');
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page.getByRole('dialog', { name: 'Сохранить изменения?' }).getByRole('button', { name: 'Отмена' }).click();
 
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toBeVisible();
+    await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
   });
 
   test('«Не сохранять» закрывает вкладку и возвращает значения к последнему расчёту', async ({ page }) => {
     const before = await page.getByLabel('Диаметр основания D').inputValue();
     await page.getByLabel('Диаметр основания D').fill('1900');
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page.getByRole('dialog', { name: 'Сохранить изменения?' }).getByRole('button', { name: 'Не сохранять' }).click();
@@ -50,11 +57,13 @@ test.describe('Подтверждение закрытия при неперес
 
     // Правка после расчёта откатывается к снимку, с которым шаг считали.
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue(before);
   });
 
   test('«Сохранить» в диалоге закрывает вкладку, оставляя правки и снимая предупреждение', async ({ page }) => {
     await page.getByLabel('Диаметр основания D').fill('1900');
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await page
@@ -65,11 +74,13 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
     await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
   });
 
   test('закрытие без правок после расчёта не спрашивает ничего', async ({ page }) => {
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toHaveCount(0);
@@ -80,9 +91,10 @@ test.describe('Подтверждение закрытия при неперес
     await page.getByLabel('Диаметр основания D').fill('1900');
     await expect(page.getByText('Есть непересчитанные изменения')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Пересчитать' }).click();
+    await runStepCalc(page, 'Пересчитать');
     await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
 
+    await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await expect(page.getByRole('dialog', { name: 'Сохранить изменения?' })).toHaveCount(0);

@@ -7,6 +7,7 @@ import { ORE_SPECS } from '@/data/oreSamples';
 import { useUserCatalog } from '@/state/userCatalog';
 import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import { GeometryStep } from './GeometryStep';
+import { StepOverview } from './StepOverview';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
 import { ResultsDrawer } from './ResultsDrawer';
@@ -33,6 +34,13 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   // он остаётся на шаге 0, а поверх него открывается выбор пробы. Показывать
   // шаг заглушкой «нечем считать» хуже, чем сразу дать выбрать.
   const [orePickerOpen, setOrePickerOpen] = useState(false);
+  /**
+   * Окно ввода исходных данных этапа. Страница показывает, что введено
+   * и что из этого вышло, а правят данные здесь — формы занимают экран
+   * целиком, а смотрят на них считаные минуты за весь расчёт.
+   */
+  const [editOpen, setEditOpen] = useState(false);
+
   /* Справочник проб с правками пользователя — один на приложение:
      заведённая в упрощённом режиме проба обязана находиться и здесь. */
   const oreCatalog = useUserCatalog('ores');
@@ -65,7 +73,18 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
       setOrePickerOpen(true);
       return;
     }
-    if (available(i)) setStep(i);
+    if (!available(i)) return;
+    setStep(i);
+    /* Переход на непосчитанный этап сразу открывает ввод: считать нечего,
+       пока данные не введены, и первое, что там делают, — вводят их.
+       На посчитанный — без окна: там смотрят результат, а правка данных
+       это уже отдельное намерение.
+
+       Только по переходу, а не при каждом появлении этапа на экране:
+       иначе окно вставало бы поперёк и при открытии проекта из списка,
+       и при переключении вкладок — там, где пользователь шёл смотреть,
+       а не вводить. */
+    setEditOpen(!project.calc[i]);
   };
 
   /**
@@ -113,6 +132,10 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     setOrePickerOpen(false);
     setStep(1);
     applyOrFork(1, { ore });
+    /* Проба выбрана — дальше на этом этапе вводят параметры грансостава,
+       и окно ввода открывается сразу, как и при обычном переходе
+       на непосчитанный этап. */
+    if (!project.calc[1]) setEditOpen(true);
   };
 
   /*
@@ -154,26 +177,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             в `ProjectsPage.tsx`: в этой версии компонента одиночный `padding`
             гасит сам себя. */}
         <Box paddingX="2xl" paddingY="2xl" fullWidth>
-          {stepKey === 'geom' ? (
-            <GeometryStep
-              data={project.data.geom}
-              onChange={patchGeom}
-              baseline={project.initialData.geom}
-              crusherName={project.crusherName}
-              onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
-            />
-          ) : stepKey === 'gran' ? (
-            <GranStep
-              data={project.data.gran}
-              onChange={patchGran}
-              baseline={project.initialData.gran}
-              ore={project.ore}
-              onRequestOrePicker={() => setOrePickerOpen(true)}
-              showToast={showToast}
-            />
-          ) : (
-            <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} />
-          )}
+          <StepOverview
+            project={project}
+            stepKey={stepKey}
+            calculated={calculated}
+            onEdit={() => setEditOpen(true)}
+          />
         </Box>
       </div>
 
@@ -220,8 +229,11 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
               ) : null}
             </Stack>
           ) : (
-            <Button variant="primary" disabled={!ready} onClick={runCalc}>
-              Выполнить расчёт
+            /* На непосчитанном этапе главное действие — ввести данные:
+               считать нечего, пока их нет. Сам расчёт запускается из окна
+               ввода — там, где видно, что именно уходит в расчёт. */
+            <Button variant="primary" iconStart="pencil" onClick={() => setEditOpen(true)}>
+              Ввести данные
             </Button>
           )}
         </Stack>
@@ -237,6 +249,59 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
         project={project}
         onUpdateProject={onUpdateProject}
       />
+
+      {/* Форма этапа целиком — та же, что раньше занимала страницу.
+          Ширина `lg`: на шаге «Геометрия» рядом с полями стоит чертёж,
+          и связь «поле ↔ участок» работает только когда оба на виду. */}
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title={`Исходные данные: ${STEP_META[step].label}`}
+        size="lg"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+              Закрыть
+            </Button>
+            {/* Расчёт запускается отсюда, а не с футера страницы: там он
+                стоял бы под окном, которое для этого и открыли, — и путь
+                «ввёл → посчитал» разрывался бы закрытием окна. */}
+            <Button
+              variant="primary"
+              disabled={!ready}
+              onClick={() => {
+                runCalc();
+                setEditOpen(false);
+              }}
+            >
+              {calculated ? 'Пересчитать' : 'Выполнить расчёт'}
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <div className={styles.editorBody}>
+        {stepKey === 'geom' ? (
+          <GeometryStep
+            data={project.data.geom}
+            onChange={patchGeom}
+            baseline={project.initialData.geom}
+            crusherName={project.crusherName}
+            onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
+          />
+        ) : stepKey === 'gran' ? (
+          <GranStep
+            data={project.data.gran}
+            onChange={patchGran}
+            baseline={project.initialData.gran}
+            ore={project.ore}
+            onRequestOrePicker={() => setOrePickerOpen(true)}
+            showToast={showToast}
+          />
+        ) : (
+          <ProdStep data={project.data.prod} onChange={patchProd} baseline={project.initialData.prod} />
+        )}
+        </div>
+      </Modal>
 
       {/* Живёт здесь, а не внутри `GranStep`: переход на шаг «Руда» без
           выбранной пробы должен открыть это окно поверх шага «Дробилка»,
