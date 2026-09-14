@@ -218,31 +218,41 @@ function buildGranClasses(dMin: number, dMaxRaw: number, k: number, z0: number):
   const z0Safe = Math.max(z0, 0.1);
 
   const steps = 8;
+
+  /* Накопленный выход нормируется на самый крупный класс.
+     Сырая экспонента насыщается медленнее шкалы классов и до сотни
+     не доходит: при n₀ = 0,6 верхний класс давал 83,5 %, то есть
+     таблица утверждала, что 16,5 % питания крупнее собственного
+     `dMax`. Нормировка убирает это, не трогая форму кривой. */
+  const rawPass = Array.from({ length: steps + 1 }, (_, i) => 1 - Math.exp((-kSafe * i * 3) / steps));
+  const full = rawPass[steps] || 1;
+  const passAt = (i: number) => Math.min((rawPass[i] / full) * 100, 100);
+
   const rows: GranRow[] = [];
   let prevTop = dMin;
-  let prevPass = 0;
 
   for (let i = 1; i <= steps; i += 1) {
-    const frac = i / steps;
     // Прогрессия по кубу доли — мелкие классы дробятся чаще крупных.
-    const top = dMin + (dMax - dMin) * Math.pow(frac, 1 / z0Safe);
+    const top = dMin + (dMax - dMin) * Math.pow(i / steps, 1 / z0Safe);
     const mid = (prevTop + top) / 2;
-    const pass = Math.min(100 * (1 - Math.exp(-kSafe * frac * 3)), 100);
 
     rows.push({
       class: `−${top.toFixed(1)} +${prevTop.toFixed(1)}`,
       dTop: top.toFixed(2),
       dMid: mid.toFixed(2),
       d08: (top * 0.8).toFixed(2),
-      gamma: ((pass - prevPass) / 100).toFixed(4),
-      pass: pass.toFixed(1),
+      gamma: ((passAt(i) - passAt(i - 1)) / 100).toFixed(4),
+      pass: passAt(i).toFixed(1),
     });
 
     prevTop = top;
-    prevPass = pass;
   }
 
-  return rows;
+  /* Крупный класс — первым: таблица читается сверху вниз от 100 %
+     по уменьшению, как её и читают в отчёте. Строится она снизу вверх,
+     от мелкого класса: накопленный выход по минусу иначе не посчитать —
+     он копится именно от мелочи. */
+  return rows.reverse();
 }
 
 export function estimateGran(data: GranData): GranRow[] {
