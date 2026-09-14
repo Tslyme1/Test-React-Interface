@@ -58,7 +58,10 @@ test.describe('Несколько открытых проектов', () => {
 
     // Сейчас показан «Проект Б» (открыт последним). Переключаемся на «А».
     await clickTabLabel(page.getByRole('button', { name: 'Проект А', exact: true }));
-    await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
+    /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
+       ввода, которое открыто на непосчитанном этапе. Показан проект «А» —
+       это и проверяется. */
+    await expect(page.getByText('КСД-2200Т', { exact: true }).first()).toBeVisible();
 
     // «Б» осталась открытой вкладкой, просто не показана.
     await expect(page.getByRole('button', { name: 'Проект Б', exact: true })).toBeVisible();
@@ -87,7 +90,10 @@ test.describe('Несколько открытых проектов', () => {
 
     // Соседняя вкладка («А») становится показанной — не список проектов.
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
-    await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
+    /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
+       ввода, которое открыто на непосчитанном этапе. Показан проект «А» —
+       это и проверяется. */
+    await expect(page.getByText('КСД-2200Т', { exact: true }).first()).toBeVisible();
   });
 
   test('короткая вкладка показывает оба действия при наведении и переключается с клавиатуры', async ({ page }) => {
@@ -115,6 +121,9 @@ test.describe('Несколько открытых проектов', () => {
     await shortTab.focus();
     await page.keyboard.press('Enter');
 
-    await expect(page.getByText('КСД-2200Т', { exact: true })).toBeVisible();
+    /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
+       ввода, которое открыто на непосчитанном этапе. Показан проект «А» —
+       это и проверяется. */
+    await expect(page.getByText('КСД-2200Т', { exact: true }).first()).toBeVisible();
   });
 });
