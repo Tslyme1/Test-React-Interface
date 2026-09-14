@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Box, Button, EmptyState, Stack, Text } from '@uralmash/design-system';
+import { Box, Button, EmptyState, Stack, Table, Text } from '@uralmash/design-system';
+import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
-import { StepMeta, StepReport } from './StepReport';
+import { StepActions, StepMeta, StepReport } from './StepReport';
 import styles from './StepOverview.module.css';
 
 export type StepOverviewProps = {
@@ -21,6 +22,15 @@ export type StepOverviewProps = {
 
 /** Пара «величина — значение» в сводке исходных данных. */
 type SummaryItem = { label: string; value: string };
+
+/* Сводка — таблица, а не список пар: это данные, которые читают
+   по столбцам («что» и «сколько»), то есть ровно та роль, для которой
+   в системе есть `Table`. Своя вёрстка строк повторяла бы её шапку,
+   выравнивание и прочерк пустого значения заново. */
+const summaryColumns: TableColumn<SummaryItem>[] = [
+  { key: 'label', title: 'Величина' },
+  { key: 'value', title: 'Значение', align: 'end' },
+];
 
 /**
  * Страница этапа: что введено и что из этого вышло.
@@ -96,21 +106,17 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             совершается. */}
         <div className={styles.summary}>
           <Stack gap="md" direction="column">
-              <Text variant="label">Исходные данные</Text>
-              {summary.map((item) => (
-                <div key={item.label} className={styles.row}>
-                  <Text variant="body" color="textMuted">
-                    {item.label}
-                  </Text>
-                  <Text variant="body">{item.value}</Text>
-                </div>
-              ))}
+            <Table columns={summaryColumns} rows={summary} rowKey={(item) => item.label} caption="Исходные данные" />
 
-              {onEdit ? (
-                <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
-                  Изменить данные
-                </Button>
-              ) : null}
+            {onEdit ? (
+              <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
+                Изменить данные
+              </Button>
+            ) : null}
+
+            {/* Выгрузка и печать — внизу левой колонки, над футером:
+                действия над готовым этапом, а не над его первой таблицей. */}
+            {calculated ? <StepActions project={project} stepKey={stepKey} /> : null}
           </Stack>
         </div>
 
