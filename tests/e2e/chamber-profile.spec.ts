@@ -92,11 +92,10 @@ test.describe('Этап 1: расчёт профиля по методике', (
     await seedSession(page, { empty: true });
     await createProject(page);
     await runStepCalc(page);
-    await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
   });
 
   test('таблица профиля совпадает с расчётом по умолчанию', async ({ page }) => {
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
     await expect(drawer).toBeVisible();
 
     const rows = drawer.getByRole('table').nth(1).getByRole('row');
@@ -112,7 +111,7 @@ test.describe('Этап 1: расчёт профиля по методике', (
   });
 
   test('встроенные проверки методики сходятся на исправном профиле', async ({ page }) => {
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
 
     // §3.4: замыкание рекурсии, монотонность просвета, диапазон углов.
     await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('сходится');
@@ -124,15 +123,13 @@ test.describe('Этап 1: расчёт профиля по методике', (
     /* Третья строка файла геометрии — «Число зон дробления». Она задаёт
        длину массивов l₁(i), β₁(i), β₄(i), а значит и число расчётных
        сечений: зоны + 2. */
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
     await expect(drawer.getByRole('row').filter({ hasText: 'Число зон дробления' })).toContainText('2');
     await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('4');
 
-    await page.getByRole('button', { name: 'Закрыть' }).click();
     await openStepEditor(page);
     await page.getByLabel('Число зон дробления').fill('1');
     await runStepCalc(page, 'Пересчитать');
-    await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 
     await expect(drawer.getByRole('row').filter({ hasText: 'Число зон дробления' })).toContainText('1');
     await expect(drawer.getByRole('row').filter({ hasText: 'Число расчётных сечений' })).toContainText('3');
@@ -145,13 +142,11 @@ test.describe('Этап 1: расчёт профиля по методике', (
        профиля, и в остальных сечениях зазор был случайным. Теперь S₀ —
        начало рекурсии раскрытия, поэтому в нижнем сечении оно совпадает
        с полем формы при любом введённом значении. */
-    await page.getByRole('button', { name: 'Закрыть' }).click();
     await openStepEditor(page);
     await page.getByLabel('Ширина разгрузочной щели S0').fill('64');
     await runStepCalc(page, 'Пересчитать');
-    await page.getByRole('button', { name: /Смотреть результат 1 этапа/ }).click();
 
-    const drawer = page.getByRole('dialog', { name: /Результат: геометрия/ });
+    const drawer = page.getByRole('main');
     await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('64.00 / 64.00');
     await expect(drawer.getByRole('row').filter({ hasText: 'S1 в нижнем сечении = S₀' })).toContainText('сходится');
   });

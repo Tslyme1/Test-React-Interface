@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Badge, Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
 import type { Step } from '@uralmash/design-system';
-import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
+import type { GeomData, GranData, ProdData, Project } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { ORE_SPECS } from '@/data/oreSamples';
 import { useUserCatalog } from '@/state/userCatalog';
@@ -10,7 +10,6 @@ import { GeometryStep } from './GeometryStep';
 import { StepOverview } from './StepOverview';
 import { GranStep } from './GranStep';
 import { ProdStep } from './ProdStep';
-import { ResultsDrawer } from './ResultsDrawer';
 import { isStepStale, STEP_KEYS } from '@/domain/steps';
 import { formatDate } from '@/domain/date';
 import styles from './WizardPage.module.css';
@@ -60,11 +59,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   /* Справочник проб с правками пользователя — один на приложение:
      заведённая в упрощённом режиме проба обязана находиться и здесь. */
   const oreCatalog = useUserCatalog('ores');
-  const [resultOpen, setResultOpen] = useState(false);
-  // Последний непустой шаг результата держим отдельно от `resultOpen`:
-  // при закрытии контент не должен мигать на пустое, пока `Drawer`
-  // (в этой версии дизайн-системы) убирает панель.
-  const [resultStep, setResultStep] = useState<StepKey>('geom');
   // Правка данных уже посчитанного шага не переписывает проект на месте —
   // она предлагает форк (см. `applyOrFork`). Черновик копится здесь и
   // применяется только по подтверждению в окне ниже.
@@ -184,6 +178,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             stepKey={stepKey}
             calculated={calculated}
             onEdit={() => setEditOpen(true)}
+            onUpdateProject={onUpdateProject}
           />
         </Box>
       </div>
@@ -205,25 +200,19 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
                   идти дальше, когда шаг посчитан и это не очевидно само
                   по себе. Только пока следующий шаг вообще есть — на
                   «Продукте» идти уже некуда. */}
+              {/* «Смотреть результат» здесь больше нет: отчёт и так на
+                  экране — кнопка предлагала бы посмотреть на уже
+                  показанное. Осталось то, чего на странице нет: переход
+                  дальше и пересчёт, когда результат устарел. */}
               {step < 2 ? (
-                <Button variant="secondary" iconEnd="chevronRight" onClick={() => goToStep(step + 1)}>
+                <Button
+                  variant={stale ? 'secondary' : 'primary'}
+                  iconEnd="chevronRight"
+                  onClick={() => goToStep(step + 1)}
+                >
                   Следующий этап
                 </Button>
               ) : null}
-              <Button
-                variant={stale ? 'secondary' : 'primary'}
-                iconStart="fileText"
-                onClick={() => {
-                  setResultStep(stepKey);
-                  setResultOpen(true);
-                }}
-              >
-                Смотреть результат {step + 1} этапа
-              </Button>
-              {/* Основное действие смещается сюда, когда результат уже
-                  устарел, — «Смотреть результат» в этот момент показал бы
-                  старые цифры, и предлагать его как главное действие
-                  неправильно. */}
               {stale ? (
                 <Button variant="primary" onClick={runCalc}>
                   Пересчитать
@@ -240,17 +229,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           )}
         </Stack>
       </Surface>
-
-      {/* Рендерится безусловно, как `Modal`/`Popover` в остальном приложении —
-          снятие панели отдаём целиком компоненту дизайн-системы, а не гасим
-          её снаружи ещё раз. */}
-      <ResultsDrawer
-        open={resultOpen}
-        onClose={() => setResultOpen(false)}
-        stepKey={resultStep}
-        project={project}
-        onUpdateProject={onUpdateProject}
-      />
 
       {/* Форма этапа целиком — та же, что раньше занимала страницу.
           Ширина `lg`: на шаге «Геометрия» рядом с полями стоит чертёж,
