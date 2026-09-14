@@ -30,14 +30,14 @@ test.describe('Шаг «Геометрия»: заголовки шагов и �
   test('схема выезжает и заезжает панелью, оставаясь в разметке', async ({ page }) => {
     const toggle = page.getByRole('button', { name: /Схема профиля камеры/ });
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByRole('heading', { name: 'Схема профиля камеры' })).toBeVisible();
+    await expect(page.getByText('Схема профиля камеры', { exact: true })).toBeVisible();
 
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.getByRole('heading', { name: 'Схема профиля камеры' })).toBeVisible();
+    await expect(page.getByText('Схема профиля камеры', { exact: true })).toBeVisible();
   });
 });
 

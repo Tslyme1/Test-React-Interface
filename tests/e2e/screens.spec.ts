@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { createProject, fillNewProjectForm, goToWizardStep, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
+import { createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -65,6 +65,10 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`06 визард геометрия со схемой @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
+      /* Чертёж живёт в двух местах: рабочий — в окне ввода, итоговый —
+         в отчёте посчитанного этапа. Здесь снимок рабочего, рядом
+         с полями. */
+      await openStepEditor(page);
       await expect(page.getByTestId('chamber-scheme')).toBeVisible();
       await shot(page, `06-wizard-geometry-${scheme}`);
     });

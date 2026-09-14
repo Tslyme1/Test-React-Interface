@@ -60,7 +60,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           и без неё, а строка с чипсом под подписью разводила заголовок
           с действиями по разной высоте. */}
       {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
-      <Stack direction="row" justify="between" align="center" gap="md" wrap>
+      <Stack direction="row" justify="end" align="center" gap="sm" wrap>
         <Stack direction="row" align="center" gap="sm">
           <Chip icon="fileText" action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}>
             {ore}
@@ -73,7 +73,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
             width="md"
             title="Режим отображения"
             trigger={
-              <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
+              <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
                 Отображение
               </Button>
             }

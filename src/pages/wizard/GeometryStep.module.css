@@ -157,7 +157,7 @@
 .zoomControls {
   position: absolute;
   top: 50%;
-  right: var(--space-md);
+  right: var(--space-xl);
   transform: translateY(-50%);
   z-index: var(--z-raised);
 }
