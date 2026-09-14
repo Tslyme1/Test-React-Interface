@@ -304,7 +304,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               заголовок называет этап. Два названия подряд — «Исходные
               данные: Дробилка» и «Геометрия камеры» — отвечали бы на один
               вопрос дважды. */}
-          <Stack direction="row" justify="between" align="center" gap="md" wrap>
+          <Stack direction="row" justify="end" align="center" gap="sm" wrap>
             <Stack direction="row" align="center" gap="sm">
               <Chip
                 icon="fileText"
@@ -320,7 +320,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                 width="md"
                 title="Режим отображения"
                 trigger={
-                  <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
+                  <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
                     Отображение
                   </Button>
                 }
@@ -699,7 +699,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               width="md"
               title="Режим отображения"
               trigger={
-                <Button variant="secondary" iconEnd="chevronDown" onClick={() => setDiagramOpen((o) => !o)}>
+                <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDiagramOpen((o) => !o)}>
                   Диаграмма
                 </Button>
               }
@@ -729,7 +729,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               width="sm"
               title="Отображать"
               trigger={
-                <Button variant="secondary" iconEnd="chevronDown" onClick={() => setLayersOpen((o) => !o)}>
+                <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setLayersOpen((o) => !o)}>
                   Слои
                 </Button>
               }

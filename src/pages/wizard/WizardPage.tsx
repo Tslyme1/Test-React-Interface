@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Badge, Box, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
+import { Badge, Button, Modal, Stack, Stepper, Surface, Text } from '@uralmash/design-system';
 import type { Step } from '@uralmash/design-system';
 import type { GeomData, GranData, ProdData, Project } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
@@ -192,10 +192,9 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
   return (
     <div className={styles.root}>
       <div className={styles.body}>
-        {/* `paddingX`+`paddingY`, а не `padding` — см. комментарий у `Box`
-            в `ProjectsPage.tsx`: в этой версии компонента одиночный `padding`
-            гасит сам себя. */}
-        <Box paddingX="2xl" paddingY="2xl" fullWidth>
+        {/* Без обёртки-`Box`: внешний отступ страницы отдавал снизу полосу
+            пустоты над футером, а колонкам он и не нужен одинаковый —
+            каждая отмеряет свой (см. `StepOverview.module.css`). */}
           <StepOverview
             project={project}
             stepKey={shownStepKey}
@@ -203,7 +202,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             onEdit={shownStep === step ? () => setEditOpen(true) : undefined}
             onUpdateProject={onUpdateProject}
           />
-        </Box>
       </div>
 
       <Surface level="flat" border radius="none" padding="lg" fullWidth>

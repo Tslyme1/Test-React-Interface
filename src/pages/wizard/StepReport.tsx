@@ -118,6 +118,27 @@ const checkColumns: TableColumn<CheckRow>[] = [
   },
 ];
 
+/**
+ * Раздел отчёта: белый подзаголовок и таблица под ним.
+ *
+ * Подпись вынесена из самой таблицы наружу: `caption` набирается
+ * приглушённым и читается как служебная строка внутри рамки, а разделов
+ * в отчёте до семи — рядом они должны выстраиваться в оглавление, а не
+ * теряться в шапках. Скринридеру таблица остаётся подписанной той же
+ * строкой (`caption` + `captionHidden`).
+ */
+function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <Stack gap="sm" direction="column">
+      <Stack direction="row" justify="between" align="center" gap="sm" wrap>
+        <Text variant="headingSm">{title}</Text>
+        {actions}
+      </Stack>
+      {children}
+    </Stack>
+  );
+}
+
 /** Пара подписи и значения в строке метаданных — тот же приём, что в `ProfilePage`. */
 function MetaField({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -255,14 +276,16 @@ export type StepActionsProps = {
  *
  * Стоит в левой колонке, под исходными данными, а не над таблицами:
  * это действия над этапом целиком, и в потоке отчёта они отделяли бы
- * первую таблицу от остальных, будто относятся только к ней.
+ * первую таблицу от остальных, будто относятся только к ней. В строку,
+ * а не столбцом: три кнопки во всю ширину колонки читались как список
+ * разделов, а не как панель действий.
  *
  * КОМПАС-3D — только для «Геометрии»: у неё есть профиль камеры, который
  * и передают в CAD, у остальных этапов параметров модели нет.
  */
 export function StepActions({ project, stepKey }: StepActionsProps) {
   return (
-    <Stack direction="column" gap="xs" align="stretch">
+    <Stack direction="row" gap="sm" wrap>
       <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
         Экспорт в Excel
       </Button>
@@ -308,35 +331,48 @@ export function StepReport({ project, stepKey }: StepReportProps) {
     <Stack gap="lg" direction="column">
       {stepKey === 'geom' ? (
         <>
-          <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления" />
-          <Table
-            columns={profileColumns}
-            rows={estimateGeomProfile(project.data.geom)}
-            rowKey={(r) => r.i}
-            caption="Профиль камеры по расчётным сечениям"
-          />
-          <Table
-            columns={kvColumns}
-            rows={estimateGeomAlfa(project.data.geom)}
-            rowKey={(r) => r.label}
-            caption="Критические углы поворота эксцентрика"
-          />
-          <Table
-            columns={checkColumns}
-            rows={estimateGeomChecks(project.data.geom)}
-            rowKey={(r) => r.label}
-            caption="Контроль корректности профиля"
-          />
+          <Section title="Параметры камеры дробления">
+              <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления"
+              captionHidden
+            />
+          </Section>
+          <Section title="Профиль камеры по расчётным сечениям">
+              <Table
+              columns={profileColumns}
+              rows={estimateGeomProfile(project.data.geom)}
+              rowKey={(r) => r.i}
+              caption="Профиль камеры по расчётным сечениям"
+              captionHidden
+            />
+          </Section>
+          <Section title="Критические углы поворота эксцентрика">
+              <Table
+              columns={kvColumns}
+              rows={estimateGeomAlfa(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Критические углы поворота эксцентрика"
+              captionHidden
+            />
+          </Section>
+          <Section title="Контроль корректности профиля">
+              <Table
+              columns={checkColumns}
+              rows={estimateGeomChecks(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Контроль корректности профиля"
+              captionHidden
+            />
+          </Section>
         </>
       ) : null}
 
       {stepKey === 'gran' ? (
-        <Table
-          columns={granReportColumns(granView)}
-          rows={estimateGran(project.data.gran)}
-          rowKey={(r) => r.class}
-          caption="Характеристика гранулометрического состава"
-          captionActions={
+        <Section
+          title="Характеристика гранулометрического состава"
+          /* Переключатель столбцов — у подзаголовка, а не у самой таблицы:
+             `captionActions` системы живут в видимой подписи, а подпись
+             отсюда вынесена наружу (см. `Section`). */
+          actions={
             <Popover
               open={granViewOpen}
               onClose={() => setGranViewOpen(false)}
@@ -362,27 +398,40 @@ export function StepReport({ project, stepKey }: StepReportProps) {
               </Stack>
             </Popover>
           }
-        />
+        >
+          <Table
+            columns={granReportColumns(granView)}
+            rows={estimateGran(project.data.gran)}
+            rowKey={(r) => r.class}
+            caption="Характеристика гранулометрического состава"
+            captionHidden
+          />
+        </Section>
       ) : null}
 
       {stepKey === 'prod' ? (
         <>
-          <Table
-            columns={kvColumns}
-            rows={estimateProd(project.data.prod, project.data.geom)}
-            rowKey={(r) => r.label}
-            caption="Продукт дробления"
-          />
-          <Table
-            columns={granColumns}
-            rows={estimateProdGran(project.data.prod)}
-            rowKey={(r) => r.class}
-            caption="Грансостав продукта дробления"
-          />
-          <Stack gap="xs" direction="column">
-            <Text variant="label">Суммарные характеристики крупности продукта</Text>
+          <Section title="Продукт дробления">
+              <Table
+              columns={kvColumns}
+              rows={estimateProd(project.data.prod, project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Продукт дробления"
+              captionHidden
+            />
+          </Section>
+          <Section title="Грансостав продукта дробления">
+              <Table
+              columns={granColumns}
+              rows={estimateProdGran(project.data.prod)}
+              rowKey={(r) => r.class}
+              caption="Грансостав продукта дробления"
+              captionHidden
+            />
+          </Section>
+          <Section title="Суммарные характеристики крупности продукта">
             <GranulometryChart rows={estimateProdGran(project.data.prod)} />
-          </Stack>
+          </Section>
 
           {/*
            * Продукт — последний этап цепочки, и его отчёт по смыслу
@@ -391,30 +440,38 @@ export function StepReport({ project, stepKey }: StepReportProps) {
            * здесь же и стоит увидеть, не уходя на их страницы отдельно.
            */}
           <Text variant="headingSm">Этап 1. Геометрия камеры дробления</Text>
-          <Table
-            columns={kvColumns}
-            rows={estimateGeom(project.data.geom)}
-            rowKey={(r) => r.label}
-            caption="Параметры камеры дробления"
-          />
-          <Table
-            columns={profileColumns}
-            rows={estimateGeomProfile(project.data.geom)}
-            rowKey={(r) => r.i}
-            caption="Профиль камеры по точкам"
-          />
+          <Section title="Параметры камеры дробления">
+              <Table
+              columns={kvColumns}
+              rows={estimateGeom(project.data.geom)}
+              rowKey={(r) => r.label}
+              caption="Параметры камеры дробления"
+              captionHidden
+            />
+          </Section>
+          <Section title="Профиль камеры по точкам">
+              <Table
+              columns={profileColumns}
+              rows={estimateGeomProfile(project.data.geom)}
+              rowKey={(r) => r.i}
+              caption="Профиль камеры по точкам"
+              captionHidden
+            />
+          </Section>
 
           <Text variant="headingSm">Этап 2. Характеристический грансостав</Text>
-          <Table
-            columns={granColumns}
-            rows={estimateGran(project.data.gran)}
-            rowKey={(r) => r.class}
-            caption="Характеристика гранулометрического состава"
-          />
-          <Stack gap="xs" direction="column">
-            <Text variant="label">Суммарные характеристики крупности питания</Text>
+          <Section title="Характеристика гранулометрического состава">
+              <Table
+              columns={granColumns}
+              rows={estimateGran(project.data.gran)}
+              rowKey={(r) => r.class}
+              caption="Характеристика гранулометрического состава"
+              captionHidden
+            />
+          </Section>
+          <Section title="Суммарные характеристики крупности питания">
             <GranulometryChart rows={estimateGran(project.data.gran)} />
-          </Stack>
+          </Section>
         </>
       ) : null}
     </Stack>

@@ -114,19 +114,11 @@ export function InlineSidebar({
               высоты панели и уметь ужиматься вместе с ней (см. `.panelInner`
               в CSS), а `Stack` раскладывает по содержимому. */}
           <div className={styles.panelInner} style={widthStyle}>
-            {/* Отступ справа — своя строка сетки, не задет содержимым ниже:
-                панель теперь тянется до самого края экрана, и действия
-                («Диаграмма», «Слои» у вызывающего экрана) прижимались
-                вплотную к нему. Отступ здесь, а не на `.panelInner` целиком,
-                чтобы область схемы под заголовком по-прежнему доходила
-                до края — ужимать её ради воздуха у кнопок незачем.
-
-                `wrap` — запасной ход на случай, если панель всё-таки уже
-                вручную сведена уже, чем действия рядом с заголовком
-                нуждаются: строка переносит их на вторую строку вместо
-                того, чтобы вылезти за край и пропасть под `.panel`
-                (`overflow: hidden`). Основной предел ширины задаёт
-                вызывающий экран через `minWidth`. */}
+            {/* Заголовок и действия лежат поверх содержимого — см.
+                `.titleRow` в CSS. `wrap` — запасной ход на случай, если
+                панель сведена уже, чем нужно действиям: строка перенесёт
+                их вместо того, чтобы вылезти за край и пропасть под
+                `.panel` (`overflow: hidden`). */}
             <div className={styles.titleRow}>
               <Stack direction="row" justify="between" align="center" gap="sm" wrap>
                 <Stack direction="row" align="center" gap="sm">
@@ -138,7 +130,7 @@ export function InlineSidebar({
                     aria-expanded
                     onClick={() => onOpenChange(false)}
                   />
-                  <Text variant="headingMd">{title}</Text>
+                  <Text variant="label">{title}</Text>
                 </Stack>
                 {actions ? <Stack direction="row" align="center" gap="xs">{actions}</Stack> : null}
               </Stack>

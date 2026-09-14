@@ -23,7 +23,10 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-  overflow-y: auto;
+  /* Прокрутки здесь больше нет: страница этапа делит высоту на две
+     колонки, и каждая листается сама (`StepOverview.module.css`).
+     Общая прокрутка поверх них уводила бы вниз обе сразу. */
+  overflow: hidden;
   container-type: size;
 }
 

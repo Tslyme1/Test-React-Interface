@@ -367,7 +367,7 @@ test.describe('Инженерный визард', () => {
     const drawer = page.getByRole('main');
     await expect(drawer).toBeVisible();
 
-    await expect(drawer.getByText('Грансостав продукта дробления')).toBeVisible();
+    await expect(drawer.getByRole('heading', { name: 'Грансостав продукта дробления' })).toBeVisible();
     // Первая (не единственная — в конце шторки дублируется таблица этапа
     // «Грансостав», см. следующий тест) — колонка «Выход по минусу»
     // принадлежит именно продукту дробления.
@@ -392,10 +392,10 @@ test.describe('Инженерный визард', () => {
     const drawer = page.getByRole('main');
 
     await expect(drawer.getByText('Этап 1. Геометрия камеры дробления')).toBeVisible();
-    await expect(drawer.getByText('Профиль камеры по точкам')).toBeVisible();
+    await expect(drawer.getByRole('heading', { name: 'Профиль камеры по точкам' })).toBeVisible();
 
     await expect(drawer.getByText('Этап 2. Характеристический грансостав')).toBeVisible();
-    await expect(drawer.getByText('Характеристика гранулометрического состава')).toBeVisible();
+    await expect(drawer.getByRole('heading', { name: 'Характеристика гранулометрического состава' })).toBeVisible();
     await expect(drawer.getByRole('img', { name: /Суммарные характеристики крупности/ })).toHaveCount(2);
   });
 });

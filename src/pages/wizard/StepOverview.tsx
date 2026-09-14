@@ -88,10 +88,15 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 
   return (
-    <Stack gap="xl" direction="column">
-      <Text variant="headingMd">{TITLES[stepKey]}</Text>
-
-      {calculated ? <StepMeta project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} /> : null}
+    <div className={styles.page}>
+      {/* Шапка этапа отмеряет отступ себе сама — внешнего у страницы нет,
+          иначе он отдавал бы снизу полосу пустоты над футером. */}
+      <div className={styles.header}>
+        <Stack gap="lg" direction="column">
+          <Text variant="headingMd">{TITLES[stepKey]}</Text>
+          {calculated ? <StepMeta project={project} stepKey={stepKey} onUpdateProject={onUpdateProject} /> : null}
+        </Stack>
+      </div>
 
       <div className={styles.split}>
         {/* Сводка — узкой колонкой слева: её читают по диагонали, чтобы
@@ -106,13 +111,25 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             совершается. */}
         <div className={styles.summary}>
           <Stack gap="md" direction="column">
-            <Table columns={summaryColumns} rows={summary} rowKey={(item) => item.label} caption="Исходные данные" />
+            {/* Подпись вынесена из таблицы наружу, как и в отчёте справа,
+                а правка стоит рядом с ней: действие относится к этим самым
+                данным, и под таблицей оно читалось бы как её продолжение. */}
+            <Stack direction="row" justify="between" align="center" gap="sm" wrap>
+              <Text variant="headingSm">Исходные данные</Text>
+              {onEdit ? (
+                <Button variant="secondary" size="sm" iconStart="pencil" onClick={onEdit}>
+                  Изменить данные
+                </Button>
+              ) : null}
+            </Stack>
 
-            {onEdit ? (
-              <Button variant="secondary" iconStart="pencil" fullWidth onClick={onEdit}>
-                Изменить данные
-              </Button>
-            ) : null}
+            <Table
+              columns={summaryColumns}
+              rows={summary}
+              rowKey={(item) => item.label}
+              caption="Исходные данные"
+              captionHidden
+            />
 
             {/* Выгрузка и печать — внизу левой колонки, над футером:
                 действия над готовым этапом, а не над его первой таблицей. */}
@@ -121,17 +138,6 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
         </div>
 
         <div className={styles.result}>
-          {/* Чертёж — часть результата этапа, а не его постоянный фон:
-              до расчёта он показывал бы профиль, которого в отчёте ещё
-              нет, — а страница отвечает на вопрос «что вышло», и до
-              расчёта честный ответ один: ничего. Смотреть на профиль
-              по ходу ввода есть где — он стоит рядом с полями в окне. */}
-          {stepKey === 'geom' && calculated ? (
-            <Box padding="md" border radius="md" fullWidth>
-              <ChamberScheme input={schemeInput} testId="chamber-overview" />
-            </Box>
-          ) : null}
-
           {calculated ? (
             <StepReport project={project} stepKey={stepKey} />
           ) : (
@@ -141,9 +147,24 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
               description="Откройте исходные данные и запустите расчёт — результат появится здесь."
             />
           )}
+
+          {/* Чертёж — последним разделом отчёта, а не его шапкой: таблицы
+              отвечают на вопрос «какие числа вышли», и начинать отчёт
+              картинкой значило бы отодвигать их на второй экран. До
+              расчёта чертежа нет вовсе: он показывал бы профиль, которого
+              в отчёте ещё не появилось, а смотреть на него по ходу ввода
+              есть где — он стоит рядом с полями в окне. */}
+          {stepKey === 'geom' && calculated ? (
+            <Stack gap="sm" direction="column">
+              <Text variant="headingSm">Схема профиля камеры дробления</Text>
+              <Box padding="md" border radius="md" fullWidth>
+                <ChamberScheme input={schemeInput} testId="chamber-overview" />
+              </Box>
+            </Stack>
+          ) : null}
         </div>
       </div>
-    </Stack>
+    </div>
   );
 }
 
