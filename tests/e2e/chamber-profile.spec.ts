@@ -98,7 +98,9 @@ test.describe('Этап 1: расчёт профиля по методике', (
     const drawer = page.getByRole('main');
     await expect(drawer).toBeVisible();
 
-    const rows = drawer.getByRole('table').nth(1).getByRole('row');
+    /* Таблица опознаётся подписью, а не порядковым номером: на странице
+       их несколько, и любая новая сдвинула бы индекс. */
+    const rows = drawer.getByRole('table', { name: 'Профиль камеры по расчётным сечениям' }).getByRole('row');
 
     for (const expected of DEFAULT_TABLE) {
       // Сечение опознаётся по паре «R1 · L сум» — она уникальна в таблице.

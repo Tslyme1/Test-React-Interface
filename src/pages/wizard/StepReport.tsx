@@ -245,6 +245,39 @@ export function StepMeta({ project, stepKey, onUpdateProject }: StepMetaProps) {
   );
 }
 
+export type StepActionsProps = {
+  project: Project;
+  stepKey: StepKey;
+};
+
+/**
+ * Что можно сделать с готовым отчётом: выгрузить и напечатать.
+ *
+ * Стоит в левой колонке, под исходными данными, а не над таблицами:
+ * это действия над этапом целиком, и в потоке отчёта они отделяли бы
+ * первую таблицу от остальных, будто относятся только к ней.
+ *
+ * КОМПАС-3D — только для «Геометрии»: у неё есть профиль камеры, который
+ * и передают в CAD, у остальных этапов параметров модели нет.
+ */
+export function StepActions({ project, stepKey }: StepActionsProps) {
+  return (
+    <Stack direction="column" gap="xs" align="stretch">
+      <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
+        Экспорт в Excel
+      </Button>
+      {stepKey === 'geom' ? (
+        <Button variant="secondary" iconStart="download" onClick={() => exportGeomToKompas(project)}>
+          Экспорт в Компас 3D
+        </Button>
+      ) : null}
+      <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>
+        Печать
+      </Button>
+    </Stack>
+  );
+}
+
 export type StepReportProps = {
   project: Project;
   stepKey: StepKey;
@@ -273,23 +306,6 @@ export function StepReport({ project, stepKey }: StepReportProps) {
 
   return (
     <Stack gap="lg" direction="column">
-      {/* Действия над отчётом. КОМПАС-3D — только для «Геометрии»: у неё
-          есть профиль камеры, который и передают в CAD, у остальных
-          этапов параметров модели нет. */}
-      <Stack direction="row" gap="sm" wrap>
-        <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
-          Экспорт в Excel
-        </Button>
-        {stepKey === 'geom' ? (
-          <Button variant="secondary" iconStart="download" onClick={() => exportGeomToKompas(project)}>
-            Экспорт в Компас 3D
-          </Button>
-        ) : null}
-        <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>
-          Печать
-        </Button>
-      </Stack>
-
       {stepKey === 'geom' ? (
         <>
           <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления" />
