@@ -1,0 +1,38 @@
+/**
+ * Окно «Руда» — две колонки: паспорт выбранной пробы слева, ввод справа.
+ *
+ * Высота задана окну, а не содержимому: колонки листаются каждая сама
+ * по себе, и таблица пробы остаётся на виду, пока внизу формы вводят
+ * ситовый анализ, — сверяться с ней нужно как раз там.
+ */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  height: 62vh;
+  min-height: 0;
+}
+
+.ore,
+.form {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-lg);
+}
+
+/* Разделитель — у формы, как у отчёта на странице этапа: колонка
+   во всю высоту окна, и линия доходит до футера. */
+.form {
+  border-inline-start: var(--border-hairline) solid var(--color-border);
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .form {
+    border-inline-start: none;
+    border-block-start: var(--border-hairline) solid var(--color-border);
+  }
+}

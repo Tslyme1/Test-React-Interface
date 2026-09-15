@@ -107,6 +107,8 @@ test.describe('Сайдбар', () => {
     /* Сайдбар уходит, когда проект занял экран, — а он занимает его
        с первого расчёта: до него проект живёт окном поверх списка. */
     await createProject(page);
+    // Окно ввода первого этапа стоит поверх списка — и сайдбар под ним остаётся.
+    await expect(page.locator('[class*="sidebar"]')).toBeVisible();
     await runStepCalc(page);
     await expect(page.locator('[class*="sidebar"]')).toHaveCount(0);
 

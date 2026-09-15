@@ -25,6 +25,12 @@ export type AppShellProps = {
    */
   shownProjectId: string | null;
   /**
+   * Страница проекта занимает экран. Не то же, что `shownProjectId`:
+   * проект без единого расчёта показан окном ввода поверх списка, и под
+   * окном остаётся обычный раздел приложения — вместе с сайдбаром.
+   */
+  projectOnScreen: boolean;
+  /**
    * Ключ переключаемого содержимого — список проектов и каждый открытый
    * проект получают разные значения. Смена ключа перемонтирует обёртку и
    * проигрывает анимацию входа заново, поэтому и открытие, и закрытие
@@ -47,6 +53,7 @@ export type AppShellProps = {
 export function AppShell({
   projectTabs,
   shownProjectId,
+  projectOnScreen,
   contentKey,
   onGoProjects,
   onSelectProject,
@@ -115,8 +122,9 @@ export function AppShell({
       <div className={styles.body}>
         {/* Только раздел приложения — не про открытый проект, поэтому
             прячется, когда проект показан на экране: там должен быть виден
-            только он, а не список разделов рядом. */}
-        {!shownProjectId ? (
+            только он, а не список разделов рядом. Окно ввода поверх списка
+            сайдбар не прячет: под окном по-прежнему раздел, а не проект. */}
+        {!projectOnScreen ? (
           <Sidebar view={view} onViewChange={onViewChange} />
         ) : null}
 

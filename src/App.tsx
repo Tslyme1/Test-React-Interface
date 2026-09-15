@@ -190,7 +190,8 @@ export function App() {
       <AppShell
         projectTabs={openProjects.map((p) => ({ id: p.id, name: p.name }))}
         shownProjectId={shownProjectId}
-        contentKey={shownProject ? `project:${shownProject.id}` : `view:${view}`}
+        projectOnScreen={Boolean(shownProject && started)}
+        contentKey={shownProject && started ? `project:${shownProject.id}` : `view:${view}`}
         onGoProjects={goProjects}
         onSelectProject={setShownProjectId}
         onCloseProject={requestCloseProject}

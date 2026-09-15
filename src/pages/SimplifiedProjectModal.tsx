@@ -160,7 +160,8 @@ export function SimplifiedProjectModal({
       ? project.crusherNames.length > 0
       : step === 1
         ? project.oreNames.length > 0
-        : Boolean(project.data.prod.dMax);
+        : /* Обязательные поля продукта — те же, что помечены звёздочкой в форме. */
+          [project.data.prod.dMin, project.data.prod.dMax, project.data.prod.kpd].every((v) => v !== '');
 
   const goToStep = (i: number) => {
     if (!project || !available(i)) return;
@@ -362,7 +363,7 @@ export function SimplifiedProjectModal({
             onTouch={touch}
           />
         ) : (
-          <ProdStep data={project.data.prod} onChange={patchProd} simplified />
+          <ProdStep data={project.data.prod} onChange={patchProd} />
         )}
       </Stack>
     </Modal>

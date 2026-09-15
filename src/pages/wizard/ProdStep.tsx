@@ -9,19 +9,13 @@ export type ProdStepProps = {
   /**
    * Значения на момент создания проекта — опора для подсказки «было: X».
    * `null` в упрощённом режиме: там шаг не сравнивается с исходным
-   * состоянием постфактум.
+   * состоянием постфактум. Поля при этом те же, что в инженерном: продукт
+   * задают одинаково, как бы ни подбирали дробилку и пробу.
    */
   baseline?: ProdData | null;
-  /**
-   * Упрощённый режим: только тип питания и максимальная крупность
-   * продукта — единственный ввод во всём режиме. Остальные параметры
-   * (работа разрушения) не показываются и остаются на значениях
-   * по умолчанию.
-   */
-  simplified?: boolean;
 };
 
-export function ProdStep({ data, onChange, baseline = null, simplified = false }: ProdStepProps) {
+export function ProdStep({ data, onChange, baseline = null }: ProdStepProps) {
   /** Пояснение под полем: исходное + было ли отредактировано после создания проекта. */
   const hintWithDelta = (key: keyof ProdData, base?: string): string | undefined => {
     if (!baseline) return base;
@@ -29,35 +23,6 @@ export function ProdStep({ data, onChange, baseline = null, simplified = false }
     if (was === data[key]) return base;
     return base ? `${base} · было: ${was}` : `было: ${was}`;
   };
-
-  if (simplified) {
-    return (
-      <Stack gap="2xl" direction="column">
-        <Stack gap="2xs" direction="column" align="start">
-          <Text variant="label">Тип питания</Text>
-          <SegmentedControl
-            legend="Тип питания"
-            options={[
-              { value: 'dry', label: 'Сухое' },
-              { value: 'wet', label: 'Влажное' },
-            ]}
-            value={data.feedType}
-            onChange={(v) => onChange({ feedType: v })}
-          />
-        </Stack>
-
-        <Field
-          label="Максимальная крупность продукта Dmax"
-          required
-          labelHint={<FieldHint>{PROD_GLOSSARY.dMax}</FieldHint>}
-        >
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
-          )}
-        </Field>
-      </Stack>
-    );
-  }
 
   return (
     <Stack gap="2xl" direction="column">
