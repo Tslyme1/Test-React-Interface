@@ -59,7 +59,7 @@ test.describe('Шаг «Геометрия»: смена дробилки', () =
   test('плашка показывает текущую дробилку и открывает окно замены', async ({ page }) => {
     /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
        ввода. Здесь речь про плашку — она же и открывает замену. */
-    const editor = page.getByRole('dialog', { name: /Исходные данные/ });
+    const editor = page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ });
     await expect(editor.getByText(SAMPLE_PROJECT.crusher, { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Сменить дробилку' }).click();
@@ -97,7 +97,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
       expect(await svg.innerHTML()).not.toBe(before);
     }).toPass();
 
-    await page.getByRole('dialog', { name: /Исходные данные/ }).getByText('Зона входа — приёмная часть камеры').hover();
+    await page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ }).getByText('Зона входа — приёмная часть камеры').hover();
     await expect(async () => {
       expect(await svg.innerHTML()).toBe(before);
     }).toPass();
@@ -125,7 +125,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
     // Курсор ушёл со схемы — подсветка поля снимается вместе с ним.
-    await page.getByRole('dialog', { name: /Исходные данные/ }).getByText('Зона входа — приёмная часть камеры').hover();
+    await page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ }).getByText('Зона входа — приёмная часть камеры').hover();
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
   });
 

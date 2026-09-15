@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { Box, Button, EmptyState, Stack, Table, Text } from '@uralmash/design-system';
+import { Button, EmptyState, Stack, Table, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
+import { CatalogNameCell } from '@/components/CatalogNameCell/CatalogNameCell';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
 import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
 import { StepActions, StepMeta, StepReport } from './StepReport';
@@ -21,7 +22,12 @@ export type StepOverviewProps = {
 };
 
 /** Пара «величина — значение» в сводке исходных данных. */
-type SummaryItem = { label: string; value: string };
+type SummaryItem = {
+  label: string;
+  value: string;
+  /** Строка выбранной позиции справочника — рядом с именем стоит её правка. */
+  catalog?: { kind: 'crushers' | 'ores'; nameLabel: string };
+};
 
 /* Сводка — таблица, а не список пар: это данные, которые читают
    по столбцам («что» и «сколько»), то есть ровно та роль, для которой
@@ -29,7 +35,13 @@ type SummaryItem = { label: string; value: string };
    выравнивание и прочерк пустого значения заново. */
 const summaryColumns: TableColumn<SummaryItem>[] = [
   { key: 'label', title: 'Величина' },
-  { key: 'value', title: 'Значение', align: 'end' },
+  {
+    key: 'value',
+    title: 'Значение',
+    align: 'end',
+    render: (row) =>
+      row.catalog ? <CatalogNameCell kind={row.catalog.kind} name={row.value === '—' ? '' : row.value} nameLabel={row.catalog.nameLabel} /> : row.value,
+  },
 ];
 
 /**
@@ -51,7 +63,7 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
     if (stepKey === 'geom') {
       const angle = geom.angleUnit === 'рад' ? 'рад' : '°';
       return [
-        { label: 'Дробилка', value: project.crusherName || '—' },
+        { label: 'Дробилка', value: project.crusherName || '—', catalog: { kind: 'crushers', nameLabel: 'Дробилка' } },
         { label: 'Диаметр основания D', value: `${geom.D} мм` },
         { label: 'Высота H от подвеса', value: `${geom.H} мм` },
         { label: 'Разгрузочная щель S₀', value: `${geom.S0} мм` },
@@ -64,7 +76,7 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
 
     if (stepKey === 'gran') {
       return [
-        { label: 'Проба руды', value: project.ore || '—' },
+        { label: 'Проба руды', value: project.ore || '—', catalog: { kind: 'ores', nameLabel: 'Проба руды' } },
         { label: 'Минимальная крупность Dmin', value: `${gran.dMin} мм` },
         { label: 'Кондиционная крупность Dk', value: `${gran.dk} мм` },
         { label: 'Максимальная крупность Dmax', value: `${gran.dMax} мм` },
@@ -163,9 +175,11 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
           {stepKey === 'geom' && calculated ? (
             <Stack gap="sm" direction="column">
               <Text variant="headingSm">Схема профиля камеры дробления</Text>
-              <Box padding="md" border radius="md" fullWidth>
+              {/* Не `Box`: чертёж рисуется в своём масштабе и выносными
+                  линиями выходил за рамку — блок обязан его обрезать. */}
+              <div className={styles.scheme}>
                 <ChamberScheme input={schemeInput} testId="chamber-overview" />
-              </Box>
+              </div>
             </Stack>
           ) : null}
         </div>

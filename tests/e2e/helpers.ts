@@ -154,7 +154,7 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
   /* Пока не посчитан ни один этап, проект живёт окном ввода поверх
      списка: страницы у него ещё нет, показывать на ней нечего.
      Помощник оставляет окно открытым — из него же и запускают расчёт. */
-  await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ })).toBeVisible();
 }
 
 /**
@@ -164,7 +164,7 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
  * на посчитанном правка живёт кнопкой «Изменить данные» в шапке этапа.
  */
 export async function openStepEditor(page: Page) {
-  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  const dialog = page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ });
   /* Уже открыто — непосчитанный этап показывается вместе с ним. Ждём,
      а не спрашиваем мгновенно: окно открывается само, и быстрый вопрос
      попадал бы в промежуток, пока оно доигрывает появление. */
@@ -177,7 +177,7 @@ export async function openStepEditor(page: Page) {
   const enter = page.getByRole('button', { name: 'Ввести данные' });
   if (await enter.count()) await enter.click();
   else await page.getByRole('button', { name: 'Изменить данные' }).click();
-  await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ })).toBeVisible();
 }
 
 /**
@@ -221,7 +221,7 @@ export function wizardStepButton(page: Page, name: RegExp) {
  * открывается, а после расчёта закрывается само.
  */
 export async function runStepCalc(page: Page, label: 'Выполнить расчёт' | 'Пересчитать' = 'Выполнить расчёт') {
-  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  const dialog = page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ });
   /* Ждём окно, а не спрашиваем про него сразу: переход на непосчитанный
      этап открывает его сам, и мгновенная проверка попадала бы в промежуток,
      пока оно ещё доигрывает появление. */
@@ -241,7 +241,7 @@ export async function runStepCalc(page: Page, label: 'Выполнить рас�
  * успевало в закрывающееся окно.
  */
 export async function closeStepEditor(page: Page) {
-  const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+  const dialog = page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ });
   /* Тихо ничего не делает, когда окна нет: на посчитанном этапе оно
      не открывается само, и сценариям незачем помнить, где именно. */
   if ((await dialog.count()) === 0) return;
@@ -258,7 +258,7 @@ export async function closeStepEditor(page: Page) {
  */
 export async function pickOre(page: Page, ore = SAMPLE_PROJECT.ore) {
   await page.getByRole('dialog', { name: 'Выбор пробы руды' }).getByRole('button', { name: ore, exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Ввод данных руды' })).toBeVisible();
 }
 
 /**

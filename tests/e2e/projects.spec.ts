@@ -91,12 +91,13 @@ test.describe('Список проектов', () => {
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
-    const editor = page.getByRole('dialog', { name: 'Исходные данные: Руда' });
+    const editor = page.getByRole('dialog', { name: 'Ввод данных руды' });
     const table = editor.getByRole('table', { name: `Параметры пробы: ${SAMPLE_PROJECT.ore}` });
     await expect(table.getByRole('row', { name: /Плотность, ρ, т\/м³\s*3\.35/ })).toBeVisible();
 
-    // Правка — только выбранной пробы, и таблица сразу показывает сохранённое.
-    await editor.getByRole('button', { name: 'Изменить', exact: true }).click();
+    // Правка — только выбранной пробы: карандаш стоит в её строке, первой в таблице.
+    await expect(table.getByRole('row').nth(1)).toContainText(SAMPLE_PROJECT.ore);
+    await table.getByRole('button', { name: `Редактировать: проба руды ${SAMPLE_PROJECT.ore}` }).click();
     const form = page.getByRole('dialog', { name: 'Проба руды: правка данных' });
     await form.getByLabel('ρ, т/м³', { exact: true }).fill('3.4');
     await form.getByRole('button', { name: 'Сохранить' }).click();
@@ -104,6 +105,16 @@ test.describe('Список проектов', () => {
     await expect(table.getByRole('row', { name: /Плотность, ρ, т\/м³\s*3\.4/ })).toBeVisible();
     // Окно ввода при этом не закрылось — правка шла поверх него.
     await expect(editor).toBeVisible();
+  });
+
+  test('на странице этапа правка данных дробилки — карандашом в её строке сводки', async ({ page }) => {
+    await createProject(page);
+    await runStepCalc(page);
+
+    const summary = page.getByRole('table', { name: 'Исходные данные' });
+    const row = summary.getByRole('row', { name: new RegExp(`Дробилка\\s*${SAMPLE_PROJECT.crusher}`) });
+    await row.getByRole('button', { name: `Редактировать: дробилка ${SAMPLE_PROJECT.crusher}` }).click();
+    await expect(page.getByRole('dialog', { name: 'Дробилка: правка данных' })).toBeVisible();
   });
 
   test('поиск фильтрует строки и показывает пустой результат', async ({ page }) => {

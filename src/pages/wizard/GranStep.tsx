@@ -8,17 +8,11 @@ import { portalSlot } from './portalSlot';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { SieveAnalysis } from './SieveAnalysis';
-import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
+import { CatalogNameCell } from '@/components/CatalogNameCell/CatalogNameCell';
 import { useUserCatalog } from '@/state/userCatalog';
 import styles from './GranStep.module.css';
 
-type OreSpecRow = { label: string; value: string };
-
-/* Та же пара «величина — значение», что в сводке на странице этапа. */
-const oreSpecColumns: TableColumn<OreSpecRow>[] = [
-  { key: 'label', title: 'Величина' },
-  { key: 'value', title: 'Значение', align: 'end' },
-];
+type OreSpecRow = { label: string; value: string; isName?: boolean };
 
 export type GranStepProps = {
   data: GranData;
@@ -57,14 +51,34 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
   const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
 
   /* Паспорт выбранной пробы — из справочника с наложенными правками,
-     чтобы после «Изменить» таблица сразу показывала сохранённое. */
+     чтобы после правки таблица сразу показывала сохранённое. Первая
+     строка — сама проба, и правка её данных стоит там же. */
   const oreCatalog = useUserCatalog('ores');
   const oreItem = oreCatalog.items.find((item) => item.name === ore) ?? null;
-  const [oreEditOpen, setOreEditOpen] = useState(false);
-  const oreRows: OreSpecRow[] = oreCatalog.specs.map((spec) => ({
-    label: spec.label,
-    value: oreItem?.values[spec.short] || '—',
-  }));
+  const oreRows: OreSpecRow[] = [
+    { label: 'Проба руды', value: ore, isName: true },
+    ...oreCatalog.specs.map((spec) => ({ label: spec.label, value: oreItem?.values[spec.short] || '—' })),
+  ];
+  /* Та же пара «величина — значение», что в сводке на странице этапа. */
+  const oreSpecColumns: TableColumn<OreSpecRow>[] = [
+    { key: 'label', title: 'Величина' },
+    {
+      key: 'value',
+      title: 'Значение',
+      align: 'end',
+      render: (row) =>
+        row.isName ? (
+          <CatalogNameCell
+            kind="ores"
+            name={row.value}
+            nameLabel="Проба руды"
+            onSaved={(name) => showToast(`Параметры пробы «${name}» сохранены`)}
+          />
+        ) : (
+          row.value
+        ),
+    },
+  ];
 
   const applySieveToParams = (nextA0: number, nextVa0: number) => {
     onChange({ a0: String(nextA0), va0: String(nextVa0) });
@@ -86,12 +100,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           Правка здесь же и только для этой пробы. */}
       <div className={styles.ore}>
         <Stack gap="sm" direction="column">
-          <Stack direction="row" justify="between" align="center" gap="sm" wrap>
-            <Text variant="headingSm">Параметры пробы</Text>
-            <Button variant="secondary" size="sm" iconStart="pencil" disabled={!oreItem} onClick={() => setOreEditOpen(true)}>
-              Изменить
-            </Button>
-          </Stack>
+          <Text variant="headingSm">Параметры пробы</Text>
           <Table
             columns={oreSpecColumns}
             rows={oreRows}
@@ -100,22 +109,14 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
             captionHidden
           />
         </Stack>
-
-        <CatalogItemForm
-          open={oreEditOpen}
-          onClose={() => setOreEditOpen(false)}
-          item={oreItem}
-          specs={oreCatalog.specs}
-          nameLabel="Проба руды"
-          takenNames={oreCatalog.items.map((item) => item.name)}
-          onSave={(entry) => {
-            oreCatalog.save(entry);
-            showToast(`Параметры пробы «${entry.name}» сохранены`);
-          }}
-        />
       </div>
 
       <div className={styles.form}>
+        {/* Заголовок — пара к «Параметрам пробы» слева: там паспорт
+            руды из справочника, здесь то, что о её питании вводят.
+            Отступ под ним тот же, что слева, — заголовки встают в линию. */}
+        <Stack gap="sm" direction="column">
+        <Text variant="headingSm">Грансостав питания</Text>
         <Stack gap="2xl" direction="column">
           {/* Заголовок и его действия — одной строкой, как на шаге «Геометрия»:
               подпись слева, плашка пробы и режим отображения справа. Отдельная
@@ -255,6 +256,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
               />
             )}
           </Stack>
+        </Stack>
         </Stack>
       </div>
     </div>
