@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createProject, openTrash, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
+import { closeDisplayPopover, closeStepEditor, createProject, openTrash, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Панель фильтров, меню строки и корзина. Все три работают на списке
@@ -244,6 +244,11 @@ test.describe('Главный экран со списком проектов', 
 
     await drawer.getByLabel('Тег').click();
     await page.getByRole('option', { name: 'Рабочий' }).click();
+
+    /* Два нажатия, а не одно: первое убирает список тегов, второе —
+       само окно фильтров. Раньше хватало одного, но это была ошибка:
+       Escape уносил заодно и слой под панелью (исправлено в системе). */
+    await closeDisplayPopover(page);
     await page.keyboard.press('Escape');
 
     await expect(page.getByText(/Проекты: 18 из 18/)).toBeVisible();
@@ -337,6 +342,7 @@ test.describe('Печать по шагам из меню строки', () => {
   });
 
   test('пункт печати появляется только для посчитанных шагов', async ({ page }) => {
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: /^Действия:/ }).first().click();

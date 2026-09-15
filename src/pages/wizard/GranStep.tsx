@@ -3,7 +3,7 @@ import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl,
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
 import { GRAN_GLOSSARY } from '@/data/paramGlossary';
-import { portalActions } from './portalActions';
+import { portalSlot } from './portalSlot';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { SieveAnalysis } from './SieveAnalysis';
@@ -24,8 +24,10 @@ export type GranStepProps = {
   onRequestOrePicker: () => void;
   /** Тост о результате действия — например, записи a₀/Va₀ в параметры. */
   showToast: (message: string) => void;
-  /** Узел в шапке окна для действий формы — см. `portalActions`. */
+  /** Узел у заголовка окна — туда уходит «Отображение». */
   actionsSlot?: HTMLElement | null;
+  /** Узел в футере окна — туда уходит плашка выбранной пробы. */
+  objectSlot?: HTMLElement | null;
 };
 
 /**
@@ -37,7 +39,7 @@ export type GranStepProps = {
  * `WizardPage` перехватывает переход без неё раньше; ветка ниже — подстраховка
  * на случай, если проба всё же оказалась пустой.
  */
-export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, showToast, actionsSlot }: GranStepProps) {
+export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, showToast, actionsSlot, objectSlot }: GranStepProps) {
   // ── режим отображения: только дельта — диаграммы на этом шаге нет ──
   const [displayOpen, setDisplayOpen] = useState(false);
   const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
@@ -63,9 +65,12 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           и без неё, а строка с чипсом под подписью разводила заголовок
           с действиями по разной высоте. */}
       {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
-      {portalActions(
-        actionsSlot,
-        <>
+      {portalSlot(
+        objectSlot,
+        <Stack direction="row" align="center" gap="sm">
+          <Text variant="bodySm" color="textMuted">
+            Проба руды
+          </Text>
           <Chip
             size="sm"
             icon="fileText"
@@ -73,8 +78,12 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
           >
             {ore}
           </Chip>
+        </Stack>
+      )}
 
-          <Popover
+      {portalSlot(
+        actionsSlot,
+        <Popover
             open={displayOpen}
             onClose={() => setDisplayOpen(false)}
             placement="bottom-end"
@@ -100,8 +109,7 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
                 <OptionCell label="Не показывать изменения" checked={deltaMode === 'hide'} onSelect={() => setDeltaMode('hide')} />
               </Stack>
             </Stack>
-          </Popover>
-        </>
+        </Popover>
       )}
 
       <Stack direction="column" gap="md">

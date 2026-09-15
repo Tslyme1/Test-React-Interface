@@ -24,6 +24,18 @@ export type WizardPageProps = {
   /** Переключение на созданную копию — тот же переход, что и открытие любого проекта из списка. */
   onOpenProject: (project: Project) => void;
   showToast: (message: string) => void;
+  /**
+   * Только окна, без страницы и футера: так визард показывается поверх
+   * списка проектов, пока у проекта ничего не посчитано и страницу
+   * занимать нечем.
+   */
+  overlay?: boolean;
+  /**
+   * Уйти из проекта. Нужен только в `overlay`: там окно ввода —
+   * единственное, что от проекта на экране есть, и его закрытие
+   * означает «вернуться к списку», а не «остаться на пустом месте».
+   */
+  onLeave?: () => void;
 };
 
 /** Последний посчитанный этап до `step`. `null` — считать ещё нечего. */
@@ -35,7 +47,15 @@ function lastCalculatedBefore(project: Project, step: number): number | null {
 }
 
 /** Инженерный визард — три шага с вводом данных. Упрощённый режим ведёт `SimplifiedProjectModal`, сюда не заходит. */
-export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProject, showToast }: WizardPageProps) {
+export function WizardPage({
+  project,
+  onUpdateProject,
+  onForkProject,
+  onOpenProject,
+  showToast,
+  overlay = false,
+  onLeave,
+}: WizardPageProps) {
   const [step, setStep] = useState(0);
   // Переход на шаг «Руда» без выбранной пробы не переключает степпер туда —
   // он остаётся на шаге 0, а поверх него открывается выбор пробы. Показывать
@@ -47,6 +67,12 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
    * целиком, а смотрят на них считаные минуты за весь расчёт.
    */
   const [editOpen, setEditOpen] = useState(false);
+
+  /** Закрытие окна ввода. Поверх списка это заодно и выход из проекта. */
+  const closeEditor = () => {
+    setEditOpen(false);
+    if (overlay) onLeave?.();
+  };
 
   /**
    * Куда форма этапа рисует свои действия — плашку выбранного объекта
@@ -60,6 +86,16 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
    * система уводит поповеры внутрь окна (`LayerRootProvider`).
    */
   const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null);
+
+  /**
+   * Куда форма рисует плашку выбранного объекта — дробилки или пробы.
+   *
+   * В футере слева: это не действие над формой, а напоминание, для чего
+   * считаем, — и стоять ему рядом с кнопкой расчёта уместнее, чем среди
+   * полей. Подпись («Дробилка», «Проба руды») ставит сама форма: у окна
+   * этапа объект свой.
+   */
+  const [objectSlot, setObjectSlot] = useState<HTMLDivElement | null>(null);
 
   /**
    * Непосчитанный этап всегда показан с окном ввода.
@@ -202,7 +238,10 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
     showToast(`Шаг «${STEP_META[step].label}» рассчитан`);
   };
 
-  return (
+  /* Поверх списка проектов страницы и футера нет: смотреть на них
+     нечего, пока не посчитан ни один этап, — а окно ввода рисуется
+     в портал и от разметки вокруг не зависит. */
+  const page = overlay ? null : (
     <div className={styles.root}>
       <div className={styles.body}>
         {/* Без обёртки-`Box`: внешний отступ страницы отдавал снизу полосу
@@ -263,13 +302,19 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           )}
         </Stack>
       </Surface>
+    </div>
+  );
+
+  return (
+    <>
+      {page}
 
       {/* Форма этапа целиком — та же, что раньше занимала страницу.
           Ширина `lg`: на шаге «Геометрия» рядом с полями стоит чертёж,
           и связь «поле ↔ участок» работает только когда оба на виду. */}
       <Modal
         open={editOpen}
-        onClose={() => setEditOpen(false)}
+        onClose={closeEditor}
         title={`Исходные данные: ${STEP_META[step].label}`}
         /* Широкое окно нужно только «Геометрии»: там рядом с полями стоит
            чертёж, и связь «поле ↔ участок» работает, лишь когда оба на
@@ -282,8 +327,8 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
            от его футера и правой кромки. */
         contentFlush
         footer={
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+          <Modal.Footer aside={<div ref={setObjectSlot} />}>
+            <Button variant="secondary" onClick={closeEditor}>
               Закрыть
             </Button>
             {/* Расчёт запускается отсюда, а не с футера страницы: там он
@@ -311,6 +356,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             crusherName={project.crusherName}
             onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
             actionsSlot={headerSlot}
+            objectSlot={objectSlot}
           />
         ) : stepKey === 'gran' ? (
           <GranStep
@@ -321,6 +367,7 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
             onRequestOrePicker={() => setOrePickerOpen(true)}
             showToast={showToast}
             actionsSlot={headerSlot}
+            objectSlot={objectSlot}
           />
         ) : (
           /* Своих действий у формы «Продукт» нет — плашки объекта тоже:
@@ -393,6 +440,6 @@ export function WizardPage({ project, onUpdateProject, onForkProject, onOpenProj
           применённой правкой. Исходный проект останется таким, каким был на момент расчёта.
         </Text>
       </Modal>
-    </div>
+    </>
   );
 }

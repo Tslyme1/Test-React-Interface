@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { DEMO_USER, SAMPLE_PROJECT, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession, watchConsole, wizardStepButton } from './helpers';
+import { DEMO_USER, SAMPLE_PROJECT, closeDisplayPopover, closeStepEditor, createProject, goToWizardStep, openStepEditor, pickOre, runStepCalc, seedSession, watchConsole, wizardStepButton } from './helpers';
 
 test.describe('Инженерный визард', () => {
   test.beforeEach(async ({ page }) => {
@@ -177,13 +177,16 @@ test.describe('Инженерный визард', () => {
     const tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
     await expect(tab).toBeVisible();
 
+    /* Пока ничего не посчитано, проект показан окном ввода поверх списка —
+       до шапки приложения через него не дотянуться. */
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
     // Вкладка не исчезла вместе с уходом на список.
     await expect(tab).toBeVisible();
 
     await tab.click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Дробилка' })).toBeVisible();
 
     // Закрывает проект только крестик на его вкладке.
     await closeStepEditor(page);
@@ -198,6 +201,7 @@ test.describe('Инженерный визард', () => {
   test('переименование проекта держится после ухода на главную и обратно', async ({ page }) => {
     // Действия вкладки проявляются при наведении на неё — до этого они
     // занимают место в раскладке, но недоступны нажатию.
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'Тестовый проект', exact: true }).hover();
     await page.getByRole('button', { name: 'Переименовать проект' }).click();
     await page.getByLabel('Название проекта').fill('Переименованный проект');
@@ -210,7 +214,7 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(tab).toBeVisible();
     await tab.click();
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Дробилка' })).toBeVisible();
   });
 
   test('переключение единиц углов меняет постфикс у полей угла', async ({ page }) => {
@@ -220,8 +224,6 @@ test.describe('Инженерный визард', () => {
     await page.getByRole('button', { name: 'Отображение' }).click();
     const radians = page.getByRole('option', { name: 'Радианы' });
     await radians.click();
-    await expect(radians).toHaveAttribute('aria-selected', 'true');
-    await page.keyboard.press('Escape');
 
     await expect(page.getByText('рад', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('град°', { exact: true })).toHaveCount(0);
@@ -287,27 +289,27 @@ test.describe('Инженерный визард', () => {
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
     await expect(page.getByText('было: 43.94', { exact: true })).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: /^Показывать изменения/ }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
     await expect(page.getByText('было: 43.94', { exact: true })).toBeVisible();
   });
 
-  test('«Грансостав»: заголовок без подзаголовка, плашка пробы без лейбла, своё «Отображение» с дельтой', async ({ page }) => {
+  test('«Грансостав»: заголовок без подзаголовка, плашка пробы в футере, своё «Отображение» с дельтой', async ({ page }) => {
     await runStepCalc(page);
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
-    /* Речь про саму форму: на странице этапа за окном стоит сводка,
-       и «Проба руды» подписью строки в ней — на месте. */
     const editor = page.getByRole('dialog', { name: /Исходные данные/ });
     // Подзаголовок под заголовком шага убран.
     await expect(editor.getByText('Границы крупности питания')).toHaveCount(0);
-    // Подпись «Проба руды» над плашкой убрана — сама плашка достаточно называет своё назначение.
-    await expect(editor.getByText('Проба руды', { exact: true })).toHaveCount(0);
+    /* Плашка пробы стоит в футере окна, слева от кнопок, и подписана:
+       окна этапов похожи друг на друга, и без подписи неясно, что это
+       за объект. */
+    await expect(editor.getByText('Проба руды', { exact: true })).toBeVisible();
     await expect(editor.getByText('Костомукшская', { exact: true })).toBeVisible();
 
     // «Отображение» здесь своё — только дельта, без пунктов про диаграмму.
@@ -323,7 +325,7 @@ test.describe('Инженерный визард', () => {
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
     await expect(page.getByText('было: 1.2', { exact: true })).toHaveCount(0);
   });
 
@@ -342,7 +344,7 @@ test.describe('Инженерный визард', () => {
     await drawer.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'По плюсу' }).click();
     await page.getByRole('option', { name: 'Частные классы' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     // Все три показаны вместе — переключатель не эксклюзивный.
     await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toBeVisible();
@@ -351,7 +353,7 @@ test.describe('Инженерный визард', () => {
 
     await drawer.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'По минусу' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
     await expect(drawer.getByRole('columnheader', { name: 'Выход по минусу, %' })).toHaveCount(0);
     await expect(drawer.getByRole('columnheader', { name: 'Выход по плюсу, %' })).toBeVisible();
   });

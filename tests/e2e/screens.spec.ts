@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
+import { closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -84,7 +84,7 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`08 список с проектом @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await createProject(page);
-      await page.getByRole('button', { name: 'УЗТМ' }).click();
+      await closeStepEditor(page);
       await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `08-projects-list-${scheme}`);
     });

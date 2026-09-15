@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, seedSession, watchConsole } from './helpers';
+import { createProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Сайдбар — разделы приложения (Проекты, Заказчики, Профиль, Корзина),
@@ -104,7 +104,10 @@ test.describe('Сайдбар', () => {
   test('сайдбар скрывается, когда открытый проект показан на экране', async ({ page }) => {
     await expect(page.locator('[class*="sidebar"]')).toBeVisible();
 
+    /* Сайдбар уходит, когда проект занял экран, — а он занимает его
+       с первого расчёта: до него проект живёт окном поверх списка. */
     await createProject(page);
+    await runStepCalc(page);
     await expect(page.locator('[class*="sidebar"]')).toHaveCount(0);
 
     // Уход на список возвращает сайдбар — проект остаётся открытым, но с глаз ушёл.

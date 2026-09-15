@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Locator } from '@playwright/test';
-import { createProject, seedSession } from './helpers';
+import { closeStepEditor, createProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Клик по подписи вкладки — прицельно в её видимый текст (у левого края),
@@ -42,10 +42,12 @@ test.describe('Несколько открытых проектов', () => {
 
   test('открытие второго проекта не закрывает первый — обе вкладки видны', async ({ page }) => {
     await createProject(page, { name: 'Проект А', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
 
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('table')).toBeVisible();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
 
     await expect(page.getByRole('button', { name: 'Проект А', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Проект Б', exact: true })).toBeVisible();
@@ -53,8 +55,10 @@ test.describe('Несколько открытых проектов', () => {
 
   test('клик по вкладке переключает на неё, не закрывая другие', async ({ page }) => {
     await createProject(page, { name: 'Проект А', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
 
     // Сейчас показан «Проект Б» (открыт последним). Переключаемся на «А».
     await clickTabLabel(page.getByRole('button', { name: 'Проект А', exact: true }));
@@ -69,8 +73,10 @@ test.describe('Несколько открытых проектов', () => {
 
   test('закрытие вкладки крестиком не трогает соседние', async ({ page }) => {
     await createProject(page, { name: 'Проект А', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
 
     await hoverTab(page.getByRole('button', { name: 'Проект Б', exact: true }));
     await page.getByRole('button', { name: 'Закрыть проект: Проект Б' }).click();
@@ -80,16 +86,20 @@ test.describe('Несколько открытых проектов', () => {
   });
 
   test('закрытие показанной вкладки переключает на соседнюю, а не на список', async ({ page }) => {
+    /* Оба проекта посчитаны: показанной вкладка становится, когда у проекта
+       есть страница, — до первого расчёта он живёт окном поверх списка. */
     await createProject(page, { name: 'Проект А', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
+    await runStepCalc(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
+    await runStepCalc(page);
 
     // Показан «Б» — закрываем его же.
     await hoverTab(page.getByRole('button', { name: 'Проект Б', exact: true }));
     await page.getByRole('button', { name: 'Закрыть проект: Проект Б' }).click();
 
     // Соседняя вкладка («А») становится показанной — не список проектов.
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Результаты: Геометрия камеры' })).toBeVisible();
     /* Имя дробилки на экране дважды: в сводке этапа и на плашке в окне
        ввода, которое открыто на непосчитанном этапе. Показан проект «А» —
        это и проверяется. */
@@ -104,8 +114,10 @@ test.describe('Несколько открытых проектов', () => {
     // Сами действия при этом остаются доступны, а после того как курсор
     // ушёл с вкладки, её подпись снова кликабельна как обычно.
     await createProject(page, { name: 'Тест', customer: 'ЕВРАЗ КГОК', crusher: 'КСД-2200Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await createProject(page, { name: 'Проект Б', customer: 'Михайловский ГОК', crusher: 'КСД-900Т', ore: 'Костомукшская' });
+    await closeStepEditor(page);
 
     const shortTab = page.getByRole('button', { name: 'Тест', exact: true });
     await shortTab.hover({ position: { x: 4, y: 12 } });

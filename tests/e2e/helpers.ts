@@ -151,12 +151,10 @@ export async function createProject(page: Page, project = SAMPLE_PROJECT) {
    * запускается расчёт, и большинству сценариев нужно именно оно.
    * Кому нужна страница за ним — `closeStepEditor`.
    */
-  /* Непосчитанный этап всегда показан с окном ввода — значит, сразу
-     после создания оно и открыто. Сценарии ниже чаще смотрят на
-     страницу, поэтому окно закрывается; кому нужны поля —
-     `openStepEditor`, он же дожидается окна, если оно открылось само. */
+  /* Пока не посчитан ни один этап, проект живёт окном ввода поверх
+     списка: страницы у него ещё нет, показывать на ней нечего.
+     Помощник оставляет окно открытым — из него же и запускают расчёт. */
   await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
-  await closeStepEditor(page);
 }
 
 /**
@@ -180,6 +178,23 @@ export async function openStepEditor(page: Page) {
   if (await enter.count()) await enter.click();
   else await page.getByRole('button', { name: 'Изменить данные' }).click();
   await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+}
+
+/**
+ * Закрывает поповер отображения, если он ещё открыт.
+ *
+ * Выбор пункта закрывает панель не всегда: там, где он меняет данные
+ * формы (единицы углов), панель уходит сама, а там, где только режим
+ * показа, — остаётся. Escape вслепую в первом случае доставался бы окну
+ * под панелью.
+ */
+export async function closeDisplayPopover(page: Page) {
+  const option = page.getByRole('option').first();
+  /* Сначала даём панели уйти самой: она остаётся в разметке, пока
+     доигрывает закрытие, и мгновенный вопрос «видна ли?» застаёт её
+     ещё на экране — Escape тогда доставался бы окну под ней. */
+  await option.waitFor({ state: 'detached', timeout: 1000 }).catch(() => undefined);
+  if (await option.isVisible().catch(() => false)) await page.keyboard.press('Escape');
 }
 
 /**
