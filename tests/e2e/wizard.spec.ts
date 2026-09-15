@@ -385,7 +385,7 @@ test.describe('Инженерный визард', () => {
     await expect(drawer.getByText('По плюсу — выход зёрен крупнее размера').first()).toBeVisible();
   });
 
-  test('результат «Продукт» в конце шторки показывает результаты этапов «Геометрия» и «Грансостав»', async ({ page }) => {
+  test('результаты «Продукта» — с отчётами «Руды» и «Дробилки» ниже и табами, следящими за прокруткой', async ({ page }) => {
     await runStepCalc(page);
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
@@ -393,13 +393,27 @@ test.describe('Инженерный визард', () => {
     await goToWizardStep(page, /Продукт/);
     await runStepCalc(page);
 
-    const drawer = page.getByRole('main');
+    const main = page.getByRole('main');
+    // Отчёты по порядку: этот этап, под ним — предыдущие, от ближнего к первому.
+    const headings = main.getByRole('region', { name: /^Результаты:/ });
+    await expect(headings).toHaveCount(3);
+    await expect(main.getByText('Этап 3. Грансостав продукта и усилия')).toBeVisible();
+    await expect(main.getByText('Этап 2. Характеристический грансостав')).toBeAttached();
+    await expect(main.getByText('Этап 1. Геометрия камеры дробления')).toBeAttached();
 
-    await expect(drawer.getByText('Этап 1. Геометрия камеры дробления')).toBeVisible();
-    await expect(drawer.getByRole('heading', { name: 'Профиль камеры по точкам' })).toBeVisible();
+    const tab = (name: string) => main.getByRole('navigation', { name: 'Отчёты этапов' }).getByRole('button', { name, exact: true });
+    await expect(tab('Продукт')).toHaveAttribute('aria-current', /true|page|location/);
 
-    await expect(drawer.getByText('Этап 2. Характеристический грансостав')).toBeVisible();
-    await expect(drawer.getByRole('heading', { name: 'Характеристика гранулометрического состава' })).toBeVisible();
-    await expect(drawer.getByRole('img', { name: /Суммарные характеристики крупности/ })).toHaveCount(2);
+    // Клик ведёт к отчёту, и таб остаётся на месте — закреплён над колонкой.
+    await tab('Дробилка').click();
+    await expect(main.getByText('Этап 1. Геометрия камеры дробления')).toBeInViewport();
+    await expect(tab('Дробилка')).toBeInViewport();
+    await expect(tab('Дробилка')).toHaveAttribute('aria-current', /true|page|location/);
+
+    // Прокрутка обратно наверх возвращает подсветку «Продукту».
+    await page.waitForTimeout(800);
+    await main.getByText('Этап 3. Грансостав продукта и усилия').scrollIntoViewIfNeeded();
+    await page.mouse.wheel(0, -5000);
+    await expect(tab('Продукт')).toHaveAttribute('aria-current', /true|page|location/);
   });
 });
