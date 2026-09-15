@@ -100,16 +100,19 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 
   /*
-   * Отчёты всех посчитанных этапов — в одном порядке на любой странице:
-   * «Продукт», «Руда», «Дробилка». Продукт посчитан из руды, руда — на
-   * камере дробилки, и сверяться с ними нужно здесь же, не уходя на их
-   * страницы. Порядок не зависит от того, чья это страница, — иначе табы
-   * переставлялись бы при каждом переходе по степперу; к отчёту своего
-   * этапа страница прокручивается сама.
+   * «Продукт» — последний этап и итог всего расчёта: на его странице
+   * вслед за его отчётом идут отчёты «Руды» и «Дробилки», из которых он
+   * посчитан, с табами по ним. У «Руды» и «Дробилки» — только свой отчёт.
    */
+  const tabbed = calculated && stepKey === 'prod';
   const stages = useMemo<StepKey[]>(
-    () => (calculated ? TAB_ORDER.filter((key) => project.calc[STEP_ORDER.indexOf(key)]) : []),
-    [calculated, project.calc]
+    () =>
+      !calculated
+        ? []
+        : stepKey === 'prod'
+          ? TAB_ORDER.filter((key) => project.calc[STEP_ORDER.indexOf(key)])
+          : [stepKey],
+    [calculated, stepKey, project.calc]
   );
 
   const { resultRef, tabsRef, stageRef, activeStage, goToStage } = useStageScrollSpy(stages, stepKey);
@@ -166,13 +169,11 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
           </Stack>
         </div>
 
-        <div className={calculated ? `${styles.result} ${styles.resultTabbed}` : styles.result} ref={resultRef}>
+        <div className={styles.result} ref={resultRef}>
           {/* Табы — оглавление отчётов, закреплённое над ними: отчёт этапа
               длинный, и до предыдущих иначе не долистать, не потеряв, где
-              находишься. Подсвечивается тот, до чьего отчёта докрутили.
-              Все три этапа видны всегда — ещё не посчитанный стоит на своём
-              месте неактивным, и строка не перестраивается после расчёта. */}
-          {calculated ? (
+              находишься. Подсвечивается тот, до чьего отчёта докрутили. */}
+          {tabbed ? (
             <nav className={styles.tabs} ref={tabsRef} aria-label="Отчёты этапов">
               <Stack direction="row" gap="xl">
                 {TAB_ORDER.map((key) => (
@@ -193,9 +194,9 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             stages.map((key) => (
               <section key={key} ref={stageRef(key)} className={styles.stage} aria-label={`Результаты: ${TITLES[key]}`}>
                 <Stack gap="lg" direction="column">
-                  <Text variant="headingMd">
-                    Этап {STEP_ORDER.indexOf(key) + 1}. {TITLES[key]}
-                  </Text>
+                  {tabbed ? (
+                    <Text variant="headingMd">{key === 'prod' ? 'Продукт' : `Этап ${STEP_ORDER.indexOf(key) + 1}. ${TITLES[key]}`}</Text>
+                  ) : null}
 
                   <StepReport project={project} stepKey={key} />
 
@@ -217,11 +218,13 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
               </section>
             ))
           ) : (
-            <EmptyState
-              icon="fileText"
-              title="Этап ещё не посчитан"
-              description="Откройте исходные данные и запустите расчёт — результат появится здесь."
-            />
+            <div className={styles.stage}>
+              <EmptyState
+                icon="fileText"
+                title="Этап ещё не посчитан"
+                description="Откройте исходные данные и запустите расчёт — результат появится здесь."
+              />
+            </div>
           )}
         </div>
       </div>
