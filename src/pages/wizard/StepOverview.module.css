@@ -17,7 +17,10 @@
  */
 .header {
   flex: 0 0 auto;
-  padding: var(--space-2xl);
+  /* По вертикали плотнее, чем колонки под ней: шапка — подпись к отчёту,
+     а не его первый раздел, и высокая она отнимала место у самих данных.
+     По горизонтали — те же поля, что у колонок, чтобы край текста совпадал. */
+  padding: var(--space-lg) var(--space-2xl);
   border-bottom: var(--border-hairline) solid var(--color-border);
 }
 
@@ -110,4 +113,16 @@
   /* Снизу отступа нет: последняя таблица отчёта упирается в футер,
      а не висит над ним полосой пустоты. */
   padding: var(--space-2xl) var(--space-2xl) 0;
+}
+
+/**
+ * Рамка чертежа. Обрезает содержимое: схема рисуется в своём масштабе,
+ * и выносные линии (ось дробилки, размер D/2) уходили за рамку и её
+ * скруглённые углы.
+ */
+.scheme {
+  padding: var(--space-md);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }

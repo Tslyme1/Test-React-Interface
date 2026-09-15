@@ -315,7 +315,7 @@ export function WizardPage({
       <Modal
         open={editOpen}
         onClose={closeEditor}
-        title={`Исходные данные: ${STEP_META[step].label}`}
+        title={stepKey === 'gran' ? 'Ввод данных руды' : `Исходные данные: ${STEP_META[step].label}`}
         /* Широкое окно нужно только «Геометрии»: там рядом с полями стоит
            чертёж, и связь «поле ↔ участок» работает, лишь когда оба на
            виду. «Руде» — тоже: слева от полей стоит паспорт выбранной

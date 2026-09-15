@@ -88,7 +88,7 @@ test.describe('Инженерный визард', () => {
 
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
-    await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Ввод данных руды' })).toBeVisible();
 
     await goToWizardStep(page, /Дробилка/);
     await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
@@ -124,7 +124,7 @@ test.describe('Инженерный визард', () => {
     await goToWizardStep(page, /Дробилка/);
     await goToWizardStep(page, /Руда/);
 
-    await expect(page.getByRole('dialog', { name: 'Исходные данные: Руда' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Ввод данных руды' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
   });
 
@@ -303,14 +303,16 @@ test.describe('Инженерный визард', () => {
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
 
-    const editor = page.getByRole('dialog', { name: /Исходные данные/ });
+    const editor = page.getByRole('dialog', { name: /Исходные данные|Ввод данных/ });
     // Подзаголовок под заголовком шага убран.
     await expect(editor.getByText('Границы крупности питания')).toHaveCount(0);
     /* Плашка пробы стоит в футере окна, слева от кнопок, и подписана:
        окна этапов похожи друг на друга, и без подписи неясно, что это
-       за объект. */
-    await expect(editor.getByText('Проба руды', { exact: true })).toBeVisible();
-    await expect(editor.getByText('Костомукшская', { exact: true })).toBeVisible();
+       за объект. Ищется по кнопке смены пробы: то же имя стоит и первой
+       строкой паспорта пробы в левой колонке окна. */
+    const oreChip = editor.getByRole('button', { name: 'Сменить пробу руды' }).locator('xpath=ancestor::*[.//text()[normalize-space()="Проба руды"]][1]');
+    await expect(oreChip.getByText('Проба руды', { exact: true })).toBeVisible();
+    await expect(oreChip.getByText('Костомукшская', { exact: true })).toBeVisible();
 
     // «Отображение» здесь своё — только дельта, без пунктов про диаграмму.
     await page.getByRole('button', { name: 'Отображение' }).click();
