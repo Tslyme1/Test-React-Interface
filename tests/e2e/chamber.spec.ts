@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, openStepEditor, seedSession, watchConsole } from './helpers';
+import { closeDisplayPopover, createProject, openStepEditor, seedSession, watchConsole } from './helpers';
 
 /**
  * Схема профиля камеры дробления на шаге «Геометрия» — перенос математики
@@ -100,7 +100,7 @@ test.describe('Схема камеры дробления на шаге «Гео
     // в `GeometryStep`).
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Радианы' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
     // Угол нутации в градусах был 2.5 — в радианах то же самое значение
     // читается уже совсем иначе, схема обязана пересчитаться без ошибок.
     await page.getByLabel('Угол нутации θ').fill('0.05');

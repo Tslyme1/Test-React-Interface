@@ -106,6 +106,17 @@ export function App() {
     .map((id) => projects.find((p) => p.id === id))
     .filter((p): p is Project => Boolean(p));
   const shownProject = projects.find((p) => p.id === shownProjectId) ?? null;
+
+  /**
+   * Проект, у которого ещё ничего не посчитано, страницы не занимает.
+   *
+   * Смотреть на ней нечего: этап отвечает на вопрос «что вышло», и до
+   * первого расчёта ответа нет — под окном ввода оставался пустой экран.
+   * Поэтому до первого расчёта под окном остаётся список проектов,
+   * как и в упрощённом режиме, а полноценный визард открывается,
+   * когда есть что показать.
+   */
+  const started = shownProject?.calc.some(Boolean) ?? false;
   const simplifiedProject = projects.find((p) => p.id === simplifiedFlow.projectId) ?? null;
 
   const openProject = (project: Project) => {
@@ -188,7 +199,7 @@ export function App() {
         view={sidebarView}
         onViewChange={goView}
       >
-        {shownProject ? (
+        {shownProject && started ? (
           <WizardPage
             project={shownProject}
             onUpdateProject={updateProject}
@@ -243,6 +254,21 @@ export function App() {
           />
         )}
       </AppShell>
+
+      {/* Ввод первого этапа — окном поверх списка, пока считать нечего.
+          Тот же порядок, что в упрощённом режиме: под окном остаётся
+          список проектов, а не пустая страница этапа. */}
+      {shownProject && !started ? (
+        <WizardPage
+          overlay
+          onLeave={() => setShownProjectId(null)}
+          project={shownProject}
+          onUpdateProject={updateProject}
+          onForkProject={forkProject}
+          onOpenProject={openProject}
+          showToast={showToast}
+        />
+      ) : null}
 
       <NewProjectModal
         open={newProjectOpen}

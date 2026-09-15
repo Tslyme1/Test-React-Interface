@@ -25,13 +25,13 @@ test.describe('Форк проекта при правке посчитанно�
 
     await confirm.getByRole('button', { name: 'Создать копию' }).click();
 
-    // Открыт новый проект — с новой дробилкой, шаг снова не посчитан.
+    /* Открыт новый проект — с новой дробилкой, шаг снова не посчитан,
+       а значит показан он окном ввода поверх списка. */
     await expect(page.getByText('КМД-3000Т2', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Дробилка' })).toBeVisible();
     await closeStepEditor(page);
-    await expect(page.getByRole('button', { name: 'Ввести данные' })).toBeVisible();
 
     // Исходный проект остаётся в списке нетронутым.
-    await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('cell', { name: SAMPLE_PROJECT.crusher, exact: true })).toBeVisible();
   });
 

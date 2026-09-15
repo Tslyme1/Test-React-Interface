@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { controlsWithoutAccessibleName, createProject, goToWizardStep, hasHorizontalOverflow, orphanLabels, runStepCalc, seedSession, watchConsole } from './helpers';
+import { closeStepEditor, controlsWithoutAccessibleName, createProject, goToWizardStep, hasHorizontalOverflow, orphanLabels, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Сквозные инварианты — то, что должно быть верно на каждом экране.
@@ -34,6 +34,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
+      await closeStepEditor(page);
     },
   },
   {
@@ -51,6 +52,7 @@ const SCREENS: { name: string; go: (page: Page) => Promise<void> }[] = [
     go: async (page) => {
       await seedSession(page, { empty: true });
       await createProject(page);
+      await closeStepEditor(page);
       await page.getByRole('button', { name: 'УЗТМ' }).click();
       await expect(page.getByRole('table')).toBeVisible();
     },

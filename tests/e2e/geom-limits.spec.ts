@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { closeStepEditor, createProject, openStepEditor, seedSession } from './helpers';
+import { closeDisplayPopover, closeStepEditor, createProject, openStepEditor, seedSession } from './helpers';
 
 /**
  * Границы исходных данных этапа 1 (`src/domain/geomLimits.ts`).
@@ -36,7 +36,7 @@ test.describe('Этап 1: границы исходных данных', () => 
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Радианы' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     // 0,1° и 6° в радианах.
     await expect(theta).toHaveAttribute('min', '0.0017');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, createProject, openStepEditor, runStepCalc, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, closeDisplayPopover, createProject, openStepEditor, runStepCalc, seedSession, watchConsole, wizardStepButton } from './helpers';
 
 /**
  * Шаг «Геометрия»: степпер с одними заголовками, смена дробилки прямо
@@ -16,8 +16,14 @@ test.describe('Шаг «Геометрия»: заголовки шагов и �
   });
 
   test('степпер показывает только заголовки шагов, без подписей под ними', async ({ page }) => {
-    // Заголовки — новые: «Дробилка», «Руда», «Продукт», а не «Геометрия»/«Грансостав»/«Продукт».
-    await expect(page.getByRole('button', { name: 'Дробилка', exact: true })).toBeVisible();
+    /* Степпер живёт в футере страницы этапа, а страница появляется
+       с первого расчёта: до него проект показан окном поверх списка. */
+    await runStepCalc(page);
+
+    /* Заголовки — новые: «Дробилка», «Руда», «Продукт», а не
+       «Геометрия»/«Грансостав»/«Продукт». Ищем в самом степпере: слово
+       «Дробилка» стоит ещё и подписью плашки в футере окна ввода. */
+    await expect(wizardStepButton(page, /^Дробилка$/)).toBeVisible();
     await expect(page.getByText('Руда', { exact: true })).toBeVisible();
     await expect(page.getByText('Продукт', { exact: true })).toBeVisible();
 
@@ -80,7 +86,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test('подсветка участка: наведение на поле D меняет разметку схемы, потеря фокуса — возвращает', async ({ page }) => {
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Подсветка участка' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     const svg = page.getByTestId('chamber-scheme');
     const before = await svg.innerHTML();
@@ -100,7 +106,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
   test('подсветка участка работает и в обратную сторону: наведение на схему подсвечивает поле', async ({ page }) => {
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Подсветка участка' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     const wrapper = page
       .getByLabel('Диаметр основания D')
@@ -161,7 +167,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
 
     await page.getByRole('button', { name: 'Отображение' }).click();
     await page.getByRole('option', { name: 'Не показывать изменения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     await expect(page.getByText(/было: 2200/)).toHaveCount(0);
 
@@ -235,7 +241,7 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
 
     await page.getByRole('button', { name: 'Диаграмма' }).click();
     await page.getByRole('option', { name: 'Линии построения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     // Пресет разом включает лучи, дуги и все пять зазоров.
     await expect(svg.locator('title', { hasText: /^β40/ })).not.toHaveCount(0);

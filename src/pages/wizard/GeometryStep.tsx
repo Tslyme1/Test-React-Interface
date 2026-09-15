@@ -15,7 +15,7 @@ import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
 import { limitIn, validateGeom, zoneLimitIn } from '@/domain/geomLimits';
 import type { LimitedField, ZoneField } from '@/domain/geomLimits';
 import { convertAngleUnit } from '@/domain/angleUnit';
-import { portalActions } from './portalActions';
+import { portalSlot } from './portalSlot';
 import { useUserCatalog } from '@/state/userCatalog';
 import { CatalogCreateButton } from '@/components/CatalogCreateButton/CatalogCreateButton';
 import styles from './GeometryStep.module.css';
@@ -54,15 +54,21 @@ export type GeometryStepProps = {
   baseline: GeomData;
   crusherName: string;
   onChangeCrusher: (name: string) => void;
-  /**
-   * Узел в шапке окна, куда уходят действия формы — плашка дробилки
-   * и «Отображение». Они относятся к окну целиком, а не к первой полосе
-   * его содержимого, где стояли раньше.
-   */
+  /** Узел у заголовка окна — туда уходит «Отображение». */
   actionsSlot?: HTMLElement | null;
+  /** Узел в футере окна — туда уходит плашка выбранной дробилки. */
+  objectSlot?: HTMLElement | null;
 };
 
-export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCrusher, actionsSlot }: GeometryStepProps) {
+export function GeometryStep({
+  data,
+  onChange,
+  baseline,
+  crusherName,
+  onChangeCrusher,
+  actionsSlot,
+  objectSlot,
+}: GeometryStepProps) {
   const schemeInput = useMemo(() => buildChamberProfileInput(data), [data]);
   /** Сколько троек «длина + углы» показывать — см. `crushingZones`. */
   const zoneCount = crushingZones(data);
@@ -311,9 +317,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               заголовок называет этап. Два названия подряд — «Исходные
               данные: Дробилка» и «Геометрия камеры» — отвечали бы на один
               вопрос дважды. */}
-          {portalActions(
-            actionsSlot,
-            <>
+          {portalSlot(
+            objectSlot,
+            <Stack direction="row" align="center" gap="sm">
+              <Text variant="bodySm" color="textMuted">
+                Дробилка
+              </Text>
               <Chip
                 size="sm"
                 icon="fileText"
@@ -321,8 +330,12 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
               >
                 {crusherName}
               </Chip>
+            </Stack>
+          )}
 
-              <Popover
+          {portalSlot(
+            actionsSlot,
+            <Popover
                 open={displayOpen}
                 onClose={() => setDisplayOpen(false)}
                 placement="bottom-end"
@@ -392,8 +405,7 @@ export function GeometryStep({ data, onChange, baseline, crusherName, onChangeCr
                     </Stack>
                   </Stack>
                 </Stack>
-              </Popover>
-            </>
+            </Popover>
           )}
 
           {/* Исходные данные профиля — ровно те, что принимает методика

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createProject, openStepEditor, runStepCalc, seedSession } from './helpers';
+import { closeDisplayPopover, createProject, openStepEditor, runStepCalc, seedSession } from './helpers';
 import { computeChamberProfile } from '../../src/domain/chamberProfile';
 
 /**
@@ -170,7 +170,7 @@ test.describe('Этап 1: чертёж совпадает с расчётом',
 
     await page.getByRole('button', { name: 'Диаграмма' }).click();
     await page.getByRole('option', { name: 'Линии построения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     const svg = page.getByTestId('chamber-scheme');
     // Значения S1 профиля по умолчанию: 278,41 · 105,98 · 43,00.
@@ -186,7 +186,7 @@ test.describe('Этап 1: чертёж совпадает с расчётом',
 
     await page.getByRole('button', { name: 'Диаграмма' }).click();
     await page.getByRole('option', { name: 'Линии построения' }).click();
-    await page.keyboard.press('Escape');
+    await closeDisplayPopover(page);
 
     const svg = page.getByTestId('chamber-scheme');
     /* β — «угол при основании», то есть наклон образующей к горизонтали,

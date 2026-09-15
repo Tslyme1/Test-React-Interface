@@ -133,7 +133,6 @@ test('шапка таблицы каталога остаётся на мест�
 test('в окне выбора пробы руды есть быстрые фильтры по характеристикам, не только поиск', async ({ page }) => {
   await seedSession(page, { empty: true });
   await createProject(page);
-
   await runStepCalc(page);
   await goToWizardStep(page, /Руда/);
   const ore = page.getByRole('dialog', { name: 'Выбор пробы руды' });

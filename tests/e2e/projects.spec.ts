@@ -56,6 +56,7 @@ test.describe('Список проектов', () => {
     const console_ = watchConsole(page);
 
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     const row = page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher });
@@ -73,7 +74,6 @@ test.describe('Список проектов', () => {
 
   test('выбранная на шаге «Грансостав» проба руды попадает в строку таблицы', async ({ page }) => {
     await createProject(page);
-
     await runStepCalc(page);
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
@@ -87,6 +87,7 @@ test.describe('Список проектов', () => {
 
   test('поиск фильтрует строки и показывает пустой результат', async ({ page }) => {
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     const search = page.getByLabel('Поиск по проектам');
@@ -103,6 +104,7 @@ test.describe('Список проектов', () => {
 
   test('удаление убирает проект и возвращает пустое состояние', async ({ page }) => {
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await removeFirstProject(page);
@@ -112,6 +114,7 @@ test.describe('Список проектов', () => {
 
   test('проекты переживают перезагрузку страницы', async ({ page }) => {
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await expect(page.getByRole('row').filter({ hasText: SAMPLE_PROJECT.crusher })).toBeVisible();
 
@@ -123,6 +126,7 @@ test.describe('Список проектов', () => {
 
   test('удаление проекта тоже сохраняется', async ({ page }) => {
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
     await removeFirstProject(page);
     await expect(page.getByText('Проектов пока нет')).toBeVisible();
@@ -134,11 +138,14 @@ test.describe('Список проектов', () => {
 
   test('открытие проекта из таблицы ведёт в визард', async ({ page }) => {
     await createProject(page);
+    await closeStepEditor(page);
     await page.getByRole('button', { name: 'УЗТМ' }).click();
 
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    /* Пока не посчитан ни один этап, проект живёт окном ввода поверх
+       списка: страницы у него ещё нет, показывать на ней нечего. */
+    await expect(page.getByRole('dialog', { name: 'Исходные данные: Дробилка' })).toBeVisible();
   });
 });
 
