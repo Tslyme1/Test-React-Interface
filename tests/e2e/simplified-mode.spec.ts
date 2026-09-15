@@ -124,7 +124,10 @@ test.describe('Упрощённый режим', () => {
 
     // `exact` — иначе матчит заодно заголовок самого окна («Упрощённый расчёт — Продукт»).
     await expect(dialog.getByRole('heading', { name: 'Продукт', exact: true })).toBeVisible();
-    // Единственное поле ввода во всём режиме.
+    // Те же поля, что в инженерном режиме, — единственный ручной ввод во всём режиме.
+    for (const label of [/Минимальная крупность продукта/, /Работа разрушения Wk/, /Работа измельчения Wm/, /КПД дробления/]) {
+      await expect(dialog.getByLabel(label)).toBeVisible();
+    }
     await dialog.getByLabel(/Максимальная крупность продукта/).fill('30');
 
     await dialog.getByRole('button', { name: 'Выполнить расчёт' }).click();

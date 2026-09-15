@@ -85,6 +85,27 @@ test.describe('Список проектов', () => {
     await expect(row).toContainText(SAMPLE_PROJECT.ore);
   });
 
+  test('в окне «Руда» слева — паспорт выбранной пробы, и правится он здесь же', async ({ page }) => {
+    await createProject(page);
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
+    await pickOre(page);
+
+    const editor = page.getByRole('dialog', { name: 'Исходные данные: Руда' });
+    const table = editor.getByRole('table', { name: `Параметры пробы: ${SAMPLE_PROJECT.ore}` });
+    await expect(table.getByRole('row', { name: /Плотность, ρ, т\/м³\s*3\.35/ })).toBeVisible();
+
+    // Правка — только выбранной пробы, и таблица сразу показывает сохранённое.
+    await editor.getByRole('button', { name: 'Изменить', exact: true }).click();
+    const form = page.getByRole('dialog', { name: 'Проба руды: правка данных' });
+    await form.getByLabel('ρ, т/м³', { exact: true }).fill('3.4');
+    await form.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(form).toHaveCount(0);
+    await expect(table.getByRole('row', { name: /Плотность, ρ, т\/м³\s*3\.4/ })).toBeVisible();
+    // Окно ввода при этом не закрылось — правка шла поверх него.
+    await expect(editor).toBeVisible();
+  });
+
   test('поиск фильтрует строки и показывает пустой результат', async ({ page }) => {
     await createProject(page);
     await closeStepEditor(page);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl, Stack, Text } from '@uralmash/design-system';
+import { Box, Button, Chip, EmptyState, Field, Input, Popover, SegmentedControl, Stack, Table, Text } from '@uralmash/design-system';
+import type { TableColumn } from '@uralmash/design-system';
 import type { GranData } from '@/types';
 import { ORE_SAMPLES } from '@/data/oreSamples';
 import { GRAN_GLOSSARY } from '@/data/paramGlossary';
@@ -7,6 +8,17 @@ import { portalSlot } from './portalSlot';
 import { FieldHint } from '@/components/FieldHint/FieldHint';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { SieveAnalysis } from './SieveAnalysis';
+import { CatalogItemForm } from '@/components/CatalogItemForm/CatalogItemForm';
+import { useUserCatalog } from '@/state/userCatalog';
+import styles from './GranStep.module.css';
+
+type OreSpecRow = { label: string; value: string };
+
+/* Та же пара «величина — значение», что в сводке на странице этапа. */
+const oreSpecColumns: TableColumn<OreSpecRow>[] = [
+  { key: 'label', title: 'Величина' },
+  { key: 'value', title: 'Значение', align: 'end' },
+];
 
 export type GranStepProps = {
   data: GranData;
@@ -44,6 +56,16 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
   const [displayOpen, setDisplayOpen] = useState(false);
   const [deltaMode, setDeltaMode] = useState<'show' | 'hide'>('show');
 
+  /* Паспорт выбранной пробы — из справочника с наложенными правками,
+     чтобы после «Изменить» таблица сразу показывала сохранённое. */
+  const oreCatalog = useUserCatalog('ores');
+  const oreItem = oreCatalog.items.find((item) => item.name === ore) ?? null;
+  const [oreEditOpen, setOreEditOpen] = useState(false);
+  const oreRows: OreSpecRow[] = oreCatalog.specs.map((spec) => ({
+    label: spec.label,
+    value: oreItem?.values[spec.short] || '—',
+  }));
+
   const applySieveToParams = (nextA0: number, nextVa0: number) => {
     onChange({ a0: String(nextA0), va0: String(nextVa0) });
     showToast(`Записано в параметры: a₀ = ${nextA0}, Va₀ = ${nextVa0}`);
@@ -58,146 +80,184 @@ export function GranStep({ data, onChange, baseline, ore, onRequestOrePicker, sh
   };
 
   return ore ? (
-    <Stack gap="2xl" direction="column">
-      {/* Заголовок и его действия — одной строкой, как на шаге «Геометрия»:
-          подпись слева, плашка пробы и режим отображения справа. Отдельная
-          подпись «Проба руды» над чипсом убрана — назначение плашки понятно
-          и без неё, а строка с чипсом под подписью разводила заголовок
-          с действиями по разной высоте. */}
-      {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
-      {portalSlot(
-        objectSlot,
-        <Stack direction="row" align="center" gap="sm">
-          <Text variant="bodySm" color="textMuted">
-            Проба руды
-          </Text>
-          <Chip
-            size="sm"
-            icon="fileText"
-            action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}
-          >
-            {ore}
-          </Chip>
-        </Stack>
-      )}
-
-      {portalSlot(
-        actionsSlot,
-        <Popover
-            open={displayOpen}
-            onClose={() => setDisplayOpen(false)}
-            placement="bottom-end"
-            width="md"
-            title="Режим отображения"
-            trigger={
-              <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
-                Отображение
-              </Button>
-            }
-          >
-            <Stack gap="2xs" direction="column">
-              <Box paddingX="sm">
-                <Text variant="label">Дельта</Text>
-              </Box>
-              <Stack direction="column" gap="none">
-                <OptionCell
-                  label="Показывать изменения"
-                  description="Отклонение от значений расчёта"
-                  checked={deltaMode === 'show'}
-                  onSelect={() => setDeltaMode('show')}
-                />
-                <OptionCell label="Не показывать изменения" checked={deltaMode === 'hide'} onSelect={() => setDeltaMode('hide')} />
-              </Stack>
-            </Stack>
-        </Popover>
-      )}
-
-      <Stack direction="column" gap="md">
-        <Field label="Минимальная крупность Dmin" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} suffix="мм" />
-          )}
-        </Field>
-
-        <Field label="Кондиционная крупность Dk" hint={hintWithDelta('dk')} labelHint={<FieldHint>{GRAN_GLOSSARY.dk}</FieldHint>}>
-          {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} suffix="мм" />}
-        </Field>
-
-        <Field label="Максимальная крупность Dmax" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMax}</FieldHint>}>
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
-          )}
-        </Field>
-
-        <Field label="Параметр Z0" hint={hintWithDelta('z0')} labelHint={<FieldHint>{GRAN_GLOSSARY.z0}</FieldHint>}>
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.z0} onChange={(e) => onChange({ z0: e.target.value })} />
-          )}
-        </Field>
-
-        <Field label="Параметр S00" hint={hintWithDelta('s00')} labelHint={<FieldHint>{GRAN_GLOSSARY.s00}</FieldHint>}>
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.s00} onChange={(e) => onChange({ s00: e.target.value })} />
-          )}
-        </Field>
-
-        <Field label="Параметр N0" hint={hintWithDelta('n0')} labelHint={<FieldHint>{GRAN_GLOSSARY.n0}</FieldHint>}>
-          {(props) => (
-            <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
-          )}
-        </Field>
-      </Stack>
-
-      <Stack gap="lg" direction="column">
-        <Stack gap="sm" direction="column" align="start">
-          <Text variant="headingSm">Параметры формы куска</Text>
-          {/* `legend` уже даёт контролу доступное имя для читалки экрана
-              (сам он визуально скрыт — см. `SegmentedControl.module.css`),
-              поэтому видимая подпись над ним была бы вторым, дублирующим
-              названием одного и того же контрола. */}
-          <SegmentedControl
-            legend="Способ задания a₀ и Va₀"
-            options={[
-              { value: 'direct', label: 'Прямой ввод' },
-              { value: 'sieve', label: 'Ситовый анализ' },
-            ]}
-            value={data.shapeMode}
-            onChange={(v) => onChange({ shapeMode: v })}
+    <div className={styles.split}>
+      {/* Слева — с какой пробой работаем: сверяться с её паспортом нужно,
+          пока вводишь распределение питания, а не до того, в другом окне.
+          Правка здесь же и только для этой пробы. */}
+      <div className={styles.ore}>
+        <Stack gap="sm" direction="column">
+          <Stack direction="row" justify="between" align="center" gap="sm" wrap>
+            <Text variant="headingSm">Параметры пробы</Text>
+            <Button variant="secondary" size="sm" iconStart="pencil" disabled={!oreItem} onClick={() => setOreEditOpen(true)}>
+              Изменить
+            </Button>
+          </Stack>
+          <Table
+            columns={oreSpecColumns}
+            rows={oreRows}
+            rowKey={(row) => row.label}
+            caption={`Параметры пробы: ${ore}`}
+            captionHidden
           />
         </Stack>
 
-        {data.shapeMode === 'direct' ? (
+        <CatalogItemForm
+          open={oreEditOpen}
+          onClose={() => setOreEditOpen(false)}
+          item={oreItem}
+          specs={oreCatalog.specs}
+          nameLabel="Проба руды"
+          takenNames={oreCatalog.items.map((item) => item.name)}
+          onSave={(entry) => {
+            oreCatalog.save(entry);
+            showToast(`Параметры пробы «${entry.name}» сохранены`);
+          }}
+        />
+      </div>
+
+      <div className={styles.form}>
+        <Stack gap="2xl" direction="column">
+          {/* Заголовок и его действия — одной строкой, как на шаге «Геометрия»:
+              подпись слева, плашка пробы и режим отображения справа. Отдельная
+              подпись «Проба руды» над чипсом убрана — назначение плашки понятно
+              и без неё, а строка с чипсом под подписью разводила заголовок
+              с действиями по разной высоте. */}
+          {/* Заголовок несёт окно, в котором форма живёт, — см. `GeometryStep`. */}
+          {portalSlot(
+            objectSlot,
+            <Stack direction="row" align="center" gap="sm">
+              <Text variant="bodySm" color="textMuted">
+                Проба руды
+              </Text>
+              <Chip
+                size="sm"
+                icon="fileText"
+                action={{ icon: 'pencil', label: 'Сменить пробу руды', onClick: onRequestOrePicker }}
+              >
+                {ore}
+              </Chip>
+            </Stack>
+          )}
+
+          {portalSlot(
+            actionsSlot,
+            <Popover
+                open={displayOpen}
+                onClose={() => setDisplayOpen(false)}
+                placement="bottom-end"
+                width="md"
+                title="Режим отображения"
+                trigger={
+                  <Button variant="secondary" size="sm" iconEnd="chevronDown" onClick={() => setDisplayOpen((o) => !o)}>
+                    Отображение
+                  </Button>
+                }
+              >
+                <Stack gap="2xs" direction="column">
+                  <Box paddingX="sm">
+                    <Text variant="label">Дельта</Text>
+                  </Box>
+                  <Stack direction="column" gap="none">
+                    <OptionCell
+                      label="Показывать изменения"
+                      description="Отклонение от значений расчёта"
+                      checked={deltaMode === 'show'}
+                      onSelect={() => setDeltaMode('show')}
+                    />
+                    <OptionCell label="Не показывать изменения" checked={deltaMode === 'hide'} onSelect={() => setDeltaMode('hide')} />
+                  </Stack>
+                </Stack>
+            </Popover>
+          )}
+
           <Stack direction="column" gap="md">
-            <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')} labelHint={<FieldHint>{GRAN_GLOSSARY.a0}</FieldHint>}>
+            <Field label="Минимальная крупность Dmin" required hint={hintWithDelta('dMin')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMin}</FieldHint>}>
               {(props) => (
-                <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
+                <Input {...props} fullWidth type="number" value={data.dMin} onChange={(e) => onChange({ dMin: e.target.value })} suffix="мм" />
               )}
             </Field>
 
-            <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')} labelHint={<FieldHint>{GRAN_GLOSSARY.va0}</FieldHint>}>
+            <Field label="Кондиционная крупность Dk" hint={hintWithDelta('dk')} labelHint={<FieldHint>{GRAN_GLOSSARY.dk}</FieldHint>}>
+              {(props) => <Input {...props} fullWidth type="number" value={data.dk} onChange={(e) => onChange({ dk: e.target.value })} suffix="мм" />}
+            </Field>
+
+            <Field label="Максимальная крупность Dmax" required hint={hintWithDelta('dMax')} labelHint={<FieldHint>{GRAN_GLOSSARY.dMax}</FieldHint>}>
               {(props) => (
-                <Input
-                  {...props}
-                  fullWidth
-                  type="number"
-                  step="0.001"
-                  value={data.va0}
-                  onChange={(e) => onChange({ va0: e.target.value })}
-                />
+                <Input {...props} fullWidth type="number" value={data.dMax} onChange={(e) => onChange({ dMax: e.target.value })} suffix="мм" />
+              )}
+            </Field>
+
+            <Field label="Параметр Z0" hint={hintWithDelta('z0')} labelHint={<FieldHint>{GRAN_GLOSSARY.z0}</FieldHint>}>
+              {(props) => (
+                <Input {...props} fullWidth type="number" value={data.z0} onChange={(e) => onChange({ z0: e.target.value })} />
+              )}
+            </Field>
+
+            <Field label="Параметр S00" hint={hintWithDelta('s00')} labelHint={<FieldHint>{GRAN_GLOSSARY.s00}</FieldHint>}>
+              {(props) => (
+                <Input {...props} fullWidth type="number" value={data.s00} onChange={(e) => onChange({ s00: e.target.value })} />
+              )}
+            </Field>
+
+            <Field label="Параметр N0" hint={hintWithDelta('n0')} labelHint={<FieldHint>{GRAN_GLOSSARY.n0}</FieldHint>}>
+              {(props) => (
+                <Input {...props} fullWidth type="number" value={data.n0} onChange={(e) => onChange({ n0: e.target.value })} />
               )}
             </Field>
           </Stack>
-        ) : (
-          <SieveAnalysis
-            rows={data.sieveRows}
-            onRowsChange={(rows) => onChange({ sieveRows: rows })}
-            mode={data.sieveMode}
-            onModeChange={(sieveMode, sieveRows) => onChange({ sieveMode, sieveRows })}
-            onApply={applySieveToParams}
-          />
-        )}
-      </Stack>
-    </Stack>
+
+          <Stack gap="lg" direction="column">
+            <Stack gap="sm" direction="column" align="start">
+              <Text variant="headingSm">Параметры формы куска</Text>
+              {/* `legend` уже даёт контролу доступное имя для читалки экрана
+                  (сам он визуально скрыт — см. `SegmentedControl.module.css`),
+                  поэтому видимая подпись над ним была бы вторым, дублирующим
+                  названием одного и того же контрола. */}
+              <SegmentedControl
+                legend="Способ задания a₀ и Va₀"
+                options={[
+                  { value: 'direct', label: 'Прямой ввод' },
+                  { value: 'sieve', label: 'Ситовый анализ' },
+                ]}
+                value={data.shapeMode}
+                onChange={(v) => onChange({ shapeMode: v })}
+              />
+            </Stack>
+
+            {data.shapeMode === 'direct' ? (
+              <Stack direction="column" gap="md">
+                <Field label="Среднее относительное длины куска a₀" hint={hintWithDelta('a0', 'd̄ / dmax')} labelHint={<FieldHint>{GRAN_GLOSSARY.a0}</FieldHint>}>
+                  {(props) => (
+                    <Input {...props} fullWidth type="number" step="0.001" value={data.a0} onChange={(e) => onChange({ a0: e.target.value })} />
+                  )}
+                </Field>
+
+                <Field label="Коэффициент вариации длины Va₀" hint={hintWithDelta('va0', 'σ / d̄')} labelHint={<FieldHint>{GRAN_GLOSSARY.va0}</FieldHint>}>
+                  {(props) => (
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      step="0.001"
+                      value={data.va0}
+                      onChange={(e) => onChange({ va0: e.target.value })}
+                    />
+                  )}
+                </Field>
+              </Stack>
+            ) : (
+              <SieveAnalysis
+                rows={data.sieveRows}
+                onRowsChange={(rows) => onChange({ sieveRows: rows })}
+                mode={data.sieveMode}
+                onModeChange={(sieveMode, sieveRows) => onChange({ sieveMode, sieveRows })}
+                onApply={applySieveToParams}
+              />
+            )}
+          </Stack>
+        </Stack>
+      </div>
+    </div>
   ) : (
     <EmptyState
       icon="folder"
