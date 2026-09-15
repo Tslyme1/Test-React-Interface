@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, EmptyState, Stack, Tab, Table, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
@@ -100,20 +100,19 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 
   /*
-   * Отчёты на странице: сперва этого этапа, под ним — посчитанных до него,
-   * от ближнего к первому. Продукт посчитан из руды, руда — на камере
-   * дробилки, и сверяться с ними нужно здесь же, не уходя на их страницы.
+   * Отчёты всех посчитанных этапов — в одном порядке на любой странице:
+   * «Продукт», «Руда», «Дробилка». Продукт посчитан из руды, руда — на
+   * камере дробилки, и сверяться с ними нужно здесь же, не уходя на их
+   * страницы. Порядок не зависит от того, чья это страница, — иначе табы
+   * переставлялись бы при каждом переходе по степперу; к отчёту своего
+   * этапа страница прокручивается сама.
    */
-  const stages = useMemo<StepKey[]>(() => {
-    if (!calculated) return [];
-    const index = STEP_ORDER.indexOf(stepKey);
-    const earlier = STEP_ORDER.slice(0, index)
-      .filter((_, i) => project.calc[i])
-      .reverse();
-    return [stepKey, ...earlier];
-  }, [calculated, stepKey, project.calc]);
+  const stages = useMemo<StepKey[]>(
+    () => (calculated ? TAB_ORDER.filter((key) => project.calc[STEP_ORDER.indexOf(key)]) : []),
+    [calculated, project.calc]
+  );
 
-  const { resultRef, tabsRef, stageRef, activeStage, goToStage } = useStageScrollSpy(stages);
+  const { resultRef, tabsRef, stageRef, activeStage, goToStage } = useStageScrollSpy(stages, stepKey);
 
   return (
     <div className={styles.page}>
@@ -167,16 +166,22 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
           </Stack>
         </div>
 
-        <div className={stages.length > 1 ? `${styles.result} ${styles.resultTabbed}` : styles.result} ref={resultRef}>
+        <div className={calculated ? `${styles.result} ${styles.resultTabbed}` : styles.result} ref={resultRef}>
           {/* Табы — оглавление отчётов, закреплённое над ними: отчёт этапа
               длинный, и до предыдущих иначе не долистать, не потеряв, где
               находишься. Подсвечивается тот, до чьего отчёта докрутили.
-              С одним отчётом оглавлять нечего — табов нет. */}
-          {stages.length > 1 ? (
+              Все три этапа видны всегда — ещё не посчитанный стоит на своём
+              месте неактивным, и строка не перестраивается после расчёта. */}
+          {calculated ? (
             <nav className={styles.tabs} ref={tabsRef} aria-label="Отчёты этапов">
-              <Stack direction="row" gap="none">
-                {stages.map((key) => (
-                  <Tab key={key} active={key === activeStage} onClick={() => goToStage(key)}>
+              <Stack direction="row" gap="xl">
+                {TAB_ORDER.map((key) => (
+                  <Tab
+                    key={key}
+                    active={key === activeStage}
+                    disabled={!stages.includes(key)}
+                    onClick={() => goToStage(key)}
+                  >
                     {TAB_LABELS[key]}
                   </Tab>
                 ))}
@@ -188,11 +193,9 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
             stages.map((key) => (
               <section key={key} ref={stageRef(key)} className={styles.stage} aria-label={`Результаты: ${TITLES[key]}`}>
                 <Stack gap="lg" direction="column">
-                  {stages.length > 1 ? (
-                    <Text variant="headingMd">
-                      Этап {STEP_ORDER.indexOf(key) + 1}. {TITLES[key]}
-                    </Text>
-                  ) : null}
+                  <Text variant="headingMd">
+                    Этап {STEP_ORDER.indexOf(key) + 1}. {TITLES[key]}
+                  </Text>
 
                   <StepReport project={project} stepKey={key} />
 
@@ -228,6 +231,9 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
 
 const STEP_ORDER: StepKey[] = ['geom', 'gran', 'prod'];
 
+/** Порядок табов и отчётов на странице: от итога к исходным. */
+const TAB_ORDER: StepKey[] = ['prod', 'gran', 'geom'];
+
 /** Подписи табов — те же, что у этапов в степпере. */
 const TAB_LABELS: Record<StepKey, string> = {
   geom: 'Дробилка',
@@ -244,12 +250,12 @@ const TAB_LABELS: Record<StepKey, string> = {
  * высоты. Клик прокручивает к отчёту и на время прокрутки перестаёт
  * следить за ней — иначе подсветка пробегала бы по всем промежуточным.
  */
-function useStageScrollSpy(stages: StepKey[]) {
+function useStageScrollSpy(stages: StepKey[], initial: StepKey) {
   const resultRef = useRef<HTMLDivElement | null>(null);
   const tabsRef = useRef<HTMLElement | null>(null);
   const sections = useRef(new Map<StepKey, HTMLElement>());
   const lockUntil = useRef(0);
-  const [activeStage, setActiveStage] = useState<StepKey | null>(stages[0] ?? null);
+  const [activeStage, setActiveStage] = useState<StepKey>(initial);
 
   const stageRef = useCallback(
     (key: StepKey) => (node: HTMLElement | null) => {
@@ -268,10 +274,21 @@ function useStageScrollSpy(stages: StepKey[]) {
     return (tabsRef.current?.offsetHeight ?? 0) + gap;
   };
 
-  useEffect(() => {
-    setActiveStage(stages[0] ?? null);
+  /* Страница открывается на отчёте своего этапа — без анимации: это
+     не переход, а исходное положение. */
+  const stagesKey = stages.join();
+  useLayoutEffect(() => {
     const container = resultRef.current;
-    if (!container || stages.length < 2) return;
+    const node = sections.current.get(initial);
+    setActiveStage(initial);
+    if (!container || !node) return;
+    const top = node.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+    container.scrollTo({ top: initial === stages[0] ? 0 : Math.max(0, top - tabsOffset()) });
+  }, [initial, stagesKey]);
+
+  useEffect(() => {
+    const container = resultRef.current;
+    if (!container || stages.length === 0) return;
 
     const update = () => {
       if (Date.now() < lockUntil.current) return;
@@ -290,7 +307,7 @@ function useStageScrollSpy(stages: StepKey[]) {
 
     container.addEventListener('scroll', update, { passive: true });
     return () => container.removeEventListener('scroll', update);
-  }, [stages]);
+  }, [stagesKey]);
 
   const goToStage = (key: StepKey) => {
     const container = resultRef.current;
