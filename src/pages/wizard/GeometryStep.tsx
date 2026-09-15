@@ -474,7 +474,6 @@ export function GeometryStep({
                 бы вводить заново то, что уже введено рядом. */}
             <Field
               label="Число зон дробления"
-              hint="Число расчётных сечений равно зонам плюс два"
               labelHint={<FieldHint>{ZONE_COUNT_HINT}</FieldHint>}
             >
               {(props) => (
