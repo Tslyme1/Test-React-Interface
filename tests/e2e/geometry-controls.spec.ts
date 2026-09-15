@@ -24,8 +24,8 @@ test.describe('Шаг «Геометрия»: заголовки шагов и �
        «Геометрия»/«Грансостав»/«Продукт». Ищем в самом степпере: слово
        «Дробилка» стоит ещё и подписью плашки в футере окна ввода. */
     await expect(wizardStepButton(page, /^Дробилка$/)).toBeVisible();
-    await expect(page.getByText('Руда', { exact: true })).toBeVisible();
-    await expect(page.getByText('Продукт', { exact: true })).toBeVisible();
+    await expect(page.getByRole('list').getByText('Руда', { exact: true })).toBeVisible();
+    await expect(page.getByRole('list').getByText('Продукт', { exact: true })).toBeVisible();
 
     // Прежние подписи под шагами не остались — ни как текст шага, ни как обрезок.
     await expect(page.getByText('Камера дробления')).toHaveCount(0);

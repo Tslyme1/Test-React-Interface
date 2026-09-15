@@ -148,7 +148,7 @@ test.describe('Ситовый анализ на шаге «Грансостав�
        Переход на непосчитанный этап открывает окно снова сам. */
     await closeStepEditor(page);
     await goToWizardStep(page, /Дробилка/);
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Результаты: Геометрия камеры дробления' })).toBeVisible();
 
     await closeStepEditor(page);
     await goToWizardStep(page, /Руда/);

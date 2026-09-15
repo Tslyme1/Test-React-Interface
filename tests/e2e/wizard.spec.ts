@@ -91,7 +91,7 @@ test.describe('Инженерный визард', () => {
     await expect(page.getByRole('dialog', { name: 'Ввод данных руды' })).toBeVisible();
 
     await goToWizardStep(page, /Дробилка/);
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Результаты: Геометрия камеры дробления' })).toBeVisible();
   });
 
   test('переход на «Руда» без выбранной пробы открывает выбор пробы, оставляя шаг «Дробилка»', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('Инженерный визард', () => {
     // Степпер не переключился: заглушки «нечем считать» на шаге «Грансостав»
     // быть не должно вовсе — вместо неё сразу открывается выбор пробы,
     // а форма позади него остаётся на шаге «Дробилка».
-    await expect(page.getByRole('heading', { name: 'Геометрия камеры' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Результаты: Геометрия камеры дробления' })).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Выбор пробы руды' })).toBeVisible();
     await expect(page.getByText('Выберите пробу руды')).toHaveCount(0);
 
@@ -383,6 +383,23 @@ test.describe('Инженерный визард', () => {
     await expect(chart.locator('path')).toHaveCount(2);
     await expect(drawer.getByText('По минусу — выход зёрен мельче размера').first()).toBeVisible();
     await expect(drawer.getByText('По плюсу — выход зёрен крупнее размера').first()).toBeVisible();
+  });
+
+  test('на странице «Руды» табы идут от «Продукта», непосчитанный неактивен, страница не уезжает после расчёта', async ({ page }) => {
+    await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
+    await pickOre(page);
+    await runStepCalc(page);
+
+    const nav = page.getByRole('main').getByRole('navigation', { name: 'Отчёты этапов' });
+    await expect(nav.getByRole('button')).toHaveText(['Продукт', 'Руда', 'Дробилка']);
+    await expect(nav.getByRole('button', { name: 'Продукт' })).toBeDisabled();
+    await expect(nav.getByRole('button', { name: 'Руда' })).toHaveAttribute('aria-current', 'true');
+
+    /* Закрытие окна возвращало фокус на шаг степпера, и браузер докручивал
+       к нему корень визарда — шапка страницы уходила за верх экрана. */
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('heading', { name: 'Результаты: Характеристический грансостав' })).toBeInViewport();
   });
 
   test('результаты «Продукта» — с отчётами «Руды» и «Дробилки» ниже и табами, следящими за прокруткой', async ({ page }) => {
