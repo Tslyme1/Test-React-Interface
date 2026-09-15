@@ -433,45 +433,6 @@ export function StepReport({ project, stepKey }: StepReportProps) {
             <GranulometryChart rows={estimateProdGran(project.data.prod)} />
           </Section>
 
-          {/*
-           * Продукт — последний этап цепочки, и его отчёт по смыслу
-           * продолжает два предыдущих: усилия и грансостав продукта
-           * посчитаны из геометрии камеры и грансостава питания, которые
-           * здесь же и стоит увидеть, не уходя на их страницы отдельно.
-           */}
-          <Text variant="headingSm">Этап 1. Геометрия камеры дробления</Text>
-          <Section title="Параметры камеры дробления">
-              <Table
-              columns={kvColumns}
-              rows={estimateGeom(project.data.geom)}
-              rowKey={(r) => r.label}
-              caption="Параметры камеры дробления"
-              captionHidden
-            />
-          </Section>
-          <Section title="Профиль камеры по точкам">
-              <Table
-              columns={profileColumns}
-              rows={estimateGeomProfile(project.data.geom)}
-              rowKey={(r) => r.i}
-              caption="Профиль камеры по точкам"
-              captionHidden
-            />
-          </Section>
-
-          <Text variant="headingSm">Этап 2. Характеристический грансостав</Text>
-          <Section title="Характеристика гранулометрического состава">
-              <Table
-              columns={granColumns}
-              rows={estimateGran(project.data.gran)}
-              rowKey={(r) => r.class}
-              caption="Характеристика гранулометрического состава"
-              captionHidden
-            />
-          </Section>
-          <Section title="Суммарные характеристики крупности питания">
-            <GranulometryChart rows={estimateGran(project.data.gran)} />
-          </Section>
         </>
       ) : null}
     </Stack>

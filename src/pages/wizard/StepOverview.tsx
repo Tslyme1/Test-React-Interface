@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Button, EmptyState, Stack, Table, Text } from '@uralmash/design-system';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, EmptyState, Stack, Tab, Table, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { CatalogNameCell } from '@/components/CatalogNameCell/CatalogNameCell';
@@ -99,6 +99,22 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
 
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 
+  /*
+   * Отчёты на странице: сперва этого этапа, под ним — посчитанных до него,
+   * от ближнего к первому. Продукт посчитан из руды, руда — на камере
+   * дробилки, и сверяться с ними нужно здесь же, не уходя на их страницы.
+   */
+  const stages = useMemo<StepKey[]>(() => {
+    if (!calculated) return [];
+    const index = STEP_ORDER.indexOf(stepKey);
+    const earlier = STEP_ORDER.slice(0, index)
+      .filter((_, i) => project.calc[i])
+      .reverse();
+    return [stepKey, ...earlier];
+  }, [calculated, stepKey, project.calc]);
+
+  const { resultRef, tabsRef, stageRef, activeStage, goToStage } = useStageScrollSpy(stages);
+
   return (
     <div className={styles.page}>
       {/* Шапка на всю ширину: чей это отчёт, когда посчитан и чем его
@@ -151,13 +167,52 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
           </Stack>
         </div>
 
-        <div className={styles.result}>
-          {/* Шапка отчёта не уезжает при прокрутке: таблиц до семи, и,
-              пролистав до середины, легко забыть, чей это отчёт и чем его
-              выгрузить. Действия здесь же — они над готовым отчётом,
-              а не над первой из его таблиц. */}
+        <div className={stages.length > 1 ? `${styles.result} ${styles.resultTabbed}` : styles.result} ref={resultRef}>
+          {/* Табы — оглавление отчётов, закреплённое над ними: отчёт этапа
+              длинный, и до предыдущих иначе не долистать, не потеряв, где
+              находишься. Подсвечивается тот, до чьего отчёта докрутили.
+              С одним отчётом оглавлять нечего — табов нет. */}
+          {stages.length > 1 ? (
+            <nav className={styles.tabs} ref={tabsRef} aria-label="Отчёты этапов">
+              <Stack direction="row" gap="none">
+                {stages.map((key) => (
+                  <Tab key={key} active={key === activeStage} onClick={() => goToStage(key)}>
+                    {TAB_LABELS[key]}
+                  </Tab>
+                ))}
+              </Stack>
+            </nav>
+          ) : null}
+
           {calculated ? (
-            <StepReport project={project} stepKey={stepKey} />
+            stages.map((key) => (
+              <section key={key} ref={stageRef(key)} className={styles.stage} aria-label={`Результаты: ${TITLES[key]}`}>
+                <Stack gap="lg" direction="column">
+                  {stages.length > 1 ? (
+                    <Text variant="headingMd">
+                      Этап {STEP_ORDER.indexOf(key) + 1}. {TITLES[key]}
+                    </Text>
+                  ) : null}
+
+                  <StepReport project={project} stepKey={key} />
+
+                  {/* Чертёж — последним разделом отчёта «Дробилка», а не его
+                      шапкой: таблицы отвечают на вопрос «какие числа вышли»,
+                      и начинать отчёт картинкой значило бы отодвигать их
+                      на второй экран. */}
+                  {key === 'geom' ? (
+                    <Stack gap="sm" direction="column">
+                      <Text variant="headingSm">Схема профиля камеры дробления</Text>
+                      {/* Не `Box`: чертёж рисуется в своём масштабе и выносными
+                          линиями выходил за рамку — блок обязан его обрезать. */}
+                      <div className={styles.scheme}>
+                        <ChamberScheme input={schemeInput} testId={key === stepKey ? 'chamber-overview' : undefined} />
+                      </div>
+                    </Stack>
+                  ) : null}
+                </Stack>
+              </section>
+            ))
           ) : (
             <EmptyState
               icon="fileText"
@@ -165,27 +220,89 @@ export function StepOverview({ project, stepKey, calculated, onEdit, onUpdatePro
               description="Откройте исходные данные и запустите расчёт — результат появится здесь."
             />
           )}
-
-          {/* Чертёж — последним разделом отчёта, а не его шапкой: таблицы
-              отвечают на вопрос «какие числа вышли», и начинать отчёт
-              картинкой значило бы отодвигать их на второй экран. До
-              расчёта чертежа нет вовсе: он показывал бы профиль, которого
-              в отчёте ещё не появилось, а смотреть на него по ходу ввода
-              есть где — он стоит рядом с полями в окне. */}
-          {stepKey === 'geom' && calculated ? (
-            <Stack gap="sm" direction="column">
-              <Text variant="headingSm">Схема профиля камеры дробления</Text>
-              {/* Не `Box`: чертёж рисуется в своём масштабе и выносными
-                  линиями выходил за рамку — блок обязан его обрезать. */}
-              <div className={styles.scheme}>
-                <ChamberScheme input={schemeInput} testId="chamber-overview" />
-              </div>
-            </Stack>
-          ) : null}
         </div>
       </div>
     </div>
   );
+}
+
+const STEP_ORDER: StepKey[] = ['geom', 'gran', 'prod'];
+
+/** Подписи табов — те же, что у этапов в степпере. */
+const TAB_LABELS: Record<StepKey, string> = {
+  geom: 'Дробилка',
+  gran: 'Руда',
+  prod: 'Продукт',
+};
+
+/**
+ * Табы по отчётам этапов в прокручиваемой колонке.
+ *
+ * Активный — последний отчёт, чей верх уже поднялся под полосу табов;
+ * у самого низа колонки — последний отчёт, иначе короткий последний
+ * не подсветился бы никогда: докрутить его верх до табов не хватает
+ * высоты. Клик прокручивает к отчёту и на время прокрутки перестаёт
+ * следить за ней — иначе подсветка пробегала бы по всем промежуточным.
+ */
+function useStageScrollSpy(stages: StepKey[]) {
+  const resultRef = useRef<HTMLDivElement | null>(null);
+  const tabsRef = useRef<HTMLElement | null>(null);
+  const sections = useRef(new Map<StepKey, HTMLElement>());
+  const lockUntil = useRef(0);
+  const [activeStage, setActiveStage] = useState<StepKey | null>(stages[0] ?? null);
+
+  const stageRef = useCallback(
+    (key: StepKey) => (node: HTMLElement | null) => {
+      if (node) sections.current.set(key, node);
+      else sections.current.delete(key);
+    },
+    []
+  );
+
+  /* Высота полосы табов плюс зазор колонки под ней — заголовок отчёта
+     после перехода встаёт с тем же воздухом, что и между разделами,
+     а не вплотную к линии табов. */
+  const tabsOffset = () => {
+    const container = resultRef.current;
+    const gap = container ? parseFloat(getComputedStyle(container).rowGap) || 0 : 0;
+    return (tabsRef.current?.offsetHeight ?? 0) + gap;
+  };
+
+  useEffect(() => {
+    setActiveStage(stages[0] ?? null);
+    const container = resultRef.current;
+    if (!container || stages.length < 2) return;
+
+    const update = () => {
+      if (Date.now() < lockUntil.current) return;
+      if (container.scrollTop + container.clientHeight >= container.scrollHeight - 2) {
+        setActiveStage(stages[stages.length - 1]);
+        return;
+      }
+      const line = container.getBoundingClientRect().top + tabsOffset() + 1;
+      let current = stages[0];
+      for (const key of stages) {
+        const node = sections.current.get(key);
+        if (node && node.getBoundingClientRect().top <= line) current = key;
+      }
+      setActiveStage(current);
+    };
+
+    container.addEventListener('scroll', update, { passive: true });
+    return () => container.removeEventListener('scroll', update);
+  }, [stages]);
+
+  const goToStage = (key: StepKey) => {
+    const container = resultRef.current;
+    const node = sections.current.get(key);
+    if (!container || !node) return;
+    setActiveStage(key);
+    lockUntil.current = Date.now() + 700;
+    const top = node.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+    container.scrollTo({ top: Math.max(0, top - tabsOffset()), behavior: 'smooth' });
+  };
+
+  return { resultRef, tabsRef, stageRef, activeStage, goToStage };
 }
 
 const TITLES: Record<StepKey, string> = {
