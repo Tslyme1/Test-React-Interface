@@ -385,16 +385,15 @@ test.describe('Инженерный визард', () => {
     await expect(drawer.getByText('По плюсу — выход зёрен крупнее размера').first()).toBeVisible();
   });
 
-  test('на странице «Руды» табы идут от «Продукта», непосчитанный неактивен, страница не уезжает после расчёта', async ({ page }) => {
+  test('на странице «Руды» — только её отчёт, без табов, и страница не уезжает после расчёта', async ({ page }) => {
     await runStepCalc(page);
     await goToWizardStep(page, /Руда/);
     await pickOre(page);
     await runStepCalc(page);
 
-    const nav = page.getByRole('main').getByRole('navigation', { name: 'Отчёты этапов' });
-    await expect(nav.getByRole('button')).toHaveText(['Продукт', 'Руда', 'Дробилка']);
-    await expect(nav.getByRole('button', { name: 'Продукт' })).toBeDisabled();
-    await expect(nav.getByRole('button', { name: 'Руда' })).toHaveAttribute('aria-current', 'true');
+    const main = page.getByRole('main');
+    await expect(main.getByRole('navigation', { name: 'Отчёты этапов' })).toHaveCount(0);
+    await expect(main.getByRole('region', { name: /^Результаты:/ })).toHaveCount(1);
 
     /* Закрытие окна возвращало фокус на шаг степпера, и браузер докручивал
        к нему корень визарда — шапка страницы уходила за верх экрана. */
@@ -414,7 +413,7 @@ test.describe('Инженерный визард', () => {
     // Отчёты по порядку: этот этап, под ним — предыдущие, от ближнего к первому.
     const headings = main.getByRole('region', { name: /^Результаты:/ });
     await expect(headings).toHaveCount(3);
-    await expect(main.getByText('Этап 3. Грансостав продукта и усилия')).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Продукт', exact: true })).toBeVisible();
     await expect(main.getByText('Этап 2. Характеристический грансостав')).toBeAttached();
     await expect(main.getByText('Этап 1. Геометрия камеры дробления')).toBeAttached();
 
@@ -429,7 +428,7 @@ test.describe('Инженерный визард', () => {
 
     // Прокрутка обратно наверх возвращает подсветку «Продукту».
     await page.waitForTimeout(800);
-    await main.getByText('Этап 3. Грансостав продукта и усилия').scrollIntoViewIfNeeded();
+    await main.getByRole('heading', { name: 'Продукт', exact: true }).scrollIntoViewIfNeeded();
     await page.mouse.wheel(0, -5000);
     await expect(tab('Продукт')).toHaveAttribute('aria-current', /true|page|location/);
   });
