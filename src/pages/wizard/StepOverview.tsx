@@ -4,7 +4,9 @@ import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import { CatalogNameCell } from '@/components/CatalogNameCell/CatalogNameCell';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
-import { buildChamberProfileInput, crushingZones } from '@/domain/chamberInput';
+import { buildChamberProfileInput } from '@/domain/chamberInput';
+import { stepSummary } from '@/domain/stepSummary';
+import type { SummaryItem } from '@/domain/stepSummary';
 import { StepActions, StepMeta, StepReport } from './StepReport';
 import styles from './StepOverview.module.css';
 
@@ -19,14 +21,6 @@ export type StepOverviewProps = {
    */
   onEdit?: () => void;
   onUpdateProject: (id: string, patch: Partial<Project>) => void;
-};
-
-/** Пара «величина — значение» в сводке исходных данных. */
-type SummaryItem = {
-  label: string;
-  value: string;
-  /** Строка выбранной позиции справочника — рядом с именем стоит её правка. */
-  catalog?: { kind: 'crushers' | 'ores'; nameLabel: string };
 };
 
 /* Сводка — таблица, а не список пар: это данные, которые читают
@@ -57,45 +51,9 @@ const summaryColumns: TableColumn<SummaryItem>[] = [
  * — рядом с окном, которое для этого и открывают.
  */
 export function StepOverview({ project, stepKey, calculated, onEdit, onUpdateProject }: StepOverviewProps) {
-  const { geom, gran, prod } = project.data;
+  const { geom } = project.data;
 
-  const summary = useMemo<SummaryItem[]>(() => {
-    if (stepKey === 'geom') {
-      const angle = geom.angleUnit === 'рад' ? 'рад' : '°';
-      return [
-        { label: 'Дробилка', value: project.crusherName || '—', catalog: { kind: 'crushers', nameLabel: 'Дробилка' } },
-        { label: 'Диаметр основания D', value: `${geom.D} мм` },
-        { label: 'Высота H от подвеса', value: `${geom.H} мм` },
-        { label: 'Разгрузочная щель S₀', value: `${geom.S0} мм` },
-        { label: 'Угол нутации θ', value: `${geom.theta} ${angle}` },
-        { label: 'Зон дробления', value: String(crushingZones(geom)) },
-        { label: 'Длина зоны калибровки l₂', value: `${geom.l2} мм` },
-        { label: 'Углы зоны входа β₁₀ · β₄₀', value: `${geom.b10} · ${geom.b40} ${angle}` },
-      ];
-    }
-
-    if (stepKey === 'gran') {
-      return [
-        { label: 'Проба руды', value: project.ore || '—', catalog: { kind: 'ores', nameLabel: 'Проба руды' } },
-        { label: 'Минимальная крупность Dmin', value: `${gran.dMin} мм` },
-        { label: 'Кондиционная крупность Dk', value: `${gran.dk} мм` },
-        { label: 'Максимальная крупность Dmax', value: `${gran.dMax} мм` },
-        { label: 'Параметр Z0', value: gran.z0 },
-        { label: 'Параметр S00', value: gran.s00 },
-        { label: 'Параметр N0', value: gran.n0 },
-        { label: 'Форма куска a₀ · Va₀', value: `${gran.a0 || '—'} · ${gran.va0 || '—'}` },
-      ];
-    }
-
-    return [
-      { label: 'Тип питания', value: prod.feedType === 'wet' ? 'Влажное' : 'Сухое' },
-      { label: 'Минимальная крупность продукта', value: `${prod.dMin} мм` },
-      { label: 'Максимальная крупность продукта', value: `${prod.dMax} мм` },
-      { label: 'Работа разрушения Wk', value: prod.wk },
-      { label: 'Работа измельчения Wm', value: prod.wm },
-      { label: 'КПД дробления', value: prod.kpd },
-    ];
-  }, [stepKey, project.crusherName, project.ore, geom, gran, prod]);
+  const summary = useMemo(() => stepSummary(project, stepKey), [project, stepKey]);
 
   const schemeInput = useMemo(() => buildChamberProfileInput(geom), [geom]);
 

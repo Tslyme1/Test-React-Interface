@@ -6,6 +6,13 @@ export type OptionCellProps = {
   checked: boolean;
   onSelect: () => void;
   kind?: 'radio' | 'checkbox';
+  /**
+   * Строка видна, но выбор ею не управляется. Нужна там, где состав
+   * набран не руками — например, автоматический отчёт: список разделов
+   * показывает, что в него войдёт, но менять там нечего, и скрывать его
+   * значило бы отвечать «ничего» на вопрос «а что попадёт в отчёт».
+   */
+  disabled?: boolean;
 };
 
 /**
@@ -25,19 +32,21 @@ export type OptionCellProps = {
  * как две разных отметки одного и того же. `aria-selected` остаётся
  * для доступности, только визуальную заливку убрали.
  */
-export function OptionCell({ label, description, checked, onSelect, kind = 'radio' }: OptionCellProps) {
+export function OptionCell({ label, description, checked, onSelect, kind = 'radio', disabled = false }: OptionCellProps) {
   return (
     <Cell
       size="md"
       role="option"
       aria-selected={checked}
+      aria-disabled={disabled || undefined}
+      disabled={disabled}
       description={description}
       onClick={onSelect}
       trailing={
         kind === 'checkbox' ? (
-          <Checkbox checked={checked} readOnly tabIndex={-1} />
+          <Checkbox checked={checked} readOnly tabIndex={-1} disabled={disabled} />
         ) : (
-          <Radio checked={checked} readOnly tabIndex={-1} />
+          <Radio checked={checked} readOnly tabIndex={-1} disabled={disabled} />
         )
       }
     >

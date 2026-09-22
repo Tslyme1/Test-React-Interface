@@ -1,0 +1,74 @@
+/**
+ * Второй шаг входа — выбор режима работы.
+ *
+ * Две карточки рядом, а не список строк: режим задаёт форму всех трёх
+ * шагов расчёта, выбирают его один раз и надолго, и строка с подписью
+ * в одну фразу («Ручная настройка всех параметров») отвечала на вопрос
+ * «чем они отличаются» слишком коротко, чтобы выбрать осознанно.
+ * Сравнивают их глазами по столбцам, значит столбцов должно быть два.
+ */
+.modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+/**
+ * Карточка режима — целиком `<label>` для своего переключателя: нажатие
+ * куда угодно по карточке выбирает режим, а клавиатура и скринридер
+ * получают настоящий `<input type="radio">` внутри. Кликабельный `<div>`
+ * с `onClick` дал бы то же поведение мышью и ничего — с клавиатуры.
+ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    background var(--duration-fast) var(--easing-standard);
+}
+
+.card:hover {
+  border-color: var(--color-border-hover);
+}
+
+.card:active {
+  background: var(--color-surface-sunken);
+}
+
+/**
+ * Кольцо фокуса рисует карточка, а не сам переключатель: он занимает
+ * угол карточки, и кольцо вокруг него не сообщало бы, что с клавиатуры
+ * выбран весь этот вариант.
+ */
+.card:has(input:focus-visible) {
+  outline: var(--border-strong) solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/**
+ * Выбранный вариант — акцентная рамка. Точки в кружке одной мало, когда
+ * вариантов два и каждый занимает по полэкрана.
+ *
+ * Только рамка, без заливки `accentSubtle`: на тёмной теме она выходит
+ * плотным синим, и приглушённый текст четырёх пунктов на нём теряет
+ * контраст — карточка становится громкой ровно там, где её собрались
+ * читать.
+ */
+.card:has(input:checked) {
+  border-color: var(--color-accent);
+}
+
+/** Строка пункта: значок держит свою ширину и не съезжает при переносе текста. */
+.point {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-xs);
+  align-items: start;
+  color: var(--color-accent-text);
+}

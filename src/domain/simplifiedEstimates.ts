@@ -2,12 +2,7 @@ import type { GeomData, GranData, Project } from '@/types';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { catalogOf } from '@/state/userCatalog';
 import { estimateGeom, estimateGran, estimateProd, estimateProdGran } from './estimates';
-
-function firstNumber(value: string | undefined): number | null {
-  if (!value) return null;
-  const match = value.replace(',', '.').match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : null;
-}
+import { firstNumber } from './crusherGeom';
 
 /**
  * Геометрия камеры в упрощённом режиме не вводится руками — берём, что

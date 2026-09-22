@@ -1,0 +1,11 @@
+/**
+ * Рамка чертежа в отчёте. Обрезает содержимое: схема рисуется в своём
+ * масштабе, и выносные линии (ось дробилки, размер D/2) уходят за рамку
+ * и её скруглённые углы. Тот же блок, что на странице этапа.
+ */
+.scheme {
+  padding: var(--space-md);
+  border: var(--border-hairline) solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}

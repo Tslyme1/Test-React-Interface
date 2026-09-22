@@ -2,21 +2,45 @@ import { test, expect } from '@playwright/test';
 import { DEMO_USER, login, watchConsole } from './helpers';
 
 test.describe('Вход', () => {
-  test('экран входа собран и кнопка заблокирована до заполнения', async ({ page }) => {
+  test('первый шаг — учётные данные, переход заблокирован до заполнения', async ({ page }) => {
     const console_ = watchConsole(page);
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeVisible();
     await expect(page.getByRole('img', { name: 'УЗТМ' })).toBeVisible();
 
-    const submit = page.getByRole('button', { name: 'Войти' });
-    await expect(submit).toBeDisabled();
+    // Режим на первом шаге не спрашивают — он живёт на втором.
+    await expect(page.getByRole('radio', { name: 'Инженерный' })).toHaveCount(0);
+
+    const next = page.getByRole('button', { name: 'Продолжить' });
+    await expect(next).toBeDisabled();
 
     await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
-    await expect(submit).toBeDisabled();
+    await expect(next).toBeDisabled();
 
     await page.getByLabel('Пароль').fill(DEMO_USER.password);
-    await expect(submit).toBeEnabled();
+    await expect(next).toBeEnabled();
+
+    console_.assertClean();
+  });
+
+  test('второй шаг объясняет режимы и возвращает назад, не теряя введённое', async ({ page }) => {
+    const console_ = watchConsole(page);
+    await page.goto('/');
+
+    await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
+    await page.getByLabel('Пароль').fill(DEMO_USER.password);
+    await page.getByRole('button', { name: 'Продолжить' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Режим работы' })).toBeVisible();
+
+    /* Карточка режима — не одна подпись: сводка и четыре пункта, ради
+       которых шаг и отделён от логина с паролем. */
+    await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
+    await expect(page.getByText('Ручной ввод один — крупность продукта на последнем шаге')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Назад' }).click();
+    await expect(page.getByLabel('Логин или почта')).toHaveValue(DEMO_USER.login);
 
     console_.assertClean();
   });
@@ -26,7 +50,7 @@ test.describe('Вход', () => {
     await login(page);
 
     // Имя — в «Профиле», не в шапке: там сессия долетела до раздела приложения.
-    await page.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByText(DEMO_USER.name)).toBeVisible();
     console_.assertClean();
   });
@@ -39,16 +63,17 @@ test.describe('Вход', () => {
     await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeHidden();
   });
 
-  test('режим работы выбирается при входе и задаёт форму нового проекта', async ({ page }) => {
+  test('режим работы выбирается на втором шаге и задаёт форму нового проекта', async ({ page }) => {
     const console_ = watchConsole(page);
     await page.goto('/');
 
-    // По умолчанию инженерный — форма открывается на нём.
-    await expect(page.getByRole('radio', { name: 'Инженерный' })).toBeChecked();
-    await page.getByRole('radio', { name: 'Упрощённый' }).check();
-
     await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
     await page.getByLabel('Пароль').fill(DEMO_USER.password);
+    await page.getByRole('button', { name: 'Продолжить' }).click();
+
+    // По умолчанию инженерный — шаг открывается на нём.
+    await expect(page.getByRole('radio', { name: 'Инженерный' })).toBeChecked();
+    await page.getByRole('radio', { name: 'Упрощённый' }).check();
     await page.getByRole('button', { name: 'Войти' }).click();
 
     // Выбор долетел до создания проекта: окно упрощённого режима, а не
@@ -60,12 +85,7 @@ test.describe('Вход', () => {
   });
 
   test('выбранный при входе режим переживает перезагрузку', async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('radio', { name: 'Упрощённый' }).check();
-    await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
-    await page.getByLabel('Пароль').fill(DEMO_USER.password);
-    await page.getByRole('button', { name: 'Войти' }).click();
-    await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+    await login(page, DEMO_USER, 'Упрощённый');
 
     await page.reload();
 
@@ -76,20 +96,16 @@ test.describe('Вход', () => {
   });
 
   test('вход открыт под любым логином и паролем — стенд, а не учётная запись', async ({ page }) => {
-    await page.goto('/');
-    await page.getByLabel('Логин или почта').fill('кто-угодно');
-    await page.getByLabel('Пароль').fill('что-угодно');
-    await page.getByRole('button', { name: 'Войти' }).click();
+    await login(page, { login: 'кто-угодно', password: 'что-угодно', name: 'кто-угодно' });
 
-    await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
-    await page.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByText('кто-угодно')).not.toHaveCount(0);
   });
 
   test('выход возвращает на экран входа и очищает сессию', async ({ page }) => {
     await login(page);
 
-    await page.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).click();
     await page.getByRole('button', { name: 'Выйти' }).click();
 
     await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeVisible();

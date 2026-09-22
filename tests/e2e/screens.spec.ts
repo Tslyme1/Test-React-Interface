@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
+import { DEMO_USER, chooseProjectStart, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -34,6 +34,15 @@ for (const scheme of ['light', 'dark'] as const) {
       await shot(page, `01-login-${scheme}`);
     });
 
+    test(`01b выбор режима работы @screens`, async ({ page }) => {
+      await page.goto('/');
+      await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
+      await page.getByLabel('Пароль').fill(DEMO_USER.password);
+      await page.getByRole('button', { name: 'Продолжить' }).click();
+      await expect(page.getByRole('heading', { name: 'Режим работы' })).toBeVisible();
+      await shot(page, `01b-login-mode-${scheme}`);
+    });
+
     test(`02 список пуст @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await shot(page, `02-projects-empty-${scheme}`);
@@ -42,8 +51,17 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`03 новый проект — каталог дробилок @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
+      await shot(page, `03a-new-project-start-${scheme}`);
+      await chooseProjectStart(page);
       await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `03-new-project-modal-${scheme}`);
+    });
+
+    test(`03b новый проект — новое проектирование @screens`, async ({ page }) => {
+      await seedSession(page, { empty: true });
+      await page.getByRole('button', { name: 'Новый проект' }).first().click();
+      await chooseProjectStart(page, 'blank');
+      await shot(page, `03b-new-project-blank-${scheme}`);
     });
 
     test(`04 новый проект с выбранной машиной @screens`, async ({ page }) => {
@@ -79,6 +97,18 @@ for (const scheme of ['light', 'dark'] as const) {
       await runStepCalc(page);
       await expect(page.getByRole('main')).toBeVisible();
       await shot(page, `07-results-drawer-${scheme}`);
+    });
+
+    test(`07b отчёт по проекту @screens`, async ({ page }) => {
+      await seedSession(page, { empty: true });
+      await createProject(page);
+      await runStepCalc(page);
+      await goToWizardStep(page, /Руда/);
+      await pickOre(page);
+      await runStepCalc(page);
+      await page.getByRole('button', { name: 'Отчёт по проекту' }).click();
+      await expect(page.getByRole('dialog', { name: 'Отчёт по проекту' })).toBeVisible();
+      await shot(page, `07b-report-builder-${scheme}`);
     });
 
     test(`08 список с проектом @screens`, async ({ page }) => {
