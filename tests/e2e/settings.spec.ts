@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedSession } from './helpers';
+import { DEMO_USER, seedSession } from './helpers';
 
 /**
  * «Настройки» — данные учётной записи, тема, размер шрифта и режим
@@ -76,5 +76,27 @@ test.describe('Настройки', () => {
 
     await page.getByRole('option', { name: 'Обычный' }).click();
     expect(await bodySize()).toBe('14px');
+  });
+
+  test('после выхода и нового входа открывается список проектов, а не раздел, из которого вышли', async ({ page }) => {
+    await seedSession(page);
+    await page.getByRole('button', { name: 'Настройки' }).click();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Выйти' }).click();
+    await expect(page.getByRole('heading', { name: 'Вход в систему' })).toBeVisible();
+
+    /* Вход прямо здесь, без помощника `login`: тот начинается с `goto`,
+       а `seedSession` возвращает сессию в хранилище при каждой загрузке —
+       перезагрузка внесла бы пользователя обратно мимо формы. */
+    await page.getByLabel('Логин или почта').fill(DEMO_USER.login);
+    await page.getByLabel('Пароль').fill(DEMO_USER.password);
+    await page.getByRole('button', { name: 'Продолжить' }).click();
+    await page.getByRole('button', { name: 'Войти' }).click();
+
+    /* Регрессия: раздел сайдбара жил в состоянии `App` и выход его не
+       трогал — следующий вход возвращал туда же, откуда вышли. */
+    await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toHaveCount(0);
   });
 });

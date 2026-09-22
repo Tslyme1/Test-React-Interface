@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { chooseProjectStart, createProject, goToWizardStep, runStepCalc, seedSession, watchConsole } from './helpers';
+import { createProject, goToWizardStep, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
  * Окно фильтров каталога и фиксированная высота окна нового проекта.
@@ -13,7 +13,6 @@ test('окно фильтров внутри окна каталога: Esc за
   const console_ = watchConsole(page);
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
   await expect(page.getByRole('table')).toBeVisible();
 
   await page.getByRole('button', { name: 'Фильтры' }).click();
@@ -40,7 +39,6 @@ test('окно фильтров внутри окна каталога: Esc за
 test('высота окна не меняется при сужении выборки', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
   const dialog = page.getByRole('dialog');
   await expect(page.getByRole('table')).toBeVisible();
 
@@ -55,7 +53,6 @@ test('высота окна не меняется при сужении выбо
 test('семейство применяется только по «Готово»', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
   await expect(page.getByRole('table')).toBeVisible();
 
   const filters = page.getByRole('dialog', { name: 'Фильтры' });
@@ -73,7 +70,6 @@ test('семейство применяется только по «Готово
 test('повторное нажатие по строке снимает выбор', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
 
   const dialog = page.getByRole('dialog', { name: 'Новый проект' });
   const mark = dialog.getByRole('checkbox', { name: 'Выбрать КСД-2200Т' });
@@ -92,7 +88,6 @@ test('повторное нажатие по строке снимает выб�
 test('условия в полосе поиска каталога — одной ширины', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
   await expect(page.getByRole('table')).toBeVisible();
 
   const dialog = page.getByRole('dialog', { name: 'Новый проект' });
@@ -118,7 +113,6 @@ test('условия в полосе поиска каталога — одно�
 test('шапка таблицы каталога остаётся на месте при прокрутке', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
   const dialog = page.getByRole('dialog', { name: 'Новый проект' });
   await expect(page.getByRole('table')).toBeVisible();
 
@@ -153,7 +147,6 @@ test('в окне выбора пробы руды есть быстрые фи�
 test('колонка названия не меняет ширину при смене выборки', async ({ page }) => {
   await seedSession(page, { empty: true });
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
-  await chooseProjectStart(page);
 
   const nameHead = page.getByRole('columnheader', { name: /Дробилка/ }).first();
   const before = (await nameHead.boundingBox())!.width;

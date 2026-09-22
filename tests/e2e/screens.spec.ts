@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { DEMO_USER, chooseProjectStart, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
+import { DEMO_USER, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -51,17 +51,8 @@ for (const scheme of ['light', 'dark'] as const) {
     test(`03 новый проект — каталог дробилок @screens`, async ({ page }) => {
       await seedSession(page, { empty: true });
       await page.getByRole('button', { name: 'Новый проект' }).first().click();
-      await shot(page, `03a-new-project-start-${scheme}`);
-      await chooseProjectStart(page);
       await expect(page.getByRole('table')).toBeVisible();
       await shot(page, `03-new-project-modal-${scheme}`);
-    });
-
-    test(`03b новый проект — новое проектирование @screens`, async ({ page }) => {
-      await seedSession(page, { empty: true });
-      await page.getByRole('button', { name: 'Новый проект' }).first().click();
-      await chooseProjectStart(page, 'blank');
-      await shot(page, `03b-new-project-blank-${scheme}`);
     });
 
     test(`04 новый проект с выбранной машиной @screens`, async ({ page }) => {

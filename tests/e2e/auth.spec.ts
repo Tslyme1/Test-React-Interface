@@ -34,10 +34,16 @@ test.describe('Вход', () => {
 
     await expect(page.getByRole('heading', { name: 'Режим работы' })).toBeVisible();
 
-    /* Карточка режима — не одна подпись: сводка и четыре пункта, ради
-       которых шаг и отделён от логина с паролем. */
+    /* Карточка режима — не одна подпись: сводка и три коротких пункта,
+       ради которых шаг и отделён от логина с паролем. */
     await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
-    await expect(page.getByText('Ручной ввод один — крупность продукта на последнем шаге')).toBeVisible();
+    await expect(page.getByText('Ручной ввод — только крупность продукта')).toBeVisible();
+
+    /* Подписи группы на экране нет: заголовок уже назвал его «Режимом
+       работы», и повтор под ним только удваивал высоту шапки. Скринридеру
+       группа подписана — `aria-label`, а не видимая `legend`. */
+    await expect(page.getByText('Режим работы нового проекта')).toHaveCount(0);
+    await expect(page.getByRole('radiogroup', { name: 'Режим работы нового проекта' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Назад' }).click();
     await expect(page.getByLabel('Логин или почта')).toHaveValue(DEMO_USER.login);

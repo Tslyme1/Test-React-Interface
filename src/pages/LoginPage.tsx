@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Field, Icon, Input, Link, Radio, RadioGroup, Stack, Text } from '@uralmash/design-system';
+import { Button, Field, Icon, Input, Link, Radio, Stack, Text } from '@uralmash/design-system';
 import { ModeIllustration } from '@/components/ModeIllustration/ModeIllustration';
 import { WORK_MODES } from '@/data/workModes';
 import type { ProjectMode } from '@/types';
@@ -58,53 +58,59 @@ export function LoginPage({ onLogin, defaultMode, onGoRegister, onGoForgot }: Lo
 
   if (stage === 'mode') {
     return (
-      <AuthShell
-        title="Режим работы"
-        subtitle="Поменять решение можно в «Настройках» — уже созданные проекты останутся в своём режиме."
-        wide
-      >
-        {/* Подпись группы уточняет заголовок, а не повторяет его: режим
-            выбирается здесь один раз и действует на следующий новый
-            проект, а не на приложение целиком. Та же формулировка, что
-            у этого же переключателя в «Настройках». */}
-        <RadioGroup name="login-mode" legend="Режим работы нового проекта">
-          <div className={styles.modes}>
-            {WORK_MODES.map((option) => (
-              <label key={option.value} className={styles.card} htmlFor={`login-mode-${option.value}`}>
+      <AuthShell title="Режим работы" wide>
+        {/*
+          Не `RadioGroup` системы: она рисует видимую `legend`, а здесь
+          это был бы третий раз одно и то же — заголовок экрана уже
+          говорит «Режим работы», и подпись под ним только удваивала
+          высоту шапки. Группе нужна подпись для скринридера, а не на
+          экране; варианта со скрытой `legend` в системе нет — это заявка
+          в неё, а не повод оставить дубль. Взаимоисключающими варианты
+          делает общий `name` у самих переключателей, и роль группы здесь
+          объявлена явно.
+        */}
+        <div role="radiogroup" aria-label="Режим работы нового проекта" className={styles.modes}>
+          {WORK_MODES.map((option) => (
+            <label key={option.value} className={styles.card} htmlFor={`login-mode-${option.value}`}>
+              {/* Переключатель лежит в левом верхнем углу самой картинки:
+                  так отметка стоит на том, что выбирают, а не строкой ниже,
+                  и карточка читается сверху вниз — что это, как называется,
+                  что даёт. Без `label` у него самого: подпись стоит рядом
+                  обычным текстом, потому что `<label>` здесь — вся карточка,
+                  а вложить подпись в подпись нельзя. */}
+              <div className={styles.figure}>
                 <ModeIllustration mode={option.value} />
-
-                <Stack direction="row" gap="sm" align="start">
-                  {/* Без `label` у самого переключателя: подпись стоит рядом
-                      обычным текстом, потому что `<label>` здесь — вся
-                      карточка, а вложить подпись в подпись нельзя. */}
+                <span className={styles.radio}>
                   <Radio
                     id={`login-mode-${option.value}`}
+                    name="login-mode"
                     value={option.value}
                     checked={mode === option.value}
                     onChange={() => setMode(option.value)}
                   />
-                  <Stack direction="column" gap="2xs">
-                    <Text variant="headingSm">{option.label}</Text>
-                    <Text variant="bodySm" color="textMuted">
-                      {option.summary}
-                    </Text>
-                  </Stack>
-                </Stack>
+                </span>
+              </div>
 
-                <Stack direction="column" gap="xs">
-                  {option.points.map((point) => (
-                    <div key={point} className={styles.point}>
-                      <Icon name="check" size="sm" />
-                      <Text variant="bodySm" color="textMuted">
-                        {point}
-                      </Text>
-                    </div>
-                  ))}
-                </Stack>
-              </label>
-            ))}
-          </div>
-        </RadioGroup>
+              <Stack direction="column" gap="2xs">
+                <Text variant="headingSm">{option.label}</Text>
+                <Text variant="bodySm" color="textMuted">
+                  {option.summary}
+                </Text>
+              </Stack>
+
+              <Stack direction="column" gap="xs">
+                {option.points.map((point) => (
+                  <div key={point} className={styles.point}>
+                    <Icon name="check" size="sm" />
+                    <Text variant="bodySm" color="textMuted">
+                      {point}
+                    </Text>
+                  </div>
+                ))}
+              </Stack>
+            </label>
+          ))}
+        </div>
 
         <Stack direction="row" gap="sm" justify="between" align="center" wrap>
           <Button variant="secondary" iconStart="arrowLeft" onClick={() => setStage('credentials')}>

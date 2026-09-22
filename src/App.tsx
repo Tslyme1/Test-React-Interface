@@ -178,6 +178,26 @@ export function App() {
     setCustomerFilter(null);
   };
 
+  /**
+   * Выход из системы заодно сбрасывает то, где пользователь находился.
+   *
+   * Иначе следующий вход возвращает не на список проектов, а туда, откуда
+   * разлогинились: вышли из «Настроек» — вошли в «Настройки». Хуже того,
+   * вкладки открытых проектов пережили бы смену пользователя и показали
+   * бы вошедшему чужую работу. Разделы и вкладки — состояние сеанса,
+   * а сеанс кончился.
+   */
+  const handleLogout = () => {
+    setView('projects');
+    setShownProjectId(null);
+    setOpenTabs([]);
+    setCustomerFilter(null);
+    setCloseConfirmId(null);
+    setNewProjectOpen(false);
+    setSimplifiedFlow({ open: false, projectId: null });
+    logout();
+  };
+
   const startNewProject = () => {
     if (defaultMode === 'simplified') {
       setSimplifiedFlow({ open: true, projectId: null });
@@ -236,7 +256,7 @@ export function App() {
             onThemeChange={setTheme}
             fontScale={fontScale}
             onFontScaleChange={setFontScale}
-            onLogout={logout}
+            onLogout={handleLogout}
             showToast={showToast}
           />
         ) : (
@@ -276,21 +296,16 @@ export function App() {
         open={newProjectOpen}
         onClose={() => setNewProjectOpen(false)}
         defaultExecutor={user.name}
-        onCreate={({ start, ...input }) => {
+        onCreate={(input) => {
           /*
-           * Ветка каталога подставляет в форму геометрии диаметр основания
-           * выбранной машины — единственное, что про неё известно из
-           * паспорта на языке методики (`applyCrusherToGeom`). Открывшееся
-           * следом окно правки показывает тогда размер выбранной дробилки,
+           * В форму геометрии подставляется диаметр основания выбранной
+           * машины — единственное, что про неё известно из паспорта
+           * на языке методики (`applyCrusherToGeom`). Открывшееся следом
+           * окно правки показывает тогда размер выбранной дробилки,
            * а не чужое число по умолчанию.
-           *
-           * Ветка «с нуля» остаётся на значениях методики целиком: машины,
-           * откуда их взять, в этом проекте нет.
            */
           const data = defaultWizardData();
-          if (start === 'catalog' && input.crusherName) {
-            data.geom = applyCrusherToGeom(data.geom, input.crusherName);
-          }
+          if (input.crusherName) data.geom = applyCrusherToGeom(data.geom, input.crusherName);
 
           const project = createProject({ ...input, mode: 'engineering', data });
           setNewProjectOpen(false);
