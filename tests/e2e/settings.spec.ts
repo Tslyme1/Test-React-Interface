@@ -33,8 +33,8 @@ test.describe('Настройки', () => {
   });
 
   test('режим работы — строки с описанием, а не сегмент-контрол', async ({ page }) => {
-    await expect(page.getByText('Ручная настройка всех параметров на каждом этапе.')).toBeVisible();
-    await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
+    await expect(page.getByText('Числа расчёта вводите вы.')).toBeVisible();
+    await expect(page.getByText('Числа расчёта берутся из справочника.')).toBeVisible();
 
     await page.getByRole('option', { name: 'Упрощённый' }).click();
     // Смена режима спрашивает подтверждение — до него выбор в списке не меняется.
