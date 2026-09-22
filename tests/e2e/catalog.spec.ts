@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, chooseProjectStart, seedSession, watchConsole } from './helpers';
 
 /**
  * Выбор из справочника. До этого набора компонент проверялся только
@@ -11,6 +11,9 @@ test.describe('Выбор дробилки из каталога', () => {
     await seedSession(page, { empty: true });
     // Каталог и есть тело окна нового проекта — отдельного перехода в него нет.
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    // Окно открывается развилкой «из каталога / новое проектирование» —
+    // каталог лежит за первым ответом.
+    await chooseProjectStart(page);
     await expect(page.getByRole('table')).toBeVisible();
   });
 

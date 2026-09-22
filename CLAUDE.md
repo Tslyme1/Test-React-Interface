@@ -82,8 +82,8 @@ npm run ds:docs   # принесёт документацию системы в 
 npm run check        # типы + линтер + E2E, всё вместе
 npm run typecheck    # приложение и тесты
 npm run ds:lint      # обход дизайн-системы
-npm run test:e2e     # 205 сценариев Playwright
-npm run screens      # 11 экранов × 2 темы в screenshots-review/
+npm run test:e2e     # 220 сценариев Playwright
+npm run screens      # 15 экранов × 2 темы в screenshots-review/
 ```
 
 Нарушение линтера — блокер, а не замечание. Локальное исключение —

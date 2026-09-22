@@ -2,14 +2,16 @@ import { test, expect } from '@playwright/test';
 import { seedSession } from './helpers';
 
 /**
- * «Профиль» — данные пользователя и переключатель режима нового проекта.
+ * «Настройки» — данные учётной записи, тема, размер шрифта и режим
+ * нового проекта. Пункт назывался «Профиль» до переименования: за ним
+ * стоят настройки отображения, а не карточка пользователя.
  * Переключатель здесь, а не в сайдбаре: это настройка, а не переход.
  */
-test.describe('Профиль', () => {
+test.describe('Настройки', () => {
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
-    await page.getByRole('button', { name: 'Профиль' }).click();
-    await expect(page.getByRole('heading', { name: 'Профиль' })).toBeVisible();
+    await page.getByRole('button', { name: 'Настройки' }).click();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
   });
 
   test('по умолчанию — инженерный режим, «Новый проект» открывает обычную модалку', async ({ page }) => {
@@ -52,7 +54,7 @@ test.describe('Профиль', () => {
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await page.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).click();
     await expect(page.getByRole('option', { name: 'Тёмная' })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -68,7 +70,7 @@ test.describe('Профиль', () => {
     expect(await bodySize()).toBe('18.2px');
 
     await page.reload();
-    await page.getByRole('button', { name: 'Профиль' }).click();
+    await page.getByRole('button', { name: 'Настройки' }).click();
     expect(await bodySize()).toBe('18.2px');
     await expect(page.getByRole('option', { name: 'Очень крупный' })).toHaveAttribute('aria-selected', 'true');
 

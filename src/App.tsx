@@ -12,12 +12,13 @@ import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import { LoginPage } from '@/pages/LoginPage';
 import { ProjectsPage } from '@/pages/ProjectsPage';
 import { CustomersPage } from '@/pages/CustomersPage';
-import { ProfilePage } from '@/pages/ProfilePage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import { TrashPage } from '@/pages/TrashPage';
 import { NewProjectModal } from '@/pages/NewProjectModal';
 import { SimplifiedProjectModal } from '@/pages/SimplifiedProjectModal';
 import { WizardPage } from '@/pages/wizard/WizardPage';
 import { defaultWizardData } from '@/data/wizardDefaults';
+import { applyCrusherToGeom } from '@/domain/crusherGeom';
 import type { Project } from '@/types';
 
 export function App() {
@@ -226,8 +227,8 @@ export function App() {
             }}
             onNewProject={startNewProject}
           />
-        ) : view === 'profile' ? (
-          <ProfilePage
+        ) : view === 'settings' ? (
+          <SettingsPage
             user={user}
             mode={defaultMode}
             onModeChange={setDefaultMode}
@@ -275,8 +276,23 @@ export function App() {
         open={newProjectOpen}
         onClose={() => setNewProjectOpen(false)}
         defaultExecutor={user.name}
-        onCreate={(input) => {
-          const project = createProject({ ...input, mode: 'engineering', data: defaultWizardData() });
+        onCreate={({ start, ...input }) => {
+          /*
+           * Ветка каталога подставляет в форму геометрии диаметр основания
+           * выбранной машины — единственное, что про неё известно из
+           * паспорта на языке методики (`applyCrusherToGeom`). Открывшееся
+           * следом окно правки показывает тогда размер выбранной дробилки,
+           * а не чужое число по умолчанию.
+           *
+           * Ветка «с нуля» остаётся на значениях методики целиком: машины,
+           * откуда их взять, в этом проекте нет.
+           */
+          const data = defaultWizardData();
+          if (start === 'catalog' && input.crusherName) {
+            data.geom = applyCrusherToGeom(data.geom, input.crusherName);
+          }
+
+          const project = createProject({ ...input, mode: 'engineering', data });
           setNewProjectOpen(false);
           openProject(project);
           showToast(`Проект «${project.name}» создан`);

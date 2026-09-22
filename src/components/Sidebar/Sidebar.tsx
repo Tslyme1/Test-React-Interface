@@ -1,7 +1,7 @@
 import { Box, Cell, Icon, Stack } from '@uralmash/design-system';
 import styles from './Sidebar.module.css';
 
-export type SidebarView = 'projects' | 'customers' | 'profile' | 'trash';
+export type SidebarView = 'projects' | 'customers' | 'settings' | 'trash';
 
 export type SidebarProps = {
   view: SidebarView;
@@ -14,7 +14,7 @@ export type SidebarProps = {
  * разделы, и скрывается целиком, когда открытый проект показан на экране
  * (см. `AppShell`): внутри проекта должен быть виден только он.
  *
- * «Профиль» и «Корзина» — редкие разделы, прижаты к низу распоркой
+ * «Настройки» и «Корзина» — редкие разделы, прижаты к низу распоркой
  * (`.spacer`): «Проекты» и «Заказчики» открывают чаще, и то, что открывают
  * чаще, стоит выше и ближе к верху списка.
  *
@@ -50,12 +50,17 @@ export function Sidebar({ view, onViewChange }: SidebarProps) {
 
       <Box paddingX="sm" paddingY="lg" fullWidth>
         <Stack direction="column" gap="none">
+          {/* «Настройки», а не «Профиль»: за пунктом стоят тема, размер
+              шрифта и режим работы, а данные учётной записи — лишь четыре
+              строки над ними. Имя раздела по одной его строке уводило
+              от того места, где отображение и меняют. Значок — `settings`
+              по той же причине: `user` обещал бы карточку пользователя. */}
           <Cell
-            leading={<Icon name="user" size="sm" />}
-            selected={view === 'profile'}
-            onClick={() => onViewChange('profile')}
+            leading={<Icon name="settings" size="sm" />}
+            selected={view === 'settings'}
+            onClick={() => onViewChange('settings')}
           >
-            Профиль
+            Настройки
           </Cell>
           <Cell
             leading={<Icon name="trash" size="sm" />}

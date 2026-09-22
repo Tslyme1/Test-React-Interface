@@ -418,7 +418,7 @@ export function ProjectsPage({
               variant="ghost"
               size="sm"
               icon="moreHorizontal"
-              aria-label={`Действия: ${row.crusherName}`}
+              aria-label={`Действия: ${crusherLabel(row)}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setMenuFor(menuFor === row.id ? null : row.id);

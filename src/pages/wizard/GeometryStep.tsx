@@ -323,12 +323,20 @@ export function GeometryStep({
               <Text variant="bodySm" color="textMuted">
                 Дробилка
               </Text>
+              {/* Пусто у проекта, начатого «с нуля»: машины из каталога
+                  в нём нет и не было. Плашка тогда говорит об этом прямо,
+                  а её действие зовёт выбрать, а не сменить — сменить
+                  нечего. */}
               <Chip
                 size="sm"
                 icon="fileText"
-                action={{ icon: 'pencil', label: 'Сменить дробилку', onClick: () => setCrusherPickerOpen(true) }}
+                action={{
+                  icon: 'pencil',
+                  label: crusherName ? 'Сменить дробилку' : 'Выбрать дробилку',
+                  onClick: () => setCrusherPickerOpen(true),
+                }}
               >
-                {crusherName}
+                {crusherName || 'Новая разработка'}
               </Chip>
             </Stack>
           )}

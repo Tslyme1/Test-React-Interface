@@ -1,0 +1,65 @@
+/**
+ * Окно сборки отчёта: слева — что включить, справа — что получится.
+ *
+ * Две колонки, а не два шага подряд: состав отчёта набирают перебором —
+ * убрали раздел, посмотрели, вернули. Между набором и результатом должно
+ * быть ноль переходов, иначе перебирать перестают и печатают всё подряд.
+ */
+.split {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(0, 2fr);
+  gap: 0;
+  /* Во всю высоту тела окна: только так разделитель между колонками
+     доходит до футера, а не обрывается там, где кончилась та, что короче. */
+  height: 100%;
+  min-height: 0;
+}
+
+/** На узком экране колонки встают друг под друга — сначала набор, под ним результат. */
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .settings,
+  .preview {
+    height: auto;
+    overflow: visible;
+  }
+
+  .preview {
+    border-inline-start: none;
+    border-block-start: var(--border-hairline) solid var(--color-border);
+  }
+}
+
+/** Каждая колонка листается сама: список разделов короткий, отчёт длинный. */
+.settings {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-xl);
+}
+
+/**
+ * Правая половина отделена линией, а не рамкой вокруг каждой: рамка
+ * читалась бы как карточка — отдельный предмет, — хотя это просто вторая
+ * колонка того же окна. Тот же приём, что на странице этапа.
+ */
+.preview {
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-xl);
+  border-inline-start: var(--border-hairline) solid var(--color-border);
+}
+
+/**
+ * Печатается ровно этот узел (`printProjectReport`), поэтому он и несёт
+ * весь документ: заголовок, шапку, исходные данные и разделы.
+ */
+.document {
+  min-width: 0;
+}

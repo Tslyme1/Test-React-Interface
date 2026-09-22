@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 /**
- * Сайдбар — разделы приложения (Проекты, Заказчики, Профиль, Корзина),
+ * Сайдбар — разделы приложения (Проекты, Заказчики, Настройки, Корзина),
  * отдельно от шапки сервиса, которая несёт бренд и открытый проект.
  * Переход между разделами не закрывает открытый проект — так же, как
  * раньше уход на список не закрывал его через знак «УЗТМ». Скрывается
@@ -15,7 +15,7 @@ test.describe('Сайдбар', () => {
     await expect(page.getByRole('table')).toBeVisible();
   });
 
-  test('переход в «Заказчики» и «Профиль» без ошибок в консоли', async ({ page }) => {
+  test('переход в «Заказчики» и «Настройки» без ошибок в консоли', async ({ page }) => {
     const console_ = watchConsole(page);
 
     await page.getByRole('button', { name: 'Заказчики' }).click();
@@ -27,8 +27,8 @@ test.describe('Сайдбар', () => {
     // что и на «Проекты».
     await expect(evrazRow.getByText('Рабочий', { exact: true })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Профиль' }).click();
-    await expect(page.getByRole('heading', { name: 'Профиль' })).toBeVisible();
+    await page.getByRole('button', { name: 'Настройки' }).click();
+    await expect(page.getByRole('heading', { name: 'Настройки' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Проекты' }).click();
     await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
@@ -94,10 +94,10 @@ test.describe('Сайдбар', () => {
     await expect(page.getByRole('button', { name: /Корзина/ })).toHaveClass(/selected/);
   });
 
-  test('«Профиль» и «Корзина» стоят внизу списка, «Проекты» и «Заказчики» — вверху', async ({ page }) => {
+  test('«Настройки» и «Корзина» стоят внизу списка, «Проекты» и «Заказчики» — вверху', async ({ page }) => {
     const labels = await page.locator('[class*="sidebar"] button').allInnerTexts();
     const clean = labels.map((t) => t.replace(/\d+$/, '').trim()).filter(Boolean);
-    expect(clean.indexOf('Проекты')).toBeLessThan(clean.indexOf('Профиль'));
+    expect(clean.indexOf('Проекты')).toBeLessThan(clean.indexOf('Настройки'));
     expect(clean.indexOf('Заказчики')).toBeLessThan(clean.indexOf('Корзина'));
   });
 

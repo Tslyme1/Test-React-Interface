@@ -5,10 +5,11 @@ import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { HowToModal } from '@/components/HowToModal/HowToModal';
 import type { FontScalePreference } from '@/state/useFontScale';
 import type { ThemePreference } from '@/state/useTheme';
+import { MODE_STEP_DIFF, WORK_MODES, workMode } from '@/data/workModes';
 import type { ProjectMode, User } from '@/types';
-import styles from './ProfilePage.module.css';
+import styles from './SettingsPage.module.css';
 
-export type ProfilePageProps = {
+export type SettingsPageProps = {
   user: User;
   /** Режим следующего нового проекта — переключатель здесь, а не в сайдбаре: это настройка профиля, а не переход. */
   mode: ProjectMode;
@@ -20,23 +21,6 @@ export type ProfilePageProps = {
   onLogout: () => void;
   showToast: (message: string, tone?: ToastTone) => void;
 };
-
-/**
- * Чем режимы отличаются шаг за шагом — по короткой строке на ячейку.
- * Показывается в окне подтверждения при смене режима: абзац словами
- * не отвечал на вопрос «что именно поменяется».
- */
-const MODE_STEP_DIFF: { step: string; engineering: string; simplified: string }[] = [
-  { step: 'Дробилка', engineering: 'Геометрия камеры вручную, поле за полем', simplified: 'Выбор из каталога, можно несколько' },
-  { step: 'Руда', engineering: 'Грансостав вручную или ситовым анализом', simplified: 'Выбор проб из каталога, можно несколько' },
-  { step: 'Продукт', engineering: 'Крупность, работа разрушения, КПД', simplified: 'Тип питания и максимальная крупность' },
-  { step: 'Результат', engineering: 'Отчёт по шагам, экспорт в Excel и Компас 3D', simplified: 'Отчёт по каждой паре «дробилка × проба»' },
-];
-
-const MODE_OPTIONS: { value: ProjectMode; label: string; description: string }[] = [
-  { value: 'engineering', label: 'Инженерный', description: 'Ручная настройка всех параметров на каждом этапе.' },
-  { value: 'simplified', label: 'Упрощённый', description: 'Три коротких шага и готовый отчёт.' },
-];
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; description: string }[] = [
   { value: 'system', label: 'Как в системе', description: 'Меняется вместе с настройкой операционной системы.' },
@@ -52,6 +36,11 @@ const FONT_SCALE_OPTIONS: { value: FontScalePreference; label: string; descripti
 ];
 
 /**
+ * «Настройки», а не «Профиль»: на странице четыре строки учётной записи
+ * и четыре группы настроек — тема, размер шрифта, режим работы, справка.
+ * Раздел, названный по одной своей строке, отвечал на вопрос «где менять
+ * отображение» отрицательно, хотя менять его надо именно здесь.
+ *
  * Только просмотр данных пользователя: правка профиля не входила в задачу,
  * а авторизация здесь демонстрационная (см. README) — заводить форму
  * редактирования для мок-поля значило бы обещать сохранение, которого на
@@ -62,7 +51,7 @@ const FONT_SCALE_OPTIONS: { value: FontScalePreference; label: string; descripti
  * контрола — только текст для чтения. Пара подписи и значения — тот же
  * приём, что раньше стоял в меню пользователя в шапке.
  */
-export function ProfilePage({
+export function SettingsPage({
   user,
   mode,
   onModeChange,
@@ -72,7 +61,7 @@ export function ProfilePage({
   onFontScaleChange,
   onLogout,
   showToast,
-}: ProfilePageProps) {
+}: SettingsPageProps) {
   const rows: { label: string; value: string }[] = [
     { label: 'Имя', value: user.name },
     { label: 'Почта', value: user.email || '—' },
@@ -94,7 +83,7 @@ export function ProfilePage({
     if (!pendingMode) return;
     onModeChange(pendingMode);
     setPendingMode(null);
-    const label = MODE_OPTIONS.find((o) => o.value === pendingMode)?.label ?? pendingMode;
+    const label = workMode(pendingMode).label;
     showToast(`Режим работы изменён на «${label}»`, 'success');
   };
 
@@ -102,22 +91,30 @@ export function ProfilePage({
     <div className={styles.root}>
       <div className={styles.header}>
         <Text variant="headingMd" as="h1">
-          Профиль
+          Настройки
         </Text>
       </div>
 
       <div className={styles.scroll}>
         <div className={styles.page}>
           <Stack gap="2xl" direction="column">
-            <Stack gap="lg" direction="column">
-              {rows.map((row) => (
-                <Stack key={row.label} gap="2xs" direction="column">
-                  <Text variant="label" color="textMuted">
-                    {row.label}
-                  </Text>
-                  <Text variant="body">{row.value}</Text>
-                </Stack>
-              ))}
+            <Stack gap="sm" direction="column">
+              {/* Подпись группы — та же, что у настроек ниже: под общим
+                  заголовком «Настройки» четыре строки учётной записи без
+                  неё читались бы как первая настройка. */}
+              <Text variant="label" color="textMuted">
+                Учётная запись
+              </Text>
+              <Stack gap="lg" direction="column">
+                {rows.map((row) => (
+                  <Stack key={row.label} gap="2xs" direction="column">
+                    <Text variant="label" color="textMuted">
+                      {row.label}
+                    </Text>
+                    <Text variant="body">{row.value}</Text>
+                  </Stack>
+                ))}
+              </Stack>
             </Stack>
 
             <Cell leading={<Icon name="help" size="sm" />} onClick={() => setHowToOpen(true)}>
@@ -163,11 +160,11 @@ export function ProfilePage({
                 Режим работы нового проекта
               </Text>
               <Stack direction="column" gap="none">
-                {MODE_OPTIONS.map((option) => (
+                {WORK_MODES.map((option) => (
                   <OptionCell
                     key={option.value}
                     label={option.label}
-                    description={option.description}
+                    description={option.summary}
                     checked={mode === option.value}
                     onSelect={() => setPendingMode(option.value)}
                   />

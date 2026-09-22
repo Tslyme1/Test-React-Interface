@@ -1,7 +1,20 @@
 import type { GranRow, KvRow, ProfileRow } from './estimates';
 import { buildStepReport } from './estimates';
 import type { Project, StepKey } from '@/types';
-import { STEP_LABELS } from './steps';
+import { STEP_KEYS, STEP_LABELS, STEP_TITLES } from './steps';
+import {
+  estimateGeom,
+  estimateGeomAlfa,
+  estimateGeomChecks,
+  estimateGeomProfile,
+  estimateGran,
+  estimateProd,
+  estimateProdGran,
+} from './estimates';
+import { resolveReportBlocks, reportTitle } from './reportConfig';
+import type { ReportBlock, ReportConfig } from './reportConfig';
+import { stepSummary } from './stepSummary';
+import { NEW_DESIGN_LABEL } from './projectLabels';
 
 /** Разделитель `;`, а не `,`: с русской локалью Excel открывает CSV этим разделителем сам, без диалога импорта. */
 const DELIMITER = ';';
@@ -114,4 +127,92 @@ function downloadTextFile(filename: string, content: string, mime: string): void
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/** Таблица проверок профиля — «сходится / ошибка» словом, галочки в CSV нет. */
+function checkTableCsv(title: string, rows: { label: string; value: string; ok: boolean }[]): string {
+  return (
+    csvRow([title]) +
+    csvRow(['Проверка', 'Значение', 'Результат']) +
+    rows.map((r) => csvRow([r.label, r.value, r.ok ? 'сходится' : 'ошибка'])).join('')
+  );
+}
+
+/**
+ * Один раздел собранного отчёта строками CSV. `null` — раздела в CSV
+ * не существует: чертёж камеры и графики это картинки, а в таблице
+ * значений им места нет. Молча пропустить их нельзя — об этом говорит
+ * само окно сборки, ещё до нажатия «Экспорт».
+ */
+function reportBlockCsv(project: Project, block: ReportBlock): string | null {
+  const { geom, gran, prod } = project.data;
+
+  switch (block.id) {
+    case 'geom.params':
+      return kvTableCsv(block.title, estimateGeom(geom));
+    case 'geom.profile':
+      return profileTableCsv(estimateGeomProfile(geom));
+    case 'geom.alfa':
+      return kvTableCsv(block.title, estimateGeomAlfa(geom));
+    case 'geom.checks':
+      return checkTableCsv(block.title, estimateGeomChecks(geom));
+    case 'gran.table':
+      return granTableCsv(block.title, estimateGran(gran));
+    case 'prod.params':
+      return kvTableCsv(block.title, estimateProd(prod, geom));
+    case 'prod.gran':
+      return granTableCsv(block.title, estimateProdGran(prod));
+    default:
+      return null; // чертёж и графики
+  }
+}
+
+/**
+ * Выгрузка собранного отчёта в CSV — ровно те разделы, что отмечены
+ * в окне сборки, и в том же порядке.
+ *
+ * Отдельно от `exportStepToExcel`: та выгружает один этап целиком
+ * и останется нужна, пока отчёт по этапу открывают с его страницы.
+ * Здесь выгружается документ, который собрали, — со своим заголовком,
+ * шапкой и исходными данными.
+ */
+export function exportProjectReport(project: Project, config: ReportConfig): void {
+  const blocks = resolveReportBlocks(project, config);
+  const title = reportTitle(project, config);
+
+  let out = csvRow([title]);
+
+  if (config.meta) {
+    out +=
+      csvRow(['Проект', project.name]) +
+      csvRow(['Код проекта', project.code]) +
+      csvRow(['Заказчик', project.customer]) +
+      csvRow(['Дробилка', project.crusherName || NEW_DESIGN_LABEL]) +
+      csvRow(['Проба руды', project.ore || '—']) +
+      csvRow(['Исполнитель', project.executor]) +
+      csvRow([]);
+  }
+
+  if (config.inputs) {
+    for (const stepKey of STEP_KEYS) {
+      if (!project.calc[STEP_KEYS.indexOf(stepKey)]) continue;
+      out +=
+        csvRow([`Исходные данные — ${STEP_TITLES[stepKey]}`]) +
+        stepSummary(project, stepKey)
+          .map((item) => csvRow([item.label, item.value]))
+          .join('') +
+        csvRow([]);
+    }
+  }
+
+  for (const block of blocks) {
+    const table = reportBlockCsv(project, block);
+    /* Картинка в CSV не представима — но и умалчивать о ней нельзя:
+       строка-заглушка говорит, что раздел в отчёте есть, просто
+       его место в распечатке, а не в таблице значений. */
+    out += (table ?? csvRow([block.title]) + csvRow(['(график — только в печатном отчёте)'])) + csvRow([]);
+  }
+
+  // BOM — иначе Excel читает кириллицу в UTF-8 CSV как набор вопросительных знаков.
+  downloadTextFile(`${project.code} — отчёт.csv`, '\ufeff' + out, 'text/csv;charset=utf-8');
 }

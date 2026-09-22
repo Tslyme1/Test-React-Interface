@@ -38,11 +38,20 @@ export function watchConsole(page: Page): ConsoleWatcher {
   };
 }
 
-/** Проход через форму входа. Нужен там, где проверяется сам вход. */
-export async function login(page: Page, user = DEMO_USER) {
+/**
+ * Проход через форму входа. Нужен там, где проверяется сам вход.
+ *
+ * Вход из двух шагов: учётные данные, затем режим работы. Помощник
+ * проходит оба и по умолчанию оставляет режим таким, каким его открыл
+ * второй шаг (инженерный, если в прошлый раз не выбирали другой).
+ */
+export async function login(page: Page, user = DEMO_USER, mode?: 'Инженерный' | 'Упрощённый') {
   await page.goto('/');
   await page.getByLabel('Логин или почта').fill(user.login);
   await page.getByLabel('Пароль').fill(user.password);
+  await page.getByRole('button', { name: 'Продолжить' }).click();
+  await expect(page.getByRole('heading', { name: 'Режим работы' })).toBeVisible();
+  if (mode) await page.getByRole('radio', { name: mode }).check();
   await page.getByRole('button', { name: 'Войти' }).click();
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 }
@@ -121,13 +130,28 @@ export const SAMPLE_PROJECT: NewProject = {
 };
 
 /**
+ * Отвечает на развилку «с чего начинается расчёт» — первый экран окна
+ * нового проекта. Окно должно быть уже открыто.
+ */
+export async function chooseProjectStart(page: Page, kind: 'catalog' | 'blank' = 'catalog') {
+  const label = kind === 'catalog' ? 'Расчёт дробилки из каталога' : 'Новое проектирование';
+  await page.getByRole('dialog').getByRole('button', { name: label }).click();
+}
+
+/**
  * Заполняет модалку нового проекта. Модалка должна быть уже открыта.
  *
- * Тело окна — каталог дробилок, название и заказчик стоят в футере.
+ * Сначала — ответ на развилку: считаем машину из каталога. Дальше тело
+ * окна занимает каталог дробилок, название и заказчик стоят в футере.
  * Пробы руды здесь нет: её выбирают на шаге «Грансостав».
  */
 export async function fillNewProjectForm(page: Page, project = SAMPLE_PROJECT) {
   const dialog = page.getByRole('dialog');
+
+  /* Развилка — только если она ещё на экране: часть сценариев отвечает
+     на неё сама, чтобы добраться до каталога раньше заполнения полей. */
+  const start = dialog.getByRole('button', { name: 'Расчёт дробилки из каталога' });
+  if (await start.count()) await start.click();
 
   await dialog.getByRole('button', { name: project.crusher, exact: true }).click();
 
@@ -194,7 +218,35 @@ export async function closeDisplayPopover(page: Page) {
      доигрывает закрытие, и мгновенный вопрос «видна ли?» застаёт её
      ещё на экране — Escape тогда доставался бы окну под ней. */
   await option.waitFor({ state: 'detached', timeout: 1000 }).catch(() => undefined);
-  if (await option.isVisible().catch(() => false)) await page.keyboard.press('Escape');
+
+  if (!(await option.isVisible().catch(() => false))) return;
+
+  /*
+   * Панель закрывается нажатием «мимо» — событием, адресованным `body`,
+   * а не Escape и не повторным нажатием триггера.
+   *
+   * Escape уходит в документ: если панель к этому моменту уже начала
+   * уходить сама, её обработчик снят, и клавишу ловит окно под ней —
+   * закрывается вся форма этапа, а следующая проверка сценария не находит
+   * поля, которое только что видела. Под нагрузкой полного прогона это
+   * ловилось раз в прогон и выглядело случайностью.
+   *
+   * Повторное нажатие триггера тоже ненадёжно: закрытие по клику снаружи
+   * срабатывает раньше, и обработчик кнопки открывает панель обратно.
+   * Настоящий клик по чему-нибудь «пустому» опасен иначе — под окном
+   * это затемнение, и попадание по нему закрывает само окно.
+   *
+   * Событие на `body` свободно от всего этого: для панели оно «снаружи»
+   * (её узел лежит в портале и цель события в него не входит), а больше
+   * его никто не слушает — ни затемнение окна, ни кнопки.
+   */
+  await page.evaluate(() => {
+    for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
+      document.body.dispatchEvent(new MouseEvent(type, { bubbles: true, composed: true }));
+    }
+  });
+
+  await expect(option).toBeHidden();
 }
 
 /**

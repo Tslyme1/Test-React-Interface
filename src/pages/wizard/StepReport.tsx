@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Badge, Button, Popover, Stack, Table, Tag, Text } from '@uralmash/design-system';
+import { Button, Popover, Stack, Tag, Text } from '@uralmash/design-system';
 import type { TableColumn } from '@uralmash/design-system';
 import type { Project, StepKey } from '@/types';
 import {
@@ -12,7 +12,7 @@ import {
   estimateProd,
   estimateProdGran,
 } from '@/domain/estimates';
-import type { CheckRow, GranRow, KvRow, ProfileRow } from '@/domain/estimates';
+import type { GranRow } from '@/domain/estimates';
 import { exportGeomToKompas, exportStepToExcel } from '@/domain/exportReport';
 import { printStepReport } from '@/domain/printReport';
 import { STEP_KEYS } from '@/domain/steps';
@@ -21,24 +21,8 @@ import { GranulometryChart } from '@/components/GranulometryChart/GranulometryCh
 import { NewTagButton } from '@/components/NewTagButton/NewTagButton';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { useTags } from '@/state/useTags';
-
-const kvColumns: TableColumn<KvRow>[] = [
-  { key: 'label', title: 'Величина' },
-  { key: 'value', title: 'Значение', align: 'end' },
-  { key: 'unit', title: 'Ед.', align: 'end' },
-];
-
-/**
- * Грансостав — теми же массивами, что и в распечатке программы-источника:
- * граница класса, его середина, расчётная ширина куска и доля класса.
- */
-const granColumns: TableColumn<GranRow>[] = [
-  { key: 'class', title: 'Класс крупности, мм' },
-  { key: 'dMid', title: 'D сред', align: 'end' },
-  { key: 'd08', title: '0.8·D пред', align: 'end' },
-  { key: 'gamma', title: 'γ', align: 'end' },
-  { key: 'pass', title: 'Выход по минусу, %', align: 'end' },
-];
+import { Section, SectionTable, checkColumns, granColumns, kvColumns, profileColumns } from './reportTables';
+import { ReportBuilderModal } from './ReportBuilderModal';
 
 /**
  * Отображение таблицы «Грансостав» — какие столбцы выхода показывать,
@@ -71,75 +55,7 @@ function granReportColumns(view: Set<GranView>): TableColumn<GranRow>[] {
   ];
 }
 
-/**
- * Профиль камеры по расчётным сечениям — та же таблица, что печатает
- * отчёт этапа 1 методики (§6.2).
- */
-const profileColumns: TableColumn<ProfileRow>[] = [
-  { key: 'i', title: 'I' },
-  { key: 'l', title: 'L1, мм', align: 'end' },
-  { key: 'b1', title: 'β₁', align: 'end' },
-  { key: 'r1', title: 'R1, мм', align: 'end' },
-  { key: 'a1', title: 'α₁', align: 'end' },
-  { key: 'b4', title: 'β₄', align: 'end' },
-  { key: 'r4', title: 'R4, мм', align: 'end' },
-  { key: 'a4', title: 'α₄', align: 'end' },
-  { key: 'lSum', title: 'L сум, мм', align: 'end' },
-  { key: 's1', title: 'S1, мм', align: 'end' },
-  { key: 'sot', title: 'S1 отк, мм', align: 'end' },
-];
-
-/**
- * Встроенные проверки профиля (§3.4 методики). Методика прямо называет их
- * признаком ошибки в исходных данных, поэтому они стоят рядом с таблицей,
- * а не прячутся: посчитать три этапа по не замкнувшемуся профилю можно,
- * но верить результату нельзя.
- */
-const checkColumns: TableColumn<CheckRow>[] = [
-  { key: 'label', title: 'Проверка' },
-  { key: 'value', title: 'Значение', align: 'end' },
-  {
-    key: 'ok',
-    title: '',
-    align: 'end',
-    /* `Badge`, а не `Tag`: это статус системы, а не пользовательская метка —
-       так и записано в самой системе у `Tag`. Иконка дублирует смысл цвета,
-       чтобы результат читался и без различения цветов. */
-    render: (row) =>
-      row.ok ? (
-        <Badge tone="success" icon="check">
-          сходится
-        </Badge>
-      ) : (
-        <Badge tone="danger" icon="alertTriangle">
-          ошибка
-        </Badge>
-      ),
-  },
-];
-
-/**
- * Раздел отчёта: белый подзаголовок и таблица под ним.
- *
- * Подпись вынесена из самой таблицы наружу: `caption` набирается
- * приглушённым и читается как служебная строка внутри рамки, а разделов
- * в отчёте до семи — рядом они должны выстраиваться в оглавление, а не
- * теряться в шапках. Скринридеру таблица остаётся подписанной той же
- * строкой (`caption` + `captionHidden`).
- */
-function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
-  return (
-    <Stack gap="sm" direction="column">
-      <Stack direction="row" justify="between" align="center" gap="sm" wrap>
-        <Text variant="headingSm">{title}</Text>
-        {actions}
-      </Stack>
-      {children}
-    </Stack>
-  );
-}
-
-/** Пара подписи и значения в строке метаданных — тот же приём, что в `ProfilePage`. */
+/** Пара подписи и значения в строке метаданных — тот же приём, что в `SettingsPage`. */
 function MetaField({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Stack gap="2xs" direction="column" align="start">
@@ -272,32 +188,51 @@ export type StepActionsProps = {
 };
 
 /**
- * Что можно сделать с готовым отчётом: выгрузить и напечатать.
+ * Что можно сделать с готовым отчётом: собрать отчёт по проекту,
+ * выгрузить этап и напечатать его.
  *
  * Стоит в левой колонке, под исходными данными, а не над таблицами:
  * это действия над этапом целиком, и в потоке отчёта они отделяли бы
  * первую таблицу от остальных, будто относятся только к ней. В строку,
- * а не столбцом: три кнопки во всю ширину колонки читались как список
+ * а не столбцом: кнопки во всю ширину колонки читались как список
  * разделов, а не как панель действий.
+ *
+ * «Отчёт по проекту» стоит первым: остальные три кнопки про этот этап,
+ * а он — про проект целиком, то есть про документ, ради которого расчёт
+ * и вели. Выгрузка и печать этапа остаются рядом: они быстрее, когда
+ * нужен ровно этот этап и ничего больше.
+ *
+ * Не `primary`, хотя по смыслу он здесь главный: `primary` на этой
+ * странице уже занята — в футере стоит «Следующий этап», и две главные
+ * кнопки на экране означали бы, что главное действие не выбрано.
  *
  * КОМПАС-3D — только для «Геометрии»: у неё есть профиль камеры, который
  * и передают в CAD, у остальных этапов параметров модели нет.
  */
 export function StepActions({ project, stepKey }: StepActionsProps) {
+  const [reportOpen, setReportOpen] = useState(false);
+
   return (
-    <Stack direction="row" gap="sm" wrap>
-      <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
-        Экспорт в Excel
-      </Button>
-      {stepKey === 'geom' ? (
-        <Button variant="secondary" iconStart="download" onClick={() => exportGeomToKompas(project)}>
-          Экспорт в Компас 3D
+    <>
+      <Stack direction="row" gap="sm" wrap>
+        <Button variant="secondary" iconStart="fileText" onClick={() => setReportOpen(true)}>
+          Отчёт по проекту
         </Button>
-      ) : null}
-      <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>
-        Печать
-      </Button>
-    </Stack>
+        <Button variant="secondary" iconStart="download" onClick={() => exportStepToExcel(project, stepKey)}>
+          Экспорт в Excel
+        </Button>
+        {stepKey === 'geom' ? (
+          <Button variant="secondary" iconStart="download" onClick={() => exportGeomToKompas(project)}>
+            Экспорт в Компас 3D
+          </Button>
+        ) : null}
+        <Button variant="secondary" iconStart="print" onClick={() => printStepReport(project, stepKey)}>
+          Печать
+        </Button>
+      </Stack>
+
+      <ReportBuilderModal open={reportOpen} onClose={() => setReportOpen(false)} project={project} />
+    </>
   );
 }
 
@@ -332,35 +267,35 @@ export function StepReport({ project, stepKey }: StepReportProps) {
       {stepKey === 'geom' ? (
         <>
           <Section title="Параметры камеры дробления">
-              <Table columns={kvColumns} rows={estimateGeom(project.data.geom)} rowKey={(r) => r.label} caption="Параметры камеры дробления"
-              captionHidden
+            <SectionTable
+              title="Параметры камеры дробления"
+              columns={kvColumns}
+              rows={estimateGeom(project.data.geom)}
+              rowKey={(r) => r.label}
             />
           </Section>
           <Section title="Профиль камеры по расчётным сечениям">
-              <Table
+            <SectionTable
+              title="Профиль камеры по расчётным сечениям"
               columns={profileColumns}
               rows={estimateGeomProfile(project.data.geom)}
               rowKey={(r) => r.i}
-              caption="Профиль камеры по расчётным сечениям"
-              captionHidden
             />
           </Section>
           <Section title="Критические углы поворота эксцентрика">
-              <Table
+            <SectionTable
+              title="Критические углы поворота эксцентрика"
               columns={kvColumns}
               rows={estimateGeomAlfa(project.data.geom)}
               rowKey={(r) => r.label}
-              caption="Критические углы поворота эксцентрика"
-              captionHidden
             />
           </Section>
           <Section title="Контроль корректности профиля">
-              <Table
+            <SectionTable
+              title="Контроль корректности профиля"
               columns={checkColumns}
               rows={estimateGeomChecks(project.data.geom)}
               rowKey={(r) => r.label}
-              caption="Контроль корректности профиля"
-              captionHidden
             />
           </Section>
         </>
@@ -399,40 +334,46 @@ export function StepReport({ project, stepKey }: StepReportProps) {
             </Popover>
           }
         >
-          <Table
+          <SectionTable
+            title="Характеристика гранулометрического состава"
             columns={granReportColumns(granView)}
             rows={estimateGran(project.data.gran)}
             rowKey={(r) => r.class}
-            caption="Характеристика гранулометрического состава"
-            captionHidden
           />
+        </Section>
+      ) : null}
+
+      {stepKey === 'gran' ? (
+        /* Та же пара «таблица + кривая», что и у продукта ниже: питание
+           и продукт сравнивают именно по этим двум кривым, и показывать
+           её только у одного из них значило бы оставить сравнение
+           наполовину. */
+        <Section title="Суммарные характеристики крупности питания">
+          <GranulometryChart rows={estimateGran(project.data.gran)} label="питание" />
         </Section>
       ) : null}
 
       {stepKey === 'prod' ? (
         <>
           <Section title="Продукт дробления">
-              <Table
+            <SectionTable
+              title="Продукт дробления"
               columns={kvColumns}
               rows={estimateProd(project.data.prod, project.data.geom)}
               rowKey={(r) => r.label}
-              caption="Продукт дробления"
-              captionHidden
             />
           </Section>
           <Section title="Грансостав продукта дробления">
-              <Table
+            <SectionTable
+              title="Грансостав продукта дробления"
               columns={granColumns}
               rows={estimateProdGran(project.data.prod)}
               rowKey={(r) => r.class}
-              caption="Грансостав продукта дробления"
-              captionHidden
             />
           </Section>
           <Section title="Суммарные характеристики крупности продукта">
-            <GranulometryChart rows={estimateProdGran(project.data.prod)} />
+            <GranulometryChart rows={estimateProdGran(project.data.prod)} label="продукт" />
           </Section>
-
         </>
       ) : null}
     </Stack>

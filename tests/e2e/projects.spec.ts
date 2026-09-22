@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, pickOre, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
+import { SAMPLE_PROJECT, chooseProjectStart, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, pickOre, removeFirstProject, runStepCalc, seedSession, watchConsole } from './helpers';
 
 test.describe('Список проектов', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,6 +18,7 @@ test.describe('Список проектов', () => {
 
   test('кнопка создания заблокирована, пока не заполнены обязательные поля', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    await chooseProjectStart(page);
 
     const submit = page.getByRole('button', { name: 'Продолжить' });
     await expect(submit).toBeDisabled();
@@ -38,6 +39,7 @@ test.describe('Список проектов', () => {
    */
   test('заказчика можно ввести своего, а не только выбрать из списка', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
+    await chooseProjectStart(page);
 
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
     await dialog.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
