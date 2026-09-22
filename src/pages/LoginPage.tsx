@@ -112,10 +112,13 @@ export function LoginPage({ onLogin, defaultMode, onGoRegister, onGoForgot }: Lo
           ))}
         </div>
 
-        <Stack direction="row" gap="sm" justify="between" align="center" wrap>
-          <Button variant="secondary" iconStart="arrowLeft" onClick={() => setStage('credentials')}>
-            Назад
-          </Button>
+        {/* Только «Войти»: возврата к логину с паролем на этом шаге нет.
+            Шаг один и без выбора — из него либо входят, либо не входят,
+            и вторая кнопка рядом с главной предлагала бы отменить то,
+            что ещё не сделано. Опечатку в логине исправляют выходом
+            и новым входом: вход здесь демонстрационный и пускает любую
+            пару (см. «Что здесь мок» в CLAUDE.md). */}
+        <Stack direction="row" justify="end">
           <Button variant="primary" onClick={submit}>
             Войти
           </Button>

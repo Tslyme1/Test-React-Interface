@@ -24,7 +24,7 @@ test.describe('Вход', () => {
     console_.assertClean();
   });
 
-  test('второй шаг объясняет режимы и возвращает назад, не теряя введённое', async ({ page }) => {
+  test('второй шаг объясняет, чем режимы отличаются друг от друга', async ({ page }) => {
     const console_ = watchConsole(page);
     await page.goto('/');
 
@@ -34,10 +34,19 @@ test.describe('Вход', () => {
 
     await expect(page.getByRole('heading', { name: 'Режим работы' })).toBeVisible();
 
-    /* Карточка режима — не одна подпись: сводка и три коротких пункта,
-       ради которых шаг и отделён от логина с паролем. */
-    await expect(page.getByText('Три коротких шага и готовый отчёт.')).toBeVisible();
-    await expect(page.getByText('Ручной ввод — только крупность продукта')).toBeVisible();
+    /* Сводки построены одинаково и различаются одним словом — откуда
+       берутся числа расчёта. Это и есть разница между режимами, ради
+       которой шаг отделён от логина с паролем. */
+    await expect(page.getByText('Числа расчёта вводите вы.')).toBeVisible();
+    await expect(page.getByText('Числа расчёта берутся из справочника.')).toBeVisible();
+    await expect(page.getByText('Вручную — только крупность продукта')).toBeVisible();
+
+    /* Общее для обоих режимов в пунктах не упоминается: печать и чертёж
+       есть и там и там, и раньше они стояли в списке различий, ничего
+       не различая. */
+    for (const common of [/Печать/, /Чертёж/, /Excel/, /КОМПАС/]) {
+      await expect(page.getByText(common)).toHaveCount(0);
+    }
 
     /* Подписи группы на экране нет: заголовок уже назвал его «Режимом
        работы», и повтор под ним только удваивал высоту шапки. Скринридеру
@@ -45,8 +54,10 @@ test.describe('Вход', () => {
     await expect(page.getByText('Режим работы нового проекта')).toHaveCount(0);
     await expect(page.getByRole('radiogroup', { name: 'Режим работы нового проекта' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Назад' }).click();
-    await expect(page.getByLabel('Логин или почта')).toHaveValue(DEMO_USER.login);
+    /* Возврата к логину с паролем на этом шаге нет: из него либо входят,
+       либо не входят, и вторая кнопка рядом с главной предлагала бы
+       отменить то, что ещё не сделано. */
+    await expect(page.getByRole('button', { name: 'Назад' })).toHaveCount(0);
 
     console_.assertClean();
   });
