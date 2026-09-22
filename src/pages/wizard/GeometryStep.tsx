@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { Box, Button, Chip, Field, Input, Modal, Popover, Stack, Surface, Text } from '@uralmash/design-system';
+import { Box, Button, Chip, Field, Icon, Input, Modal, Popover, Stack, Surface, Text } from '@uralmash/design-system';
 import type { GeomData } from '@/types';
 import { CatalogPicker } from '@/components/CatalogPicker/CatalogPicker';
 import { CRUSHER_SPECS } from '@/data/crushers';
 import { ChamberScheme } from '@/components/ChamberScheme/ChamberScheme';
-import { zoneNodeKeys } from '@/components/ChamberScheme/ChamberScheme';
+import { calibrationZoneKey, dischargeGapKey, zoneNodeKeys } from '@/components/ChamberScheme/ChamberScheme';
 import type { ChamberHighlightKey, ChamberSchemeLayers } from '@/components/ChamberScheme/ChamberScheme';
 import { InlineSidebar } from '@/components/InlineSidebar/InlineSidebar';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
@@ -26,6 +26,24 @@ import styles from './GeometryStep.module.css';
  * в частокол. Реальные камеры укладываются в две-три зоны.
  */
 const MAX_ZONES = 9;
+
+/**
+ * Ближайший предок, который действительно прокручивается.
+ *
+ * Форма живёт в окне (`Modal`), и прокручивается не она сама, а
+ * содержимое окна; искать его по классу дизайн-системы нельзя — имя
+ * там собрано сборщиком. Поэтому ищем по поведению: первый предок,
+ * у которого содержимое выше самого блока и включена прокрутка.
+ */
+function scrollableAncestor(node: HTMLElement): HTMLElement | null {
+  let el: HTMLElement | null = node.parentElement;
+  while (el) {
+    const overflow = getComputedStyle(el).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
 
 const ZONE_COUNT_HINT =
   'Сколько зон между зоной входа и зоной калибровки. Для каждой вводятся своя длина и свои углы образующих конуса и чаши.';
@@ -160,13 +178,78 @@ export function GeometryStep({
   const [displayOpen, setDisplayOpen] = useState(false);
   const [fieldMode, setFieldMode] = useState<FieldMode>('input');
   const [deltaMode, setDeltaMode] = useState<DeltaMode>('show');
-  const [hoverZone, setHoverZone] = useState<ChamberHighlightKey | null>(null);
+  /**
+   * Что сейчас подсвечено и с какой стороны на это навели.
+   *
+   * Сторона важна не для вида, а для прокрутки: когда связь назвал
+   * чертёж, форму надо подкрутить к найденному полю (см. ниже), а когда
+   * навели на само поле — крутить некуда, оно и так под курсором.
+   */
+  const [hover, setHover] = useState<{ key: ChamberHighlightKey; from: 'field' | 'scheme' } | null>(null);
+  const hoverZone = hover?.key ?? null;
 
-  // Смена режима с «Подсветка участка» на «Только ввод» не должна оставлять
-  // на схеме подсветку от последнего наведения, случившегося ещё в старом режиме.
+  // Смена режима с «Подсветка участка» на «Только ввод» гасит подсветку,
+  // начатую полем: сама связь «поле → участок» в этом режиме выключена.
+  // Наведение на чертёж при этом работает всегда и не гасится.
   useEffect(() => {
-    if (fieldMode === 'input') setHoverZone(null);
+    if (fieldMode === 'input') setHover((h) => (h?.from === 'field' ? null : h));
   }, [fieldMode]);
+
+  /**
+   * Форма прокручивается к полю, которое назвал чертёж.
+   *
+   * Без этого связь работала только наполовину: чертёж честно обводил
+   * поле, но поле могло стоять за краем видимой части формы — и наведение
+   * не отвечало ни на что. Прокрутка минимальная: поле подводится к
+   * ближней кромке, а не к середине, чтобы соседние поля не перескакивали
+   * под курсором дальше, чем нужно.
+   *
+   * `smooth`: рывок на каждое наведение читался бы как подёргивание
+   * формы, а не как ответ на вопрос.
+   */
+  const fieldsRef = useRef<HTMLDivElement>(null);
+  /**
+   * Есть ли подсвеченное поле, которое не поместилось в видимую часть
+   * формы даже после прокрутки, и в какую сторону оно осталось. Бывает,
+   * когда один участок чертежа называет два поля из разных групп: обе
+   * сразу на экран не влезают, и надо сказать, куда крутить дальше.
+   */
+  const [offscreen, setOffscreen] = useState<'up' | 'down' | null>(null);
+
+  useEffect(() => {
+    setOffscreen(null);
+    if (!hover || hover.from !== 'scheme') return;
+
+    const root = fieldsRef.current;
+    if (!root) return;
+
+    const targets = Array.from(root.querySelectorAll<HTMLElement>(`[data-zone-field="${CSS.escape(hover.key)}"]`));
+    if (targets.length === 0) return;
+
+    const scroller = scrollableAncestor(root);
+    if (!scroller) return;
+
+    const view = scroller.getBoundingClientRect();
+    const rects = targets.map((node) => node.getBoundingClientRect());
+    const top = Math.min(...rects.map((r) => r.top));
+    const bottom = Math.max(...rects.map((r) => r.bottom));
+
+    /* Запас у кромки: поле, подведённое встык, выглядит обрезанным,
+       и по нему не видно, есть ли что-то дальше. */
+    const EDGE = 24;
+    let delta = 0;
+    if (top < view.top + EDGE) delta = top - view.top - EDGE;
+    else if (bottom > view.bottom - EDGE) {
+      /* Не дальше, чем нужно первому полю: иначе пара полей, которая
+         не помещается целиком, уводила бы верхнее за кромку. */
+      delta = Math.min(bottom - view.bottom + EDGE, top - view.top - EDGE);
+    }
+    if (delta !== 0) scroller.scrollBy({ top: delta, behavior: 'smooth' });
+
+    /* Что останется за кромкой, когда прокрутка доиграет. */
+    if (bottom - delta > view.bottom) setOffscreen('down');
+    else if (top - delta < view.top) setOffscreen('up');
+  }, [hover]);
 
   /**
    * Поле и его участок на схеме — связь в обе стороны.
@@ -177,18 +260,26 @@ export function GeometryStep({
    * на вопрос «где это на схеме», но не на обратный — «что за размер я
    * сейчас вижу», а он у незнакомого чертежа возникает первым.
    */
-  const zoned = (key: ChamberHighlightKey, children: ReactNode) =>
-    fieldMode === 'highlight' ? (
-      <div
-        className={hoverZone === key ? `${styles.zonedField} ${styles.zonedFieldActive}` : styles.zonedField}
-        onMouseEnter={() => setHoverZone(key)}
-        onMouseLeave={() => setHoverZone((z) => (z === key ? null : z))}
-      >
-        {children}
-      </div>
-    ) : (
-      children
-    );
+  const zoned = (key: ChamberHighlightKey, children: ReactNode) => (
+    /* Обёртка стоит всегда, а не только в режиме «Подсветка участка»:
+       по её `data-zone-field` поле находят и прокрутка, и тест связи
+       «поле ↔ участок», а подсветку от чертежа она принимает независимо
+       от режима — наведение на чертёж работает без настроек. Режимом
+       управляется только обратное направление: подсвечивать участок
+       при движении курсора по форме нужно не всем и не всегда. */
+    <div
+      data-zone-field={key}
+      className={hoverZone === key ? `${styles.zonedField} ${styles.zonedFieldActive}` : styles.zonedField}
+      {...(fieldMode === 'highlight'
+        ? {
+            onMouseEnter: () => setHover({ key, from: 'field' }),
+            onMouseLeave: () => setHover((h) => (h?.key === key ? null : h)),
+          }
+        : {})}
+    >
+      {children}
+    </div>
+  );
 
   /** Пояснение под полем: исходное + отклонение от значения на момент создания проекта, если оно есть и включён показ. */
   const hintWithDelta = (key: keyof GeomData, base?: string): string | undefined => {
@@ -306,7 +397,25 @@ export function GeometryStep({
 
   return (
     <div className={styles.split} ref={splitRef}>
-      <div className={styles.fields}>
+      <div className={styles.fields} ref={fieldsRef}>
+        {/* Подсвеченное поле не поместилось целиком — говорим, куда крутить.
+            Плашка липкая у кромки формы: она отвечает на вопрос «а где
+            остальное», который возникает ровно в тот момент, когда смотришь
+            на край. Указатель, а не кнопка: прокрутку к первому полю форма
+            уже сделала сама, дальше человек крутит сам и видит, куда. */}
+        {offscreen ? (
+          <div className={offscreen === 'up' ? `${styles.offscreen} ${styles.offscreenUp}` : `${styles.offscreen} ${styles.offscreenDown}`}>
+            <Surface level="overlay" radius="sm" padding="2xs" border={false}>
+              <Stack direction="row" gap="2xs" align="center">
+                <Icon name={offscreen === 'up' ? 'chevronUp' : 'chevronDown'} size="sm" />
+                <Text variant="caption" color="textMuted">
+                  Ещё одно поле этого участка {offscreen === 'up' ? 'выше' : 'ниже'}
+                </Text>
+              </Stack>
+            </Surface>
+          </div>
+        ) : null}
+
         <Stack gap="2xl" direction="column">
           {/* Заголовок и его действия — одной строкой, как в шапке панели
               схемы справа: подпись слева, управление справа, по центру
@@ -578,7 +687,7 @@ export function GeometryStep({
 
             <div className={styles.pair}>
             {zoned(
-              zoneNodeKeys(zoneCount - 1).bowl,
+              calibrationZoneKey(zoneCount),
               <Field label="Длина зоны l₂" hint={hintWithDelta('l2')} error={errors.l2} labelHint={<FieldHint>{GEOM_GLOSSARY.l2}</FieldHint>}>
                 {(props) => (
                   <Input {...props} fullWidth type="number" value={data.l2} onChange={(e) => onChange({ l2: e.target.value })} {...bounds('l2')} suffix="мм" />
@@ -586,8 +695,12 @@ export function GeometryStep({
               </Field>
             )}
 
+            {/* На тот же участок, что и длина этой зоны, а не на ключ `t2`:
+                такого участка на чертеже в обычных слоях нет вовсе, и поле
+                не подсвечивало ничего. Угол и длина — два параметра одного
+                участка, и подсвечиваться им правильно вместе. */}
             {zoned(
-              't2',
+              calibrationZoneKey(zoneCount),
               <Field label="Угол конуса на выходе β2" hint={hintWithDelta('b2')} error={errors.b2} labelHint={<FieldHint>{GEOM_GLOSSARY.b2}</FieldHint>}>
                 {(props) => (
                   <Input
@@ -608,31 +721,6 @@ export function GeometryStep({
               Угол чаши в этой зоне методика выводит сама: β₃ = β₂ − θ — образующие идут параллельно
               с поправкой на эксцентриситет, поэтому щель по всей зоне остаётся равной S₀.
             </Text>
-          </Stack>
-
-          <div className={styles.groupDivider} />
-
-          <Stack gap="md" direction="column">
-            <Text variant="headingSm">Нутация конуса</Text>
-
-            {zoned(
-              'theta',
-              <div className={`${styles.pair} ${styles.pairSingle}`}>
-                <Field label="Угол нутации θ" hint={hintWithDelta('theta')} error={errors.theta} labelHint={<FieldHint>{GEOM_GLOSSARY.theta}</FieldHint>}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      fullWidth
-                      type="number"
-                      value={data.theta}
-                      onChange={(e) => onChange({ theta: e.target.value })}
-                      suffix={angleUnitSuffix}
-                      {...bounds('theta')}
-                    />
-                  )}
-                </Field>
-              </div>
-            )}
           </Stack>
 
           <div className={styles.groupDivider} />
@@ -664,11 +752,36 @@ export function GeometryStep({
             </div>
 
             {zoned(
-              'gap4',
+              dischargeGapKey(zoneCount),
               <div className={`${styles.pair} ${styles.pairSingle}`}>
                 <Field label="Ширина разгрузочной щели S0" required hint={hintWithDelta('S0')} error={errors.S0} labelHint={<FieldHint>{GEOM_GLOSSARY.S0}</FieldHint>}>
                   {(props) => (
                     <Input {...props} fullWidth type="number" value={data.S0} onChange={(e) => onChange({ S0: e.target.value })} {...bounds('S0')} suffix="мм" />
+                  )}
+                </Field>
+              </div>
+            )}
+          </Stack>
+
+          <div className={styles.groupDivider} />
+
+          <Stack gap="md" direction="column">
+            <Text variant="headingSm">Нутация конуса</Text>
+
+            {zoned(
+              'theta',
+              <div className={`${styles.pair} ${styles.pairSingle}`}>
+                <Field label="Угол нутации θ" hint={hintWithDelta('theta')} error={errors.theta} labelHint={<FieldHint>{GEOM_GLOSSARY.theta}</FieldHint>}>
+                  {(props) => (
+                    <Input
+                      {...props}
+                      fullWidth
+                      type="number"
+                      value={data.theta}
+                      onChange={(e) => onChange({ theta: e.target.value })}
+                      suffix={angleUnitSuffix}
+                      {...bounds('theta')}
+                    />
                   )}
                 </Field>
               </div>
@@ -797,11 +910,15 @@ export function GeometryStep({
                    что подписывает чертёж словами. */
                 construction={buildOn && !normalOn}
                 highlight={hoverZone}
-                /* Связь в обратную сторону работает в том же режиме, что и
-                   прямая: «Подсветка участка» включает обе, «Только ввод» —
-                   ни одной, иначе один и тот же переключатель отвечал бы
-                   за половину поведения. */
-                onZoneHover={fieldMode === 'highlight' ? setHoverZone : undefined}
+                /* Наведение на чертёж называет поле всегда, без настроек.
+                   Раньше оно включалось тем же переключателем, что и
+                   подсветка участка от полей, — и чертёж по умолчанию
+                   молчал: поводить по нему курсором ничего не давало,
+                   хотя это первое, что с незнакомым чертежом делают.
+                   Режимом остался только обратный ход: подсветка участка
+                   при движении курсора по форме мешает, когда просто
+                   заполняешь поля. */
+                onZoneHover={(key) => setHover(key ? { key, from: 'scheme' } : null)}
               />
             </div>
 

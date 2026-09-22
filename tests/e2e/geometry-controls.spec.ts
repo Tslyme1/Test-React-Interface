@@ -138,17 +138,22 @@ test.describe('Шаг «Геометрия»: режим отображения'
     expect(await svg.innerHTML()).toBe(before);
   });
 
-  test('в режиме «Только ввод» наведение на схему не подсвечивает поля', async ({ page }) => {
-    // Обёртки с подсветкой в этом режиме нет вовсе — поле стоит в форме само по себе.
-    await expect(
-      page.getByLabel('Диаметр основания D').locator('xpath=ancestor::div[contains(@class,"zonedField")]')
-    ).toHaveCount(0);
+  /**
+   * Наведение на чертёж называет поле без всяких настроек.
+   *
+   * Раньше это включалось тем же переключателем, что и подсветка участка
+   * от полей, и чертёж по умолчанию молчал: поводить по нему курсором
+   * не давало ничего — при том что с незнакомым чертежом первым делом
+   * делают именно это. Режимом остался только обратный ход.
+   */
+  test('в режиме «Только ввод» наведение на схему всё равно называет поле', async ({ page }) => {
+    const wrapper = page
+      .getByLabel('Диаметр основания D')
+      .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
+    await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
 
-    const svg = page.getByTestId('chamber-scheme');
-    const before = await svg.innerHTML();
-    await svg.locator('[data-zone="dim-d"] line').first().hover({ force: true });
-    await page.waitForTimeout(150);
-    expect(await svg.innerHTML()).toBe(before);
+    await page.getByTestId('chamber-scheme').locator('[data-zone="dim-d"] line').first().hover({ force: true });
+    await expect(wrapper).toHaveClass(/zonedFieldActive/);
   });
 
   test('дельта: после расчёта правка поля показывает «было: …», выключение — прячет', async ({ page }) => {
@@ -249,5 +254,66 @@ test.describe('Шаг «Геометрия»: число зон и слои сх
     /* Раскрытие подписано величиной из расчёта: конус нарисован в рабочем
        положении, поэтому отрезок между парными узлами и есть S1. */
     await expect(svg.locator('title', { hasText: 'S₁ — раскрытие 40–10' })).not.toHaveCount(0);
+  });
+});
+
+/**
+ * Связь «поле формы ↔ участок чертежа» — то, на чём держится весь смысл
+ * схемы рядом с формой. Рвалась она тихо: ключ в форме записан руками,
+ * и промах в нём выглядел просто как «наведение ничего не делает».
+ * Так и было у S₀ (`gap4` при трёх зазорах на чертеже) и у угла β₂
+ * (`t2`, которого в обычных слоях нет вовсе).
+ */
+test.describe('Шаг «Геометрия»: связь формы и чертежа', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+    await openStepEditor(page);
+  });
+
+  test('каждое поле формы находит свой участок на чертеже', async ({ page }) => {
+    const { keys, missing } = await page.evaluate(() => {
+      const drawn = new Set(
+        Array.from(document.querySelectorAll('[data-testid="chamber-scheme"] [data-zone]')).map((el) =>
+          el.getAttribute('data-zone')
+        )
+      );
+      const keys = Array.from(document.querySelectorAll('[data-zone-field]'))
+        .map((el) => el.getAttribute('data-zone-field') ?? '')
+        .filter((key, i, all) => all.indexOf(key) === i);
+      return { keys, missing: keys.filter((key) => !drawn.has(key)) };
+    });
+
+    /* Проверка не должна проходить оттого, что полей не нашлось вовсе:
+       восемь групп формы дают по меньшей мере семь разных участков. */
+    expect(keys.length, 'поля с участками на чертеже не найдены вовсе').toBeGreaterThan(6);
+    expect(missing, `поля указывают на участки, которых на чертеже нет: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  test('S₀ и линия разгрузочной щели подсвечивают друг друга', async ({ page }) => {
+    const wrapper = page
+      .getByLabel('Ширина разгрузочной щели S0')
+      .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
+
+    /* Зазор разгрузки — последний по счёту, и его номер зависит от числа
+       зон: при двух зонах это `gap3`, а форма держала записанный руками
+       `gap4`, то есть не подсвечивала ничего. */
+    await page.getByTestId('chamber-scheme').locator('[data-zone="gap3"] line').first().hover({ force: true });
+    await expect(wrapper).toHaveClass(/zonedFieldActive/);
+  });
+
+  test('наведение на чертёж подкручивает форму к полю за кромкой экрана', async ({ page }) => {
+    const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
+    const field = page.getByLabel('Угол чаши β40');
+
+    /* Уводим начало формы из виду: поле зоны входа стоит первым, а участок
+       на чертеже остаётся на месте — панель со схемой липкая. */
+    await dialog.getByLabel('Коэффициент a').scrollIntoViewIfNeeded();
+    await expect(field).not.toBeInViewport();
+
+    await page.getByTestId('chamber-scheme').locator('[data-zone="nb0"]').first().hover({ force: true });
+
+    /* Прокрутка плавная — ждём её результат, а не мгновенное состояние. */
+    await expect(field).toBeInViewport({ timeout: 2000 });
   });
 });
