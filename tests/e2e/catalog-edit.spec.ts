@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { chooseProjectStart, seedSession } from './helpers';
+import { seedSession } from './helpers';
 import { catalogChanges, mergeCatalog, withCatalogEntry } from '../../src/domain/catalogEdits';
 import type { CatalogItem, SpecColumn } from '../../src/data/crushers';
 
@@ -284,7 +284,6 @@ test.describe('Подбор по параметрам: две половины �
 
   test('в инженерном режиме свою дробилку заводят прямо в окне нового проекта', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
-    await chooseProjectStart(page);
     const dialog = page.getByRole('dialog', { name: 'Новый проект' });
 
     await dialog.getByRole('button', { name: 'Новая' }).click();
@@ -314,7 +313,6 @@ test.describe('Подбор по параметрам: две половины �
     await page.getByRole('button', { name: 'Сменить' }).click();
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
-    await chooseProjectStart(page);
 
     const engineering = page.getByRole('dialog', { name: 'Новый проект' });
     await engineering.getByLabel(/^Поиск:/).fill('опытная');

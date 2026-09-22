@@ -14,7 +14,6 @@ import type { Project, StepKey } from '@/types';
 import { REPORT_BLOCKS, calculatedSteps, reportTitle, resolveReportBlocks } from '@/domain/reportConfig';
 import type { ReportMode } from '@/domain/reportConfig';
 import { STEP_KEYS, STEP_TITLES } from '@/domain/steps';
-import { NEW_DESIGN_LABEL } from '@/domain/projectLabels';
 import { stepSummary } from '@/domain/stepSummary';
 import { exportProjectReport } from '@/domain/exportReport';
 import { printProjectReport } from '@/domain/printProjectReport';
@@ -234,7 +233,7 @@ export function ReportBuilderModal({ open, onClose, project }: ReportBuilderModa
                     <Stack direction="row" wrap gap="xl">
                       <ReportMetaField label="Код проекта" value={project.code} />
                       <ReportMetaField label="Заказчик" value={project.customer} />
-                      <ReportMetaField label="Дробилка" value={project.crusherName || NEW_DESIGN_LABEL} />
+                      <ReportMetaField label="Дробилка" value={project.crusherName || '—'} />
                       <ReportMetaField label="Проба руды" value={project.ore || '—'} />
                       <ReportMetaField label="Исполнитель" value={project.executor} />
                     </Stack>

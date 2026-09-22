@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { chooseProjectStart, seedSession } from './helpers';
+import { seedSession } from './helpers';
 
 /**
  * Заказчики — фильтры по исполнителю и тегу (свод по всем проектам этого
@@ -35,8 +35,6 @@ test.describe('Заказчики — фильтры и создание', () =>
   test('«Новый заказчик» открывает создание проекта', async ({ page }) => {
     await page.getByRole('button', { name: 'Новый заказчик' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
-    // Окно открывается развилкой — поля лежат за ответом на неё.
-    await chooseProjectStart(page);
     await expect(page.getByLabel('Название проекта')).toBeVisible();
   });
 });

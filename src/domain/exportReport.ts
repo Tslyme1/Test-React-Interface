@@ -14,7 +14,6 @@ import {
 import { resolveReportBlocks, reportTitle } from './reportConfig';
 import type { ReportBlock, ReportConfig } from './reportConfig';
 import { stepSummary } from './stepSummary';
-import { NEW_DESIGN_LABEL } from './projectLabels';
 
 /** Разделитель `;`, а не `,`: с русской локалью Excel открывает CSV этим разделителем сам, без диалога импорта. */
 const DELIMITER = ';';
@@ -187,7 +186,7 @@ export function exportProjectReport(project: Project, config: ReportConfig): voi
       csvRow(['Проект', project.name]) +
       csvRow(['Код проекта', project.code]) +
       csvRow(['Заказчик', project.customer]) +
-      csvRow(['Дробилка', project.crusherName || NEW_DESIGN_LABEL]) +
+      csvRow(['Дробилка', project.crusherName || '—']) +
       csvRow(['Проба руды', project.ore || '—']) +
       csvRow(['Исполнитель', project.executor]) +
       csvRow([]);

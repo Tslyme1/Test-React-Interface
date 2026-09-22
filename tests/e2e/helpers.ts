@@ -130,28 +130,13 @@ export const SAMPLE_PROJECT: NewProject = {
 };
 
 /**
- * Отвечает на развилку «с чего начинается расчёт» — первый экран окна
- * нового проекта. Окно должно быть уже открыто.
- */
-export async function chooseProjectStart(page: Page, kind: 'catalog' | 'blank' = 'catalog') {
-  const label = kind === 'catalog' ? 'Расчёт дробилки из каталога' : 'Новое проектирование';
-  await page.getByRole('dialog').getByRole('button', { name: label }).click();
-}
-
-/**
  * Заполняет модалку нового проекта. Модалка должна быть уже открыта.
  *
- * Сначала — ответ на развилку: считаем машину из каталога. Дальше тело
- * окна занимает каталог дробилок, название и заказчик стоят в футере.
+ * Тело окна — каталог дробилок, название и заказчик стоят в футере.
  * Пробы руды здесь нет: её выбирают на шаге «Грансостав».
  */
 export async function fillNewProjectForm(page: Page, project = SAMPLE_PROJECT) {
   const dialog = page.getByRole('dialog');
-
-  /* Развилка — только если она ещё на экране: часть сценариев отвечает
-     на неё сама, чтобы добраться до каталога раньше заполнения полей. */
-  const start = dialog.getByRole('button', { name: 'Расчёт дробилки из каталога' });
-  if (await start.count()) await start.click();
 
   await dialog.getByRole('button', { name: project.crusher, exact: true }).click();
 
