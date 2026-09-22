@@ -69,6 +69,29 @@ export function zoneNodeKeys(index: number): { bowl: ChamberHighlightKey; cone: 
   return { bowl: `nb${index + 1}`, cone: `nc${index + 1}` };
 }
 
+/**
+ * Участок зоны калибровки — последний участок камеры, от последнего узла
+ * дробления к разгрузочной кромке. Его длина и есть l₂.
+ */
+export function calibrationZoneKey(zoneCount: number): ChamberHighlightKey {
+  return `nb${zoneCount}`;
+}
+
+/**
+ * Разгрузочный зазор — последний по счёту: его ширина и есть S₀.
+ *
+ * Считается от числа зон, а не берётся константой. Узлов в камере
+ * «зоны + 2», значит и зазоров столько же, и у чертежа с двумя зонами
+ * последний — `gap3`. Форма держала здесь записанный руками `gap4`,
+ * то есть указывала на зазор, который существует только при трёх зонах:
+ * поле S₀ и линия щели на чертеже друг друга не подсвечивали вовсе.
+ * Ловится тестом `chamber.spec.ts` — «каждое поле формы находит свой
+ * участок на чертеже».
+ */
+export function dischargeGapKey(zoneCount: number): ChamberHighlightKey {
+  return `gap${zoneCount + 1}`;
+}
+
 export type ChamberSchemeProps = {
   /** Исходные данные этапа 1 — из них считается и профиль, и чертёж. */
   input: ChamberProfileInput;
