@@ -200,6 +200,36 @@ export function WizardPage({
     }
   };
 
+  /**
+   * Переименование машины — всегда новый проект, а не правка на месте.
+   *
+   * Камеру правят под конкретную машину; другое имя означает, что это
+   * уже другая разработка, и писать его поверх прежнего проекта значило
+   * бы задним числом объявить, что расчёт всегда был про неё. В отличие
+   * от смены дробилки (`applyOrFork`) окна «Шаг уже посчитан» здесь нет:
+   * про новый проект сказано прямо в окне переименования, до нажатия.
+   *
+   * Посчитанное сбрасывается целиком: изменилась машина, к которой
+   * относился весь расчёт, — держать её результаты отмеченными нельзя.
+   */
+  const renameCrusher = (crusherName: string) => {
+    const forked = onForkProject(project.id, {
+      crusherName,
+      crusherNames: [crusherName],
+      /* Имя проекта идёт за машиной, только если оно и было её именем,
+         то есть подставлено при создании. Своё, написанное руками,
+         переименование машины не трогает. */
+      name: project.name === project.crusherName ? crusherName : project.name,
+      calc: [false, false, false],
+      calcDates: [null, null, null],
+      calcSnapshot: [null, null, null],
+    });
+
+    if (!forked) return;
+    onOpenProject(forked);
+    showToast(`Создан новый проект «${forked.name}» с дробилкой «${crusherName}»`);
+  };
+
   const pickOre = (ore: string) => {
     setOrePickerOpen(false);
     setStep(1);
@@ -356,6 +386,7 @@ export function WizardPage({
             baseline={project.initialData.geom}
             crusherName={project.crusherName}
             onChangeCrusher={(crusherName) => applyOrFork(0, { crusherName })}
+            onRenameCrusher={renameCrusher}
             actionsSlot={headerSlot}
             objectSlot={objectSlot}
           />

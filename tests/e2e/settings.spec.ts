@@ -15,7 +15,7 @@ test.describe('Настройки', () => {
   });
 
   test('по умолчанию — инженерный режим, «Новый проект» открывает обычную модалку', async ({ page }) => {
-    await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('button', { name: 'Режим работы нового проекта' })).toContainText('Инженерный');
 
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
@@ -23,7 +23,8 @@ test.describe('Настройки', () => {
   });
 
   test('переключение на «Упрощённый» меняет, что открывает «Новый проект»', async ({ page }) => {
-    await page.getByRole('option', { name: 'Упрощённый' }).click();
+    await page.getByRole('button', { name: 'Режим работы нового проекта' }).click();
+    await page.getByRole('radio', { name: 'Упрощённый' }).check();
     // Смена режима спрашивает подтверждение — затрагивает следующий новый проект.
     await page.getByRole('button', { name: 'Сменить' }).click();
 
@@ -32,17 +33,41 @@ test.describe('Настройки', () => {
     await expect(page.getByRole('dialog', { name: 'Выбор дробилки' })).toBeVisible();
   });
 
-  test('режим работы — строки с описанием, а не сегмент-контрол', async ({ page }) => {
-    await expect(page.getByText('Числа расчёта вводите вы.')).toBeVisible();
-    await expect(page.getByText('Числа расчёта подставляются сами.')).toBeVisible();
+  /**
+   * Режим меняют из окна с теми же карточками, что на втором шаге входа.
+   * До этого в настройках стояли две строки списка с одной подписью
+   * на режим — то есть менявший режим отсюда видел о нём вдвое меньше,
+   * чем при входе.
+   */
+  test('режим меняется в окне с карточками, и до «Сменить» ничего не меняется', async ({ page }) => {
+    const field = page.getByRole('button', { name: 'Режим работы нового проекта' });
+    await expect(field).toContainText('Инженерный');
 
-    await page.getByRole('option', { name: 'Упрощённый' }).click();
-    // Смена режима спрашивает подтверждение — до него выбор в списке не меняется.
-    await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'false');
-    await page.getByRole('button', { name: 'Сменить' }).click();
+    await field.click();
+    const dialog = page.getByRole('dialog', { name: 'Сменить режим работы' });
+    await expect(dialog.getByText('Данные расчёта редактируются вручную')).toBeVisible();
+    await expect(dialog.getByText('Данные расчёта составляются автоматически')).toBeVisible();
 
-    await expect(page.getByRole('option', { name: 'Упрощённый' })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('option', { name: 'Инженерный' })).toHaveAttribute('aria-selected', 'false');
+    // Окно открывается на текущем режиме, а не пустым.
+    await expect(dialog.getByRole('radio', { name: 'Инженерный' })).toBeChecked();
+
+    await dialog.getByRole('radio', { name: 'Упрощённый' }).check();
+    // Пока окно не подтверждено, поле снаружи показывает прежний режим.
+    await expect(field).toContainText('Инженерный');
+
+    await dialog.getByRole('button', { name: 'Сменить' }).click();
+    await expect(field).toContainText('Упрощённый');
+  });
+
+  test('окно режима можно закрыть, ничего не поменяв', async ({ page }) => {
+    const field = page.getByRole('button', { name: 'Режим работы нового проекта' });
+    await field.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Сменить режим работы' });
+    await dialog.getByRole('radio', { name: 'Упрощённый' }).check();
+    await dialog.getByRole('button', { name: 'Отмена' }).click();
+
+    await expect(field).toContainText('Инженерный');
   });
 
   test('тема — по умолчанию «Как в системе», выбор переживает перезагрузку', async ({ page }) => {

@@ -97,6 +97,9 @@ for (const scheme of ['light', 'dark'] as const) {
       await goToWizardStep(page, /Руда/);
       await pickOre(page);
       await runStepCalc(page);
+      // Отчёт собирается на последнем этапе — туда и идём.
+      await goToWizardStep(page, /Продукт/);
+      await runStepCalc(page);
       await page.getByRole('button', { name: 'Отчёт по проекту' }).click();
       await expect(page.getByRole('dialog', { name: 'Отчёт по проекту' })).toBeVisible();
       await shot(page, `07b-report-builder-${scheme}`);

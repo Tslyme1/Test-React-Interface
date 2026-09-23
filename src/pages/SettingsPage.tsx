@@ -1,11 +1,12 @@
-import { Fragment, useState } from 'react';
-import { Button, Cell, Icon, Modal, Stack, Text } from '@uralmash/design-system';
+import { useState } from 'react';
+import { Button, Cell, Field, Icon, Modal, Stack, Text } from '@uralmash/design-system';
 import type { ToastTone } from '@uralmash/design-system';
+import { ModeChoice } from '@/components/ModeChoice/ModeChoice';
 import { OptionCell } from '@/components/OptionCell/OptionCell';
 import { HowToModal } from '@/components/HowToModal/HowToModal';
 import type { FontScalePreference } from '@/state/useFontScale';
 import type { ThemePreference } from '@/state/useTheme';
-import { MODE_STEP_DIFF, WORK_MODES, workMode } from '@/data/workModes';
+import { workMode } from '@/data/workModes';
 import type { ProjectMode, User } from '@/types';
 import styles from './SettingsPage.module.css';
 
@@ -70,21 +71,27 @@ export function SettingsPage({
   ];
 
   /**
-   * Смена режима не пишется по первому клику — режим определяет форму всех
-   * трёх шагов визарда, и случайный клик посреди списка стоил бы дороже,
-   * чем лишнее окно подтверждения. Подтверждение хранит выбранный вариант
-   * отдельно от применённого — `OptionCell` в списке при этом остаётся
-   * отмечен на прежнем значении, пока подтверждение не пройдено.
+   * Выбор внутри окна, ещё не применённый. `null` — окно закрыто.
+   *
+   * Отдельно от применённого режима, потому что окно открывается на
+   * текущем значении и до «Сменить» ничего не меняет: режим определяет
+   * форму всех трёх шагов визарда, и уехать в другой режим, просто
+   * заглянув в карточки, нельзя.
    */
   const [pendingMode, setPendingMode] = useState<ProjectMode | null>(null);
   const [howToOpen, setHowToOpen] = useState(false);
 
   const confirmModeChange = () => {
     if (!pendingMode) return;
+    /* Открыли окно, посмотрели и закрыли «Сменить», ничего не выбрав, —
+       менять нечего, и сообщать об изменении тем более. */
+    if (pendingMode === mode) {
+      setPendingMode(null);
+      return;
+    }
     onModeChange(pendingMode);
     setPendingMode(null);
-    const label = workMode(pendingMode).label;
-    showToast(`Режим работы изменён на «${label}»`, 'success');
+    showToast(`Режим работы изменён на «${workMode(pendingMode).label}»`, 'success');
   };
 
   return (
@@ -155,22 +162,26 @@ export function SettingsPage({
               </Stack>
             </Stack>
 
-            <Stack gap="sm" direction="column">
-              <Text variant="label" color="textMuted">
-                Режим работы нового проекта
-              </Text>
-              <Stack direction="column" gap="none">
-                {WORK_MODES.map((option) => (
-                  <OptionCell
-                    key={option.value}
-                    label={option.label}
-                    description={option.summary}
-                    checked={mode === option.value}
-                    onSelect={() => setPendingMode(option.value)}
-                  />
-                ))}
-              </Stack>
-            </Stack>
+            {/* Одно поле, а не две строки на всю ширину: режим меняют
+                редко, и развёрнутый выбор занимал в списке настроек
+                столько же места, сколько тема и кегль вместе. Разбор,
+                чем режимы отличаются, переехал в окно — там для него
+                есть место, и это те же карточки, что при входе, а не
+                вторая, более короткая версия объяснения. */}
+            <Field label="Режим работы нового проекта" hint="Затрагивает только следующий новый проект">
+              {(props) => (
+                <Button
+                  {...props}
+                  variant="secondary"
+                  fullWidth
+                  iconEnd="chevronDown"
+                  aria-haspopup="dialog"
+                  onClick={() => setPendingMode(mode)}
+                >
+                  {workMode(mode).label}
+                </Button>
+              )}
+            </Field>
 
             <div>
               <Button variant="secondary" iconStart="logOut" onClick={onLogout}>
@@ -184,8 +195,11 @@ export function SettingsPage({
       <Modal
         open={pendingMode !== null}
         onClose={() => setPendingMode(null)}
-        title="Сменить режим работы?"
-        size="sm"
+        /* Заголовок окна — действие, а не имя поля под ним: одинаковая
+           строка на поле, окне и группе внутри него означала бы для
+           скринридера три разных элемента с одним именем. */
+        title="Сменить режим работы"
+        size="lg"
         footer={
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setPendingMode(null)}>
@@ -198,32 +212,15 @@ export function SettingsPage({
         }
       >
         <Stack gap="lg" direction="column">
-          {/* Не абзац словами, а построчная сверка: видно, что именно
-              меняется на каждом шаге расчёта. Колонка режима, в который
-              переходим, — обычным цветом, прежняя — приглушённой. */}
-          <div className={styles.modeCompare}>
-            <span />
-            <Text variant="label" color={pendingMode === 'engineering' ? 'text' : 'textMuted'}>
-              Инженерный
-            </Text>
-            <Text variant="label" color={pendingMode === 'simplified' ? 'text' : 'textMuted'}>
-              Упрощённый
-            </Text>
-
-            {MODE_STEP_DIFF.map((row) => (
-              <Fragment key={row.step}>
-                <Text variant="label" color="textMuted">
-                  {row.step}
-                </Text>
-                <Text variant="bodySm" color={pendingMode === 'engineering' ? 'text' : 'textMuted'}>
-                  {row.engineering}
-                </Text>
-                <Text variant="bodySm" color={pendingMode === 'simplified' ? 'text' : 'textMuted'}>
-                  {row.simplified}
-                </Text>
-              </Fragment>
-            ))}
-          </div>
+          {/* Те же карточки, что на втором шаге входа: выбор один и тот же,
+              и объяснять его двумя разными способами значило бы дать два
+              разных обещания. */}
+          <ModeChoice
+            name="settings-mode"
+            label="Режим работы"
+            value={pendingMode ?? mode}
+            onChange={setPendingMode}
+          />
 
           <Text variant="bodySm" color="textMuted">
             Затрагивает только следующий новый проект — уже созданные останутся в своём режиме.

@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import { Button, Field, Icon, Input, Link, Radio, Stack, Text } from '@uralmash/design-system';
-import { ModeIllustration } from '@/components/ModeIllustration/ModeIllustration';
-import { WORK_MODES } from '@/data/workModes';
+import { Button, Field, Input, Link, Stack, Text } from '@uralmash/design-system';
+import { ModeChoice } from '@/components/ModeChoice/ModeChoice';
 import type { ProjectMode } from '@/types';
 import { AuthShell } from './AuthShell';
-import styles from './LoginPage.module.css';
 
 export type LoginPageProps = {
   onLogin: (login: string, password: string, mode: ProjectMode) => string | null;
@@ -59,58 +57,12 @@ export function LoginPage({ onLogin, defaultMode, onGoRegister, onGoForgot }: Lo
   if (stage === 'mode') {
     return (
       <AuthShell title="Режим работы" wide>
-        {/*
-          Не `RadioGroup` системы: она рисует видимую `legend`, а здесь
-          это был бы третий раз одно и то же — заголовок экрана уже
-          говорит «Режим работы», и подпись под ним только удваивала
-          высоту шапки. Группе нужна подпись для скринридера, а не на
-          экране; варианта со скрытой `legend` в системе нет — это заявка
-          в неё, а не повод оставить дубль. Взаимоисключающими варианты
-          делает общий `name` у самих переключателей, и роль группы здесь
-          объявлена явно.
-        */}
-        <div role="radiogroup" aria-label="Режим работы нового проекта" className={styles.modes}>
-          {WORK_MODES.map((option) => (
-            <label key={option.value} className={styles.card} htmlFor={`login-mode-${option.value}`}>
-              {/* Переключатель лежит в левом верхнем углу самой картинки:
-                  так отметка стоит на том, что выбирают, а не строкой ниже,
-                  и карточка читается сверху вниз — что это, как называется,
-                  что даёт. Без `label` у него самого: подпись стоит рядом
-                  обычным текстом, потому что `<label>` здесь — вся карточка,
-                  а вложить подпись в подпись нельзя. */}
-              <div className={styles.figure}>
-                <ModeIllustration mode={option.value} />
-                <span className={styles.radio}>
-                  <Radio
-                    id={`login-mode-${option.value}`}
-                    name="login-mode"
-                    value={option.value}
-                    checked={mode === option.value}
-                    onChange={() => setMode(option.value)}
-                  />
-                </span>
-              </div>
-
-              <Stack direction="column" gap="2xs">
-                <Text variant="headingSm">{option.label}</Text>
-                <Text variant="bodySm" color="textMuted">
-                  {option.summary}
-                </Text>
-              </Stack>
-
-              <Stack direction="column" gap="xs">
-                {option.points.map((point) => (
-                  <div key={point} className={styles.point}>
-                    <Icon name="check" size="sm" />
-                    <Text variant="bodySm" color="textMuted">
-                      {point}
-                    </Text>
-                  </div>
-                ))}
-              </Stack>
-            </label>
-          ))}
-        </div>
+        <ModeChoice
+          name="login-mode"
+          label="Режим работы нового проекта"
+          value={mode}
+          onChange={setMode}
+        />
 
         {/* Только «Войти»: возврата к логину с паролем на этом шаге нет.
             Шаг один и без выбора — из него либо входят, либо не входят,

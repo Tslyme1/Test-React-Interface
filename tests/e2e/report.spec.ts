@@ -10,20 +10,34 @@ import { createProject, goToWizardStep, pickOre, runStepCalc, seedSession, watch
  * она открывает окно браузера и уходит в систему печати.
  */
 test.describe('Отчёт по проекту', () => {
+  /**
+   * Отчёт собирается на последнем этапе — значит к нему надо дойти,
+   * посчитав все три. Раньше сценарии открывали отчёт с первого этапа,
+   * но кнопка там предлагала итог посреди работы и собирала заведомо
+   * неполный документ (см. `StepActions`).
+   */
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
     await runStepCalc(page);
+    await goToWizardStep(page, /Руда/);
+    await pickOre(page);
+    await runStepCalc(page);
+    await goToWizardStep(page, /Продукт/);
+    await runStepCalc(page);
   });
 
+  /** Открывает окно отчёта, при необходимости дойдя до этапа «Продукт». */
   const openReport = async (page: import('@playwright/test').Page) => {
-    await page.getByRole('button', { name: 'Отчёт по проекту' }).click();
+    const button = page.getByRole('button', { name: 'Отчёт по проекту' });
+    if ((await button.count()) === 0) await goToWizardStep(page, /Продукт/);
+    await button.click();
     const dialog = page.getByRole('dialog', { name: 'Отчёт по проекту' });
     await expect(dialog).toBeVisible();
     return dialog;
   };
 
-  test('открывается автоматическим и показывает разделы посчитанного этапа', async ({ page }) => {
+  test('открывается автоматическим и собирает разделы всех посчитанных этапов', async ({ page }) => {
     const console_ = watchConsole(page);
     const dialog = await openReport(page);
 
@@ -44,9 +58,15 @@ test.describe('Отчёт по проекту', () => {
       await expect(dialog.getByRole('heading', { name: title })).toBeVisible();
     }
 
-    /* Непосчитанных этапов в отчёте нет — ни разделом, ни отметкой:
-       обещать в документе то, чего ещё не посчитали, нельзя. */
-    await expect(dialog.getByRole('heading', { name: 'Продукт дробления' })).toHaveCount(0);
+    // И разделы остальных этапов — отчёт по проекту, а не по этапу.
+    for (const title of [
+      'Характеристика гранулометрического состава',
+      'Суммарные характеристики крупности питания',
+      'Продукт дробления',
+      'Суммарные характеристики крупности продукта',
+    ]) {
+      await expect(dialog.getByRole('heading', { name: title })).toBeVisible();
+    }
 
     console_.assertClean();
   });
@@ -117,10 +137,6 @@ test.describe('Отчёт по проекту', () => {
    * и график, которых в старой печати по этапам не было вовсе.
    */
   test('печать уносит с собой весь собранный документ — с чертежом и графиком', async ({ page }) => {
-    await goToWizardStep(page, /Руда/);
-    await pickOre(page);
-    await runStepCalc(page);
-
     await page.addInitScript(() => {
       const chunks: string[] = [];
       (window as unknown as { __printed: string[] }).__printed = chunks;
@@ -148,17 +164,4 @@ test.describe('Отчёт по проекту', () => {
     expect(printed).toMatch(/<style|<link[^>]+stylesheet/);
   });
 
-  test('посчитанный следующий этап входит в автоматический отчёт сам', async ({ page }) => {
-    await goToWizardStep(page, /Руда/);
-    await pickOre(page);
-    await runStepCalc(page);
-
-    const dialog = await openReport(page);
-
-    // Разделы «Руды» появились без единого действия в составе отчёта.
-    await expect(dialog.getByRole('heading', { name: 'Характеристика гранулометрического состава' })).toBeVisible();
-    await expect(dialog.getByRole('heading', { name: 'Суммарные характеристики крупности питания' })).toBeVisible();
-    // И разделы «Дробилки» никуда не делись.
-    await expect(dialog.getByRole('heading', { name: 'Параметры камеры дробления' })).toBeVisible();
-  });
 });

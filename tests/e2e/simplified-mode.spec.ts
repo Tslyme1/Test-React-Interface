@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { seedSession, watchConsole } from './helpers';
+import { seedSession, switchMode, watchConsole } from './helpers';
 
 /**
  * Упрощённый режим — одно непрерывное окно (`SimplifiedProjectModal`) от
@@ -9,11 +9,9 @@ import { seedSession, watchConsole } from './helpers';
  */
 
 async function switchToSimplified(page: Page) {
-  await page.getByRole('button', { name: 'Настройки' }).click();
-  await page.getByRole('option', { name: 'Упрощённый' }).click();
   // Смена режима спрашивает подтверждение — затрагивает следующий новый
-  // проект, и случайный клик посреди списка стоил бы дороже.
-  await page.getByRole('button', { name: 'Сменить' }).click();
+  // проект, и случайный выбор стоил бы дороже лишнего окна.
+  await switchMode(page, 'Упрощённый');
   await page.getByRole('button', { name: 'Проекты' }).click();
 }
 

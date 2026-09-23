@@ -3,6 +3,9 @@ import { Stack, Surface, Text } from '@uralmash/design-system';
 import logoSrc from '@/uztm-logo.png';
 import styles from './AuthShell.module.css';
 
+/** Полное имя программы. Показывается на экране входа — больше его нигде не видно. */
+const PRODUCT_NAME = 'Программный комплекс моделирования и расчёта конусных дробилок КСД/КМД';
+
 export type AuthShellProps = {
   title: string;
   /**
@@ -28,6 +31,15 @@ export function AuthShell({ title, subtitle, wide = false, children }: AuthShell
           <Stack gap="xl" direction="column">
             <Stack gap="xs" direction="column" align="center">
               <img className={styles.logo} src={logoSrc} alt="УЗТМ" />
+              {/* Полное имя программы — под знаком и над заголовком шага.
+                  Знак называет завод, заголовок — что сейчас делают, а чем
+                  занята сама программа, до этого на экране входа не было
+                  сказано нигде. Приглушённой строкой, а не заголовком:
+                  два заголовка подряд спорили бы за внимание, а это
+                  подпись под маркой, а не действие. */}
+              <Text variant="bodySm" color="textMuted" align="center">
+                {PRODUCT_NAME}
+              </Text>
               <Text variant="headingMd" align="center">
                 {title}
               </Text>

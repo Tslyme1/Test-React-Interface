@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { seedSession } from './helpers';
+import { seedSession, switchMode } from './helpers';
 import { catalogChanges, mergeCatalog, withCatalogEntry } from '../../src/domain/catalogEdits';
 import type { CatalogItem, SpecColumn } from '../../src/data/crushers';
 
@@ -71,9 +71,7 @@ async function pickByName(dialog: Locator, name: string) {
 }
 
 async function openCrusherStep(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'Настройки' }).click();
-  await page.getByRole('option', { name: 'Упрощённый' }).click();
-  await page.getByRole('button', { name: 'Сменить' }).click();
+  await switchMode(page, 'Упрощённый');
   await page.getByRole('button', { name: 'Проекты' }).click();
   await page.getByRole('button', { name: 'Новый проект' }).first().click();
 
@@ -308,9 +306,7 @@ test.describe('Подбор по параметрам: две половины �
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     // Справочник один на приложение — режим его не делит.
-    await page.getByRole('button', { name: 'Настройки' }).click();
-    await page.getByRole('option', { name: 'Инженерный' }).click();
-    await page.getByRole('button', { name: 'Сменить' }).click();
+    await switchMode(page, 'Инженерный');
     await page.getByRole('button', { name: 'Проекты' }).click();
     await page.getByRole('button', { name: 'Новый проект' }).first().click();
 
