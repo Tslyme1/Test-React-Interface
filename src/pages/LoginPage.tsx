@@ -170,13 +170,19 @@ export function LoginPage({ onLogin, defaultMode, onGoRegister, onGoForgot }: Lo
       <Button variant="primary" fullWidth iconEnd="arrowRight" disabled={!filled} onClick={goToMode}>
         Продолжить
       </Button>
-      <Button variant="secondary" fullWidth onClick={onGoRegister}>
-        Нет аккаунта? Зарегистрироваться
-      </Button>
 
-      <Text variant="caption" color="textMuted" align="center">
-        Демо-доступы: ivanov / 1234, admin / admin
-      </Text>
+      {/* Вопрос вынесен из подписи кнопки наверх: подпись кнопки называет
+          действие, а «Нет аккаунта?» — это условие, при котором кнопку
+          вообще стоит нажимать. Вместе они читались как одно длинное
+          действие, хотя половина строки к нажатию не относится. */}
+      <Stack gap="2xs" direction="column">
+        <Text variant="caption" color="textMuted" align="center">
+          Нет аккаунта?
+        </Text>
+        <Button variant="secondary" fullWidth onClick={onGoRegister}>
+          Зарегистрироваться
+        </Button>
+      </Stack>
     </AuthShell>
   );
 }
