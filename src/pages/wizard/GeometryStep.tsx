@@ -72,6 +72,12 @@ export type GeometryStepProps = {
   baseline: GeomData;
   crusherName: string;
   onChangeCrusher: (name: string) => void;
+  /**
+   * Новое имя машины. Переименование не правит проект на месте: машина
+   * с другим именем и правленой камерой — это уже другая разработка,
+   * и она заводится отдельным проектом (см. `WizardPage`).
+   */
+  onRenameCrusher: (name: string) => void;
   /** Узел у заголовка окна — туда уходит «Отображение». */
   actionsSlot?: HTMLElement | null;
   /** Узел в футере окна — туда уходит плашка выбранной дробилки. */
@@ -84,6 +90,7 @@ export function GeometryStep({
   baseline,
   crusherName,
   onChangeCrusher,
+  onRenameCrusher,
   actionsSlot,
   objectSlot,
 }: GeometryStepProps) {
@@ -170,6 +177,13 @@ export function GeometryStep({
 
   // ── смена дробилки ──
   const [crusherPickerOpen, setCrusherPickerOpen] = useState(false);
+  /**
+   * Черновик имени машины. `null` — окно переименования закрыто.
+   * Черновик, а не правка на месте: имя применяется только по
+   * «Сохранить», потому что сохранение здесь заводит новый проект.
+   */
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
+  const renameReady = renameDraft !== null && renameDraft.trim().length > 0 && renameDraft.trim() !== crusherName;
   /* Справочник с правками пользователя: заведённая в упрощённом режиме
      машина обязана находиться и здесь — справочник один на приложение. */
   const crusherCatalog = useUserCatalog('crushers');
@@ -432,13 +446,24 @@ export function GeometryStep({
               <Text variant="bodySm" color="textMuted">
                 Дробилка
               </Text>
+              {/* Два разных действия над машиной, поэтому и значки разные:
+                  «сменить» открывает каталог (`folder`), «переименовать»
+                  правит имя (`pencil`). Один `pencil` на оба читался бы
+                  как одно действие, случайно продублированное. */}
               <Chip
                 size="sm"
                 icon="fileText"
-                action={{ icon: 'pencil', label: 'Сменить дробилку', onClick: () => setCrusherPickerOpen(true) }}
+                action={{ icon: 'folder', label: 'Сменить дробилку', onClick: () => setCrusherPickerOpen(true) }}
               >
                 {crusherName}
               </Chip>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon="pencil"
+                aria-label="Переименовать дробилку"
+                onClick={() => setRenameDraft(crusherName)}
+              />
             </Stack>
           )}
 
@@ -942,6 +967,57 @@ export function GeometryStep({
             </div>
         </div>
       </InlineSidebar>
+
+      {/*
+        Переименование машины — не правка поля, а развилка проекта.
+        Камеру правят под конкретную машину, и если ей дали другое имя,
+        то это уже другая разработка: писать новое имя поверх прежнего
+        проекта значило бы задним числом объявить, что расчёт всегда был
+        про неё. Поэтому «Сохранить» здесь заводит новый проект — и окно
+        говорит об этом до нажатия, а не тостом после.
+      */}
+      <Modal
+        open={renameDraft !== null}
+        onClose={() => setRenameDraft(null)}
+        title="Название дробилки"
+        size="sm"
+        footer={
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setRenameDraft(null)}>
+              Отмена
+            </Button>
+            <Button
+              variant="primary"
+              disabled={!renameReady}
+              onClick={() => {
+                if (!renameReady || renameDraft === null) return;
+                onRenameCrusher(renameDraft.trim());
+                setRenameDraft(null);
+              }}
+            >
+              Сохранить
+            </Button>
+          </Modal.Footer>
+        }
+      >
+        <Stack gap="lg" direction="column">
+          <Field label="Название дробилки">
+            {(props) => (
+              <Input
+                {...props}
+                fullWidth
+                value={renameDraft ?? ''}
+                onChange={(e) => setRenameDraft(e.target.value)}
+              />
+            )}
+          </Field>
+
+          <Text variant="bodySm" color="textMuted">
+            «Сохранить» создаст новый проект с этой машиной и текущей геометрией камеры и откроет его на первом этапе.
+            Исходный проект «{crusherName}» останется таким, какой он есть, вместе со своими расчётами.
+          </Text>
+        </Stack>
+      </Modal>
 
       <Modal
         open={crusherPickerOpen}

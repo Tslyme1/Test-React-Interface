@@ -433,3 +433,79 @@ test.describe('Инженерный визард', () => {
     await expect(tab('Продукт')).toHaveAttribute('aria-current', /true|page|location/);
   });
 });
+
+/**
+ * Отчёт по проекту собирает документ по расчёту целиком, поэтому живёт
+ * на последнем этапе. На «Дробилке» и «Руде» он предлагал бы итог
+ * посреди работы и собирал бы заведомо неполный документ.
+ */
+test.describe('Инженерный визард: где кнопка отчёта', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+  });
+
+  test('на «Дробилке» и «Руде» отчёта нет, на «Продукте» есть', async ({ page }) => {
+    const report = page.getByRole('button', { name: 'Отчёт по проекту' });
+
+    await runStepCalc(page);
+    await expect(page.getByRole('button', { name: 'Экспорт в Excel' })).toBeVisible();
+    await expect(report).toHaveCount(0);
+
+    await goToWizardStep(page, /Руда/);
+    await pickOre(page);
+    await runStepCalc(page);
+    await expect(report).toHaveCount(0);
+
+    await goToWizardStep(page, /Продукт/);
+    await runStepCalc(page);
+    await expect(report).toBeVisible();
+  });
+});
+
+/**
+ * Переименование дробилки на первом этапе.
+ *
+ * Камеру правят под конкретную машину, и другое имя означает, что это
+ * уже другая разработка: писать его поверх прежнего проекта значило бы
+ * задним числом объявить, что расчёт всегда был про неё.
+ */
+test.describe('Инженерный визард: переименование дробилки', () => {
+  test.beforeEach(async ({ page }) => {
+    await seedSession(page, { empty: true });
+    await createProject(page);
+  });
+
+  test('«Сохранить» заводит новый проект и открывает его на первом этапе', async ({ page }) => {
+    await runStepCalc(page);
+    await openStepEditor(page);
+
+    await page.getByRole('button', { name: 'Переименовать дробилку' }).click();
+    const rename = page.getByRole('dialog', { name: 'Название дробилки' });
+
+    // Окно говорит про новый проект до нажатия, а не тостом после.
+    await expect(rename.getByText(/создаст новый проект/)).toBeVisible();
+
+    // Прежнее имя нового проекта не даёт: менять нечего.
+    await expect(rename.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
+
+    await rename.getByLabel('Название дробилки').fill('КСД-2200Т исп. 2');
+    await rename.getByRole('button', { name: 'Сохранить' }).click();
+
+    // Новый проект открыт на первом этапе — с формой геометрии и чертежом.
+    await expect(page.getByRole('dialog', { name: /Исходные данные/ })).toBeVisible();
+    await expect(page.getByTestId('chamber-scheme')).toBeVisible();
+    await expect(page.getByText('КСД-2200Т исп. 2').first()).toBeVisible();
+
+    /* Расчёт у копии начинается заново: машина, к которой он относился,
+       уже другая. */
+    await expect(page.getByRole('button', { name: 'Выполнить расчёт' })).toBeVisible();
+
+    // Исходный проект остался как был — в списке теперь два, а не один
+    // переименованный (шапка таблицы тоже строка).
+    await closeStepEditor(page);
+    await page.getByRole('button', { name: 'Проекты' }).click();
+    await expect(page.getByRole('row')).toHaveCount(3);
+    await expect(page.getByRole('row').filter({ hasText: 'КСД-2200Т исп. 2' })).toHaveCount(1);
+  });
+});

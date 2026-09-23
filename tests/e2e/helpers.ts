@@ -56,6 +56,23 @@ export async function login(page: Page, user = DEMO_USER, mode?: 'Инженер
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 }
 
+/**
+ * Меняет режим работы нового проекта в «Настройках».
+ *
+ * Помощником, а не тремя строками на месте: выбор режима живёт в окне
+ * с карточками, и три сценария из двух файлов повторяли путь к нему
+ * дословно — первая же правка этого окна ломала их все разом.
+ */
+export async function switchMode(page: Page, mode: 'Инженерный' | 'Упрощённый') {
+  await page.getByRole('button', { name: 'Настройки' }).click();
+  await page.getByRole('button', { name: 'Режим работы нового проекта' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Сменить режим работы' });
+  await dialog.getByRole('radio', { name: mode }).check();
+  await dialog.getByRole('button', { name: 'Сменить' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+}
+
 export type SeedOptions = {
   user?: typeof DEMO_USER;
   /**
