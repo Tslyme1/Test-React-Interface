@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { DEMO_USER, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
+import { DEMO_USER, SAMPLE_PROJECT, closeStepEditor, createProject, fillNewProjectForm, goToWizardStep, openStepEditor, openTrash, pickOre, removeFirstProject, runStepCalc, seedSession } from './helpers';
 
 /**
  * Съёмка экранов для визуального разбора агентом `ui-check`.
@@ -103,6 +103,22 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Отчёт по проекту' }).click();
       await expect(page.getByRole('dialog', { name: 'Отчёт по проекту' })).toBeVisible();
       await shot(page, `07b-report-builder-${scheme}`);
+    });
+
+    test(`07c закрытие проекта с правками @screens`, async ({ page }) => {
+      await seedSession(page, { empty: true });
+      await createProject(page);
+      await runStepCalc(page);
+      await openStepEditor(page);
+      await page.getByLabel('Диаметр основания D').fill('1900');
+      await page.getByLabel('Высота H от подвеса').fill('900');
+      await closeStepEditor(page);
+
+      const tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
+      await tab.hover({ position: { x: 12, y: 12 } });
+      await page.getByRole('button', { name: `Закрыть проект: ${SAMPLE_PROJECT.name}` }).click();
+      await expect(page.getByRole('dialog', { name: 'Сохранить изменения перед закрытием?' })).toBeVisible();
+      await shot(page, `07c-close-changes-${scheme}`);
     });
 
     test(`08 список с проектом @screens`, async ({ page }) => {
