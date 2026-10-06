@@ -1,15 +1,17 @@
 import type { GeomData, GranData, ProdData, Project, StepKey } from '@/types';
 import { convertAngleUnit } from './angleUnit';
-import { isStepStale, STEP_KEYS, STEP_LABELS } from './steps';
+import { STEP_KEYS, STEP_LABELS } from './steps';
 
 /**
- * Что именно разошлось с расчётом — поимённо.
+ * Что человек изменил в проекте за это посещение — поимённо.
  *
- * Раньше окно при закрытии проекта говорило только «вы меняли данные
- * после расчёта». Человек, вернувшийся к проекту через неделю, из этой
- * фразы не мог понять, что он трогал, и выбирал между «сохранить»
- * и «не сохранять» вслепую — то есть решал судьбу своей же работы,
- * не видя её.
+ * Точка отсчёта — состояние проекта на момент открытия вкладки, а не
+ * снимок на момент последнего расчёта. Разница принципиальная: по
+ * снимку расчёта выходило, что нажатие «Пересчитать» стирает все
+ * изменения — снимок после него совпадает с данными, и окно при
+ * закрытии не показывало ничего. Между тем поменять данные и тут же
+ * пересчитать — это самый обычный заход в посчитанный проект, и
+ * откатывать при закрытии надо именно его.
  */
 export type FieldChange = {
   label: string;
@@ -160,32 +162,87 @@ function prodChanges(was: ProdData, now: ProdData): FieldChange[] {
   return out;
 }
 
+/** Изменения, относящиеся к этапу целиком, а не к отдельной величине. */
+function stepMeta(before: Project, after: Project, index: number): FieldChange[] {
+  if (before.calc[index] !== after.calc[index]) {
+    return [
+      {
+        label: 'Расчёт этапа',
+        was: before.calc[index] ? 'посчитан' : 'не посчитан',
+        now: after.calc[index] ? 'посчитан' : 'не посчитан',
+      },
+    ];
+  }
+
+  /*
+   * Пересчёт по изменённым данным — тоже изменение: закрытие без
+   * сохранения вернёт этап к прежнему расчёту, и сказать об этом надо
+   * заранее.
+   *
+   * Опознаётся по снимку расчёта, а не по его дате: дата отмеряется
+   * до минуты, и пересчёт в ту же минуту выглядел бы так, будто расчёта
+   * не было. Совпал снимок — значит пересчитали то же самое, и менять
+   * действительно нечего.
+   */
+  if (
+    after.calc[index] &&
+    JSON.stringify(before.calcSnapshot[index]) !== JSON.stringify(after.calcSnapshot[index])
+  ) {
+    return [{ label: 'Расчёт этапа', was: 'прежний расчёт', now: 'пересчитан заново' }];
+  }
+
+  return [];
+}
+
 /**
- * Изменения, сделанные после расчёта, по всем посчитанным шагам.
+ * Всё, что изменилось в проекте между двумя его состояниями, по этапам.
  *
- * Шаг без снимка (не считался) сюда не попадает: до расчёта данные —
- * черновик, и «сохранить или откатить» к ним неприменимо. Шаг,
- * посчитанный и не тронутый с тех пор, тоже: менять в нём нечего.
+ * Дробилка и проба руды идут внутри своих этапов, а не отдельной
+ * группой: выбирают их там же, и человек ищет их в окне там, где
+ * выбирал. Имя проекта не сравнивается вовсе — его меняют из вкладки
+ * осознанным действием, и откатывать его вместе с данными расчёта
+ * значило бы отменить то, о чём не спрашивали.
  */
-export function collectStepChanges(project: Project): StepChanges[] {
+export function collectProjectChanges(before: Project, after: Project): StepChanges[] {
   const out: StepChanges[] = [];
 
   STEP_KEYS.forEach((step, index) => {
-    if (!isStepStale(project, index)) return;
-    const snapshot = project.calcSnapshot[index];
-    if (!snapshot) return;
+    const changes: FieldChange[] = [...stepMeta(before, after, index)];
 
-    const changes =
-      step === 'geom'
-        ? geomChanges(snapshot as GeomData, project.data.geom)
-        : step === 'gran'
-          ? granChanges(snapshot as GranData, project.data.gran)
-          : prodChanges(snapshot as ProdData, project.data.prod);
+    if (step === 'geom') {
+      const crusher = diff('Дробилка', before.crusherName, after.crusherName);
+      if (crusher) changes.push(crusher);
+      changes.push(...geomChanges(before.data.geom, after.data.geom));
+    } else if (step === 'gran') {
+      const ore = diff('Проба руды', before.ore, after.ore);
+      if (ore) changes.push(ore);
+      changes.push(...granChanges(before.data.gran, after.data.gran));
+    } else {
+      changes.push(...prodChanges(before.data.prod, after.data.prod));
+    }
 
     if (changes.length > 0) out.push({ step, title: STEP_LABELS[step], changes });
   });
 
   return out;
+}
+
+/**
+ * Поля, которые возвращает «Закрыть без сохранения»: всё, что человек
+ * мог тронуть за посещение. Имени проекта среди них нет намеренно —
+ * см. `collectProjectChanges`.
+ */
+export function restoreProjectFields(baseline: Project): Partial<Project> {
+  return {
+    data: baseline.data,
+    crusherName: baseline.crusherName,
+    crusherNames: baseline.crusherNames,
+    ore: baseline.ore,
+    oreNames: baseline.oreNames,
+    calc: baseline.calc,
+    calcDates: baseline.calcDates,
+    calcSnapshot: baseline.calcSnapshot,
+  };
 }
 
 /** Сколько всего правок насчиталось — для подписи в окне. */

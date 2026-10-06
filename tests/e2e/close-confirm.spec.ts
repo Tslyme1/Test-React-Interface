@@ -8,18 +8,31 @@ async function hoverAndCloseTab(page: import('@playwright/test').Page, name: str
 }
 
 /**
- * Правка числового поля на уже посчитанном шаге не форкает проект (см.
- * `fork-project.spec.ts` — форк только у дискретных решений вроде дробилки
- * или пробы руды), но и не должна молча разойтись с уже показанным
- * отчётом: закрытие вкладки в этом состоянии подтверждается отдельно.
+ * Закрытие вкладки проекта, который за это посещение изменили.
+ *
+ * Точка отсчёта — состояние проекта на момент открытия, а не снимок
+ * на момент расчёта: «поменял данные и пересчитал» — самый обычный
+ * заход в посчитанный проект, и откатывать при закрытии надо его
+ * целиком. По снимку расчёта выходило, что «Пересчитать» стирает
+ * все изменения и окно не показывает ничего.
  */
 test.describe('Подтверждение закрытия при непересчитанных изменениях', () => {
+  /**
+   * Сценарии начинаются там же, где и жалоба: проект **уже посчитан**
+   * и его открывают заново из списка. Именно в этом случае есть к чему
+   * откатывать — состояние до захода; у проекта, созданного и
+   * посчитанного тут же, его нет, и окно при закрытии не появляется.
+   */
   test.beforeEach(async ({ page }) => {
     await seedSession(page, { empty: true });
     await createProject(page);
     await runStepCalc(page);
-    /* Расчёт закрывает окно ввода — сценариям ниже нужны поля и плашки,
-       то есть само окно, поэтому открываем его снова. */
+    await closeStepEditor(page);
+    await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
+
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    /* Посчитанный этап открывается без окна ввода — сценариям ниже нужны
+       поля, то есть само окно. */
     await openStepEditor(page);
   });
 
@@ -44,7 +57,7 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
   });
 
-  test('«Закрыть без сохранения» закрывает вкладку и возвращает значения к последнему расчёту', async ({ page }) => {
+  test('«Закрыть без сохранения» закрывает вкладку и возвращает проект к состоянию на входе', async ({ page }) => {
     const before = await page.getByLabel('Диаметр основания D').inputValue();
     await page.getByLabel('Диаметр основания D').fill('1900');
     await closeStepEditor(page);
@@ -55,13 +68,13 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
 
-    // Правка после расчёта откатывается к снимку, с которым шаг считали.
+    // Правка откатывается к тому, чем проект был на момент открытия.
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
     await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue(before);
   });
 
-  test('«Сохранить» в диалоге закрывает вкладку, оставляя правки и снимая предупреждение', async ({ page }) => {
+  test('«Сохранить» в диалоге закрывает вкладку, оставляя правки', async ({ page }) => {
     await page.getByLabel('Диаметр основания D').fill('1900');
     await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
@@ -76,7 +89,12 @@ test.describe('Подтверждение закрытия при неперес
     await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
     await openStepEditor(page);
     await expect(page.getByLabel('Диаметр основания D')).toHaveValue('1900');
-    await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
+
+    /* Отчёт при этом честно остаётся помеченным непересчитанным: данные
+       сохранены, но расчёт по ним не запускали, и «Сохранить» в окне
+       закрытия не вправе утверждать обратное. */
+    await closeStepEditor(page);
+    await expect(page.getByText('Есть непересчитанные изменения')).toBeVisible();
   });
 
   /**
@@ -157,17 +175,48 @@ test.describe('Подтверждение закрытия при неперес
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
   });
 
-  test('пересчёт шага после правки снимает предупреждение при закрытии', async ({ page }) => {
+  /**
+   * Регрессия, ради которой точка отсчёта и переехала на момент
+   * открытия: поменял данные, нажал «Пересчитать», закрыл — и окно
+   * не появлялось вовсе, потому что снимок расчёта к этому моменту
+   * уже совпадал с данными.
+   */
+  test('правка с пересчётом тоже спрашивает при закрытии', async ({ page }) => {
+    const before = await page.getByLabel('Диаметр основания D').inputValue();
     await page.getByLabel('Диаметр основания D').fill('1900');
-    await expect(page.getByText('Есть непересчитанные изменения')).toBeVisible();
-
     await runStepCalc(page, 'Пересчитать');
     await expect(page.getByText('Есть непересчитанные изменения')).toHaveCount(0);
 
+    await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
+
+    const dialog = page.getByRole('dialog', { name: 'Сохранить изменения перед закрытием?' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('row').filter({ hasText: 'Диаметр основания D' })).toContainText('1900');
+    // Пересчёт назван отдельной строкой: закрытие без сохранения вернёт
+    // этап к прежнему расчёту.
+    await expect(dialog.getByRole('row').filter({ hasText: 'Расчёт этапа' })).toContainText('пересчитан');
+
+    await dialog.getByRole('button', { name: 'Закрыть без сохранения' }).click();
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await openStepEditor(page);
+    await expect(page.getByLabel('Диаметр основания D')).toHaveValue(before);
+  });
+
+  /**
+   * Открыли, ничего не тронули, закрыли — спрашивать не о чем. Иначе
+   * окно всплывало бы каждый раз, когда в проект просто заглянули.
+   */
+  test('просмотр без правок закрывается молча', async ({ page }) => {
     await closeStepEditor(page);
     await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
 
     await expect(page.getByRole('dialog', { name: 'Сохранить изменения перед закрытием?' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true })).toHaveCount(0);
+
+    // И открыть его снова можно без всяких следов прошлого захода.
+    await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+    await closeStepEditor(page);
+    await hoverAndCloseTab(page, SAMPLE_PROJECT.name);
+    await expect(page.getByRole('dialog', { name: 'Сохранить изменения перед закрытием?' })).toHaveCount(0);
   });
 });
