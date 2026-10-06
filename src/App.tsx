@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Modal, Text } from '@uralmash/design-system';
+import { Button, Modal, Stack, Table, Text } from '@uralmash/design-system';
+import type { TableColumn } from '@uralmash/design-system';
 import { useSession } from '@/state/useSession';
 import { useTheme } from '@/state/useTheme';
 import { useFontScale } from '@/state/useFontScale';
@@ -7,6 +8,8 @@ import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
 import { commitStaleSteps, discardStaleSteps, hasUncalculatedChanges } from '@/domain/steps';
+import { collectStepChanges, countStepChanges } from '@/domain/stepChanges';
+import type { FieldChange } from '@/domain/stepChanges';
 import { AppShell } from '@/components/AppShell/AppShell';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
 import { LoginPage } from '@/pages/LoginPage';
@@ -20,6 +23,18 @@ import { WizardPage } from '@/pages/wizard/WizardPage';
 import { defaultWizardData } from '@/data/wizardDefaults';
 import { applyCrusherToGeom } from '@/domain/crusherGeom';
 import type { Project } from '@/types';
+
+/**
+ * Столбцы списка правок в окне закрытия проекта: что меняли, с чем
+ * считали, что стоит сейчас. Таблица, а не строки текста: это данные,
+ * которые читают по столбцам («было» против «стало»), то есть ровно
+ * та роль, для которой в системе есть `Table`.
+ */
+const changeColumns: TableColumn<FieldChange>[] = [
+  { key: 'label', title: 'Величина' },
+  { key: 'was', title: 'С чем считали', align: 'end' },
+  { key: 'now', title: 'Сейчас', align: 'end' },
+];
 
 export function App() {
   const { user, mode: defaultMode, setMode: setDefaultMode, login, logout } = useSession();
@@ -198,6 +213,15 @@ export function App() {
     logout();
   };
 
+  /**
+   * Что разошлось с расчётом у проекта, который закрывают. Считается
+   * при каждом рендере окна, а не запоминается на момент его открытия:
+   * данные проекта живут в хранилище, и список обязан показывать их,
+   * а не слепок неизвестной давности.
+   */
+  const closingProject = closeConfirmId ? (projects.find((p) => p.id === closeConfirmId) ?? null) : null;
+  const closeChanges = closingProject ? collectStepChanges(closingProject) : [];
+
   const startNewProject = () => {
     if (defaultMode === 'simplified') {
       setSimplifiedFlow({ open: true, projectId: null });
@@ -332,7 +356,7 @@ export function App() {
       <Modal
         open={closeConfirmId !== null}
         onClose={() => setCloseConfirmId(null)}
-        title="Сохранить изменения?"
+        title="Сохранить изменения перед закрытием?"
         size="sm"
         footer={
           <Modal.Footer aside={
@@ -343,23 +367,21 @@ export function App() {
             <Button
               variant="secondary"
               onClick={() => {
-                if (closeConfirmId) {
-                  const project = projects.find((p) => p.id === closeConfirmId);
-                  if (project) updateProject(project.id, discardStaleSteps(project));
-                  closeProject(closeConfirmId);
+                if (closingProject) {
+                  updateProject(closingProject.id, discardStaleSteps(closingProject));
+                  closeProject(closingProject.id);
                 }
                 setCloseConfirmId(null);
               }}
             >
-              Не сохранять
+              Закрыть без сохранения
             </Button>
             <Button
               variant="primary"
               onClick={() => {
-                if (closeConfirmId) {
-                  const project = projects.find((p) => p.id === closeConfirmId);
-                  if (project) updateProject(project.id, commitStaleSteps(project));
-                  closeProject(closeConfirmId);
+                if (closingProject) {
+                  updateProject(closingProject.id, commitStaleSteps(closingProject));
+                  closeProject(closingProject.id);
                   showToast('Изменения сохранены', 'success');
                 }
                 setCloseConfirmId(null);
@@ -370,9 +392,32 @@ export function App() {
           </Modal.Footer>
         }
       >
-        <Text variant="bodySm" color="textMuted">
-          Вы меняли данные после расчёта. Сохранить их в проекте или закрыть, вернув значения к последнему расчёту?
-        </Text>
+        {/* Список правок поимённо, а не одна фраза «вы меняли данные».
+            Человек, вернувшийся к проекту через неделю, из такой фразы
+            не мог понять, что он трогал, и выбирал между «сохранить»
+            и «закрыть» вслепую — то есть решал судьбу своей же работы,
+            не видя её. */}
+        <Stack gap="lg" direction="column">
+          <Text variant="bodySm" color="textMuted">
+            После расчёта изменено значений: {countStepChanges(closeChanges)}. Сохранить их в проекте или закрыть
+            его, вернув значения к последнему расчёту?
+          </Text>
+
+          {closeChanges.map((group) => (
+            <Stack key={group.step} gap="sm" direction="column">
+              <Text variant="label" color="textMuted">
+                Этап «{group.title}»
+              </Text>
+              <Table
+                columns={changeColumns}
+                rows={group.changes}
+                rowKey={(row) => row.label}
+                caption={`Изменения на этапе «${group.title}»`}
+                captionHidden
+              />
+            </Stack>
+          ))}
+        </Stack>
       </Modal>
 
       <Toast message={message} tone={tone} />
