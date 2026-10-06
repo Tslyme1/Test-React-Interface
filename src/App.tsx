@@ -7,8 +7,7 @@ import { useFontScale } from '@/state/useFontScale';
 import { useProjects } from '@/state/useProjects';
 import { useToast } from '@/components/Toast/useToast';
 import { Toast } from '@/components/Toast/Toast';
-import { commitStaleSteps, discardStaleSteps, hasUncalculatedChanges } from '@/domain/steps';
-import { collectStepChanges, countStepChanges } from '@/domain/stepChanges';
+import { collectProjectChanges, countStepChanges, restoreProjectFields } from '@/domain/stepChanges';
 import type { FieldChange } from '@/domain/stepChanges';
 import { AppShell } from '@/components/AppShell/AppShell';
 import type { SidebarView } from '@/components/Sidebar/Sidebar';
@@ -69,13 +68,26 @@ export function App() {
    * за пользователя, где он остановился.
    */
   const [openTabs, setOpenTabs] = useState<string[]>([]);
+  /**
+   * Каким проект был, когда его открыли, — по одной записи на открытую
+   * вкладку. Это и есть точка отсчёта для списка изменений при закрытии.
+   *
+   * Снимок на момент открытия, а не на момент расчёта: «поменял данные
+   * и пересчитал» — самый обычный заход в посчитанный проект, а снимок
+   * расчёта после «Пересчитать» совпадает с данными, и окно при закрытии
+   * не показывало ничего. Откатывать надо всё посещение целиком.
+   *
+   * В памяти, как и сам список вкладок: перезагрузка страницы — начало
+   * сеанса заново, и отката к состоянию «до прошлого визита» там быть
+   * не должно.
+   */
+  const [openBaselines, setOpenBaselines] = useState<Record<string, Project>>({});
   const [shownProjectId, setShownProjectId] = useState<string | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   /**
-   * Вкладка, закрытие которой ждёт подтверждения, — id проекта, у которого
-   * посчитанный шаг разошёлся со снимком на момент расчёта
-   * (`hasUncalculatedChanges`). `null` — подтверждать нечего, крестик
-   * закрывает вкладку сразу.
+   * Вкладка, закрытие которой ждёт подтверждения, — id проекта, который
+   * за это посещение изменили (см. `openBaselines`). `null` —
+   * подтверждать нечего, крестик закрывает вкладку сразу.
    */
   const [closeConfirmId, setCloseConfirmId] = useState<string | null>(null);
 
@@ -141,6 +153,9 @@ export function App() {
       return;
     }
     setOpenTabs((prev) => (prev.includes(project.id) ? prev : [...prev, project.id]));
+    /* Только при первом открытии вкладки: переключение на уже открытую
+       не начинает посещение заново и точку отсчёта не сдвигает. */
+    setOpenBaselines((prev) => (prev[project.id] ? prev : { ...prev, [project.id]: project }));
     setShownProjectId(project.id);
   };
 
@@ -160,20 +175,27 @@ export function App() {
     const idx = openTabs.indexOf(id);
     const nextTabs = openTabs.filter((t) => t !== id);
     setOpenTabs(nextTabs);
+    setOpenBaselines(({ [id]: _closed, ...rest }) => rest);
     if (shownProjectId === id) {
       setShownProjectId(nextTabs[idx] ?? nextTabs[idx - 1] ?? null);
     }
   };
 
   /**
-   * Крестик на вкладке — если в проекте есть посчитанный шаг с правками
-   * после расчёта, сперва спрашивает, закрывать ли: иначе расхождение
-   * между отчётом и текущими данными уходит из вида молча, вместе
-   * с вкладкой, которая на него указывала.
+   * Крестик на вкладке — если за это посещение в проекте что-то
+   * изменили, сперва спрашивает, закрывать ли: вкладка уносит с собой
+   * последнее место, где видно, что именно было сделано, и уйти оттуда
+   * молча значит потерять возможность это отменить.
    */
   const requestCloseProject = (id: string) => {
     const project = projects.find((p) => p.id === id);
-    if (project && hasUncalculatedChanges(project)) {
+    const baseline = openBaselines[id];
+
+    /* Спрашиваем только у проекта, который был посчитан **до** этого
+       захода: у свежего, который тут же и заполнили, откатывать нечего
+       к чему, и окно было бы шумом на ровном месте. */
+    const wasCalculated = baseline?.calc.some(Boolean) ?? false;
+    if (project && baseline && wasCalculated && collectProjectChanges(baseline, project).length > 0) {
       setCloseConfirmId(id);
       return;
     }
@@ -220,7 +242,8 @@ export function App() {
    * а не слепок неизвестной давности.
    */
   const closingProject = closeConfirmId ? (projects.find((p) => p.id === closeConfirmId) ?? null) : null;
-  const closeChanges = closingProject ? collectStepChanges(closingProject) : [];
+  const closingBaseline = closeConfirmId ? (openBaselines[closeConfirmId] ?? null) : null;
+  const closeChanges = closingProject && closingBaseline ? collectProjectChanges(closingBaseline, closingProject) : [];
 
   const startNewProject = () => {
     if (defaultMode === 'simplified') {
@@ -367,8 +390,11 @@ export function App() {
             <Button
               variant="secondary"
               onClick={() => {
-                if (closingProject) {
-                  updateProject(closingProject.id, discardStaleSteps(closingProject));
+                if (closingProject && closingBaseline) {
+                  /* Вернуть проект к тому, чем он был на входе, — целиком,
+                     а не только данные этапов: за посещение могли смениться
+                     и дробилка, и отметки расчёта. */
+                  updateProject(closingProject.id, restoreProjectFields(closingBaseline));
                   closeProject(closingProject.id);
                 }
                 setCloseConfirmId(null);
@@ -380,7 +406,10 @@ export function App() {
               variant="primary"
               onClick={() => {
                 if (closingProject) {
-                  updateProject(closingProject.id, commitStaleSteps(closingProject));
+                  /* Данные проекта пишутся в хранилище сразу, по мере
+                     правки, — сохранять отдельно нечего. Кнопка значит
+                     «оставить как есть», и всё, что она делает, — закрывает
+                     вкладку, не откатывая посещение. */
                   closeProject(closingProject.id);
                   showToast('Изменения сохранены', 'success');
                 }
@@ -399,8 +428,8 @@ export function App() {
             не видя её. */}
         <Stack gap="lg" direction="column">
           <Text variant="bodySm" color="textMuted">
-            После расчёта изменено значений: {countStepChanges(closeChanges)}. Сохранить их в проекте или закрыть
-            его, вернув значения к последнему расчёту?
+            С момента открытия проекта изменено значений: {countStepChanges(closeChanges)}. Сохранить их или закрыть
+            проект, вернув его к тому, чем он был на входе?
           </Text>
 
           {closeChanges.map((group) => (

@@ -1,5 +1,4 @@
 import type { Project, StepKey } from '@/types';
-import { formatDate } from '@/domain/date';
 
 /**
  * Три шага визарда, в порядке, в котором с ними работает `calc: [boolean, boolean, boolean]`
@@ -35,51 +34,4 @@ export function isStepStale(project: Project, index: number): boolean {
   const snapshot = project.calcSnapshot[index];
   if (snapshot === null) return false;
   return JSON.stringify(project.data[STEP_KEYS[index]]) !== JSON.stringify(snapshot);
-}
-
-/** Есть ли в проекте хотя бы один такой шаг — см. `isStepStale`. */
-export function hasUncalculatedChanges(project: Project): boolean {
-  return STEP_KEYS.some((_key, i) => isStepStale(project, i));
-}
-
-/**
- * «Сохранить»: правки, сделанные после расчёта, становятся сохранённым
- * состоянием проекта — снимок каждого разошедшегося (`isStepStale`) шага
- * подтягивается к его текущим данным. Отчёт по шагу и так считается
- * от текущих данных, поэтому дата расчёта обновляется вместе со снимком.
- *
- * Уже посчитанные и совпадающие со снимком шаги (и ещё не посчитанные
- * вовсе) не трогает — `calc` не меняется, меняются только даты и снимки
- * тех, что были `isStepStale`.
- */
-export function commitStaleSteps(project: Project): Pick<Project, 'calc' | 'calcDates' | 'calcSnapshot'> {
-  const calc = [...project.calc] as Project['calc'];
-  const calcDates = [...project.calcDates] as Project['calcDates'];
-  const calcSnapshot = [...project.calcSnapshot] as Project['calcSnapshot'];
-
-  STEP_KEYS.forEach((key, i) => {
-    if (!isStepStale(project, i)) return;
-    calcDates[i] = formatDate();
-    calcSnapshot[i] = project.data[key];
-  });
-
-  return { calc, calcDates, calcSnapshot };
-}
-
-/**
- * «Не сохранять»: правки, сделанные после расчёта, откатываются —
- * данные каждого разошедшегося шага возвращаются к снимку, с которым
- * его считали. Шаги, не уходившие от снимка, остаются как есть.
- */
-export function discardStaleSteps(project: Project): Pick<Project, 'data'> {
-  const data = { ...project.data };
-  // Пошагово, а не циклом: `calcSnapshot` — кортеж со своим типом на каждой
-  // позиции, и только поимённое обращение сохраняет соответствие снимка шагу.
-  const [geom, gran, prod] = project.calcSnapshot;
-
-  if (isStepStale(project, 0) && geom) data.geom = geom;
-  if (isStepStale(project, 1) && gran) data.gran = gran;
-  if (isStepStale(project, 2) && prod) data.prod = prod;
-
-  return { data };
 }

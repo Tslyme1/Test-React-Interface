@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export const DEMO_USER = { login: 'ivanov', password: '1234', name: 'Иванов Алексей Сергеевич' };
 
@@ -54,6 +54,27 @@ export async function login(page: Page, user = DEMO_USER, mode?: 'Инженер
   if (mode) await page.getByRole('radio', { name: mode }).check();
   await page.getByRole('button', { name: 'Войти' }).click();
   await expect(page.getByRole('heading', { name: 'Проекты' })).toBeVisible();
+}
+
+/**
+ * Ждёт, пока элемент перестанет двигаться.
+ *
+ * Нужно перед наведением на тонкие линии чертежа: курсор ставится
+ * по координатам, а окно ввода появляется с анимацией — пока она идёт,
+ * указатель попадает мимо линии, и под нагрузкой полного прогона это
+ * выглядело случайным падением раз в прогон. Проверка «не подсвечено»
+ * перед наведением от этого не спасала: она отвечает сразу, не дожидаясь
+ * конца анимации.
+ */
+export async function waitForStable(locator: Locator) {
+  let previous = '';
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const box = await locator.boundingBox();
+    const key = box ? `${Math.round(box.x)}:${Math.round(box.y)}:${Math.round(box.width)}` : '';
+    if (key !== '' && key === previous) return;
+    previous = key;
+    await locator.page().waitForTimeout(100);
+  }
 }
 
 /**

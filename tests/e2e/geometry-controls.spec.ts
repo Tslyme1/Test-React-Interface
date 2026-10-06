@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SAMPLE_PROJECT, closeDisplayPopover, createProject, openStepEditor, runStepCalc, seedSession, watchConsole, wizardStepButton } from './helpers';
+import { SAMPLE_PROJECT, closeDisplayPopover, createProject, openStepEditor, runStepCalc, seedSession, waitForStable, watchConsole, wizardStepButton } from './helpers';
 
 /**
  * Шаг «Геометрия»: степпер с одними заголовками, смена дробилки прямо
@@ -121,6 +121,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
     // Playwright считает её невидимой. Указатель при этом реально ставится
     // на линию, попадание проверяется браузером как обычно: у цели штрих
     // в 18 единиц и `pointer-events: stroke`.
+    await waitForStable(page.getByTestId('chamber-scheme'));
     await page.getByTestId('chamber-scheme').locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
 
@@ -152,6 +153,7 @@ test.describe('Шаг «Геометрия»: режим отображения'
       .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
 
+    await waitForStable(page.getByTestId('chamber-scheme'));
     await page.getByTestId('chamber-scheme').locator('[data-zone="dim-d"] line').first().hover({ force: true });
     await expect(wrapper).toHaveClass(/zonedFieldActive/);
   });
@@ -295,11 +297,10 @@ test.describe('Шаг «Геометрия»: связь формы и черт�
       .getByLabel('Ширина разгрузочной щели S0')
       .locator('xpath=ancestor::div[contains(@class,"zonedField")]');
 
-    /* До наведения не подсвечено — и заодно это ожидание даёт окну
-       доиграть появление: курсор ставится по координатам, и попадание
-       в тонкую линию на едущем чертеже зависело бы от того, успел ли
-       он встать на место. */
     await expect(wrapper).not.toHaveClass(/zonedFieldActive/);
+    /* Курсор ставится по координатам, а окно появляется с анимацией —
+       ждём, пока чертёж встанет на место. */
+    await waitForStable(page.getByTestId('chamber-scheme'));
 
     /* Зазор разгрузки — последний по счёту, и его номер зависит от числа
        зон: при двух зонах это `gap3`, а форма держала записанный руками
@@ -312,9 +313,7 @@ test.describe('Шаг «Геометрия»: связь формы и черт�
     const dialog = page.getByRole('dialog', { name: /Исходные данные/ });
     const field = page.getByLabel('Угол чаши β40');
 
-    /* Ждём, пока окно доиграет появление: курсор на чертеже ставится
-       по координатам, и до этого они ещё едут. */
-    await expect(page.getByTestId('chamber-scheme')).toBeVisible();
+    await waitForStable(page.getByTestId('chamber-scheme'));
 
     /* Уводим начало формы из виду: поле зоны входа стоит первым, а участок
        на чертеже остаётся на месте — панель со схемой липкая. */

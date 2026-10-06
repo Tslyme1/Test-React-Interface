@@ -109,12 +109,21 @@ for (const scheme of ['light', 'dark'] as const) {
       await seedSession(page, { empty: true });
       await createProject(page);
       await runStepCalc(page);
+      await closeStepEditor(page);
+
+      /* Окно спрашивает у проекта, который был посчитан **до** захода:
+         закрываем его и открываем заново, как это делает человек. */
+      let tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
+      await tab.hover({ position: { x: 12, y: 12 } });
+      await page.getByRole('button', { name: `Закрыть проект: ${SAMPLE_PROJECT.name}` }).click();
+      await page.getByRole('button', { name: SAMPLE_PROJECT.crusher, exact: true }).click();
+
       await openStepEditor(page);
       await page.getByLabel('Диаметр основания D').fill('1900');
       await page.getByLabel('Высота H от подвеса').fill('900');
-      await closeStepEditor(page);
+      await runStepCalc(page, 'Пересчитать');
 
-      const tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
+      tab = page.getByRole('button', { name: SAMPLE_PROJECT.name, exact: true });
       await tab.hover({ position: { x: 12, y: 12 } });
       await page.getByRole('button', { name: `Закрыть проект: ${SAMPLE_PROJECT.name}` }).click();
       await expect(page.getByRole('dialog', { name: 'Сохранить изменения перед закрытием?' })).toBeVisible();
